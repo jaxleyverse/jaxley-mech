@@ -1,3 +1,6 @@
 *.egg-info
+*/__pycache__
+__pycache__
+
 notebooks/dev*
 notebooks/test*
