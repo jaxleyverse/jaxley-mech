@@ -21,11 +21,11 @@ class Leak(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gl": 5e-5,  # S/cm^2
+            f"{prefix}_gl": 0.05e-3,  # S/cm^2
             f"{prefix}_el": -67.0,  # mV
         }
         self.channel_states = {}
-        self.meta = META
+        self.META = META
 
     def update_states(
         self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
@@ -54,7 +54,7 @@ class Na(Channel):
             f"{prefix}_vNa": 35.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
-        self.meta = META
+        self.META = META
 
     def update_states(
         self,
@@ -104,7 +104,7 @@ class K(Channel):
             "vK": -75.0,  # mV
         }
         self.channel_states = {f"{prefix}_n": 0.1}
-        self.meta = META
+        self.META = META
 
     def update_states(
         self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
@@ -143,7 +143,7 @@ class KA(Channel):
             f"vK": -75,  # mV
         }
         self.channel_states = {f"{prefix}_A": 0.2, f"{prefix}_hA": 0.2}
-        self.meta = META
+        self.META = META
 
     def update_states(
         self,
@@ -206,7 +206,7 @@ class Ca(Channel):
                 1e-4, self.channel_params, self.CONSTANTS
             ),
         }
-        self.meta = META
+        self.META = META
 
     def update_states(self, u, dt, voltages, params):
         """Update state."""
@@ -263,7 +263,7 @@ class KCa(Channel):
         }
 
         self.channel_states = {"CaCon_i": 1e-4}
-        self.meta = META
+        self.META = META
 
     def update_states(
         self,
