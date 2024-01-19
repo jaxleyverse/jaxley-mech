@@ -82,14 +82,14 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = (-0.6 * (e + 30 + 1e-9)) / (jnp.exp(-0.1 * (e + 30 + 1e-9)) - 1)
-        beta = 20 * jnp.exp(-(e + 55) / 18)
+        alpha = 0.6 * efun(-(e + 30), 10.0)
+        beta = 20.0 * jnp.exp(-(e + 55.0) / 18.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(e):
-        alpha = 0.4 * jnp.exp(-0.05 * (e + 50 + 1e-9))
-        beta = 6 / (1 + jnp.exp(-0.1 * (e + 20 + 1e-9)))
+        alpha = 0.4 * jnp.exp(-(e + 50.0) / 20.0)
+        beta = 6.0 / (1 + jnp.exp(-0.1 * (e + 20.0)))
         return alpha, beta
 
 
