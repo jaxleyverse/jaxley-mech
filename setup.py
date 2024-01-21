@@ -20,7 +20,7 @@ EXTRAS = {
 }
 
 setup(
-    name="libretions",
+    name="jaxley-addons",
     python_requires=">=3.8.0",
     packages=find_packages(),
     install_requires=REQUIRED,
