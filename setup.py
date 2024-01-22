@@ -20,7 +20,7 @@ EXTRAS = {
 }
 
 setup(
-    name="jaxley-addons",
+    name="jaxley-mech",
     python_requires=">=3.8.0",
     packages=find_packages(),
     install_requires=REQUIRED,
