@@ -182,29 +182,28 @@ class KA(Channel):
 
 
 class Ca(Channel):
-    """Calcium channel"""
+    """Calcium channel and pump"""
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
-        self.CONSTANTS = {
+        self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)
             "T": 295.15,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
-            "tau_Ca": 50,  # mS (time constant for calcium removal)
         }
         self.channel_params = {
             f"{prefix}_gCa": 2.2e-3,  # S/cm^2
+            "length": 1.0,  # cm (length of the compartment)
+            "radius": 1.0,  # cm (radius of the compartment)
+            "tau_Ca": 50,  # mS (time constant for calcium removal)
             "CaCon_rest": 1e-4,  # mM (resting internal calcium concentration)
             "CaCon_e": 2.0,  # mM (external calcium concentration)
-            "radius": 1.0,  # cm (radius of the compartment)
         }
         self.channel_states = {
             f"{prefix}_c": 0.1,
+            f"{prefix}_vCa": self.compute_voltage(1e-4, self.channel_params),
             f"CaCon_i": 1e-4,
-            f"{prefix}_vCa": Ca.compute_voltage(
-                1e-4, self.channel_params, self.CONSTANTS
-            ),
         }
         self.META = META
 
@@ -212,19 +211,35 @@ class Ca(Channel):
         """Update state."""
         prefix = self._name
         cs = u[f"{prefix}_c"]
-        Ca_in = u["CaCon_i"]
+        Cai = u["CaCon_i"]
+        CaRest = params["CaCon_rest"]
+        tau_Ca = params["tau_Ca"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(voltages))
         # Update internal calcium concentration based on the current calcium current
         iCa = self.compute_current(u, voltages, params)
 
-        dCa_dt = (-3 * iCa / (2 * self.CONSTANTS["F"] * params[f"radius"])) - (
-            (Ca_in - params["CaCon_rest"]) / self.CONSTANTS[f"tau_Ca"]
+        dCa_dt = (
+            -(2 / params[f"length"] + 2 / params[f"radius"])
+            * iCa
+            / (2 * self.channel_constants["F"])
+        ) - ((Cai - CaRest) / tau_Ca)
+        Cai += dCa_dt * dt
+
+        vCa = self.compute_voltage(Cai, params)
+
+        return {f"{prefix}_c": new_c, "CaCon_i": Cai, f"{prefix}_vCa": vCa}
+
+    def compute_voltage(self, Cai, params):
+        """Return voltage."""
+        R, T, F = (
+            self.channel_constants["R"],
+            self.channel_constants["T"],
+            self.channel_constants["F"],
         )
-        Ca_in += dCa_dt * dt
-
-        vCa = Ca.compute_voltage(Ca_in, params, self.CONSTANTS)
-
-        return {f"{prefix}_c": new_c, "CaCon_i": Ca_in, f"{prefix}_vCa": vCa}
+        Cao = params["CaCon_e"]
+        C = R * T / (2 * F) * 1000  # mV
+        vCa = C * jnp.log(Cao / Cai)
+        return vCa
 
     def compute_current(self, u, voltages, params):
         """Return current."""
@@ -242,13 +257,6 @@ class Ca(Channel):
         beta = 10 * jnp.exp(-(e + 38) / 18)
         return alpha, beta
 
-    @staticmethod
-    def compute_voltage(Ca_in, params, CONSTANTS):
-        """Return voltage."""
-        C = CONSTANTS["R"] * CONSTANTS["T"] / (2 * CONSTANTS["F"]) * 1000  # mV
-        vCa = C * jnp.log(params["CaCon_e"] / Ca_in)
-        return vCa
-
 
 class KCa(Channel):
     "Calcium-dependent ligand gated potassium channel"
@@ -259,9 +267,10 @@ class KCa(Channel):
         self.channel_params = {
             f"{prefix}_gKCa": 0.05e-3,  # S/cm^2
             "vK": -75.0,  # mV
+        }
+        self.channel_constants = {
             "CaCon_diss": 1e-3,  # mM (calcium concentration for half-maximal activation)
         }
-
         self.channel_states = {"CaCon_i": 1e-4}
         self.META = META
 
@@ -281,6 +290,6 @@ class KCa(Channel):
         """Return current."""
         prefix = self._name
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        x = (u["CaCon_i"] / params["CaCon_diss"]) ** 2
+        x = (u["CaCon_i"] / self.channel_constants["CaCon_diss"]) ** 2
         k_conds = params[f"{prefix}_gKCa"] * x / (1 + x) * 1000  # mS/cm^2
         return k_conds * (voltages - params["vK"])
