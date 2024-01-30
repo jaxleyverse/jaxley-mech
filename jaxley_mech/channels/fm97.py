@@ -1,7 +1,6 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
-
 from jaxley.channels import Channel
 from jaxley.solver_gate import solve_gate_exponential
 
@@ -223,6 +222,7 @@ class Ca(Channel):
             * iCa
             / (2 * self.channel_constants["F"])
         ) - ((Cai - CaRest) / tau_Ca)
+        dCa_dt = jnp.maximum(dCa_dt, 1e-9)  # dCa_dt should not be negative
         Cai += dCa_dt * dt
 
         vCa = self.compute_voltage(Cai, params)
