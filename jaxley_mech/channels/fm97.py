@@ -193,8 +193,6 @@ class Ca(Channel):
         }
         self.channel_params = {
             f"{prefix}_gCa": 2.2e-3,  # S/cm^2
-            "length": 1.0,  # cm (length of the compartment)
-            "radius": 1.0,  # cm (radius of the compartment)
             "tau_Ca": 50,  # mS (time constant for calcium removal)
             "CaCon_rest": 1e-4,  # mM (resting internal calcium concentration)
             "CaCon_e": 2.0,  # mM (external calcium concentration)
@@ -211,15 +209,14 @@ class Ca(Channel):
         prefix = self._name
         cs = u[f"{prefix}_c"]
         Cai = u["CaCon_i"]
+        ca_current = u[f"{prefix}_current"]
         CaRest = params["CaCon_rest"]
         tau_Ca = params["tau_Ca"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(voltages))
-        # Update internal calcium concentration based on the current calcium current
-        iCa = self.compute_current(u, voltages, params)
 
         dCa_dt = (
             -(2 / params[f"length"] + 2 / params[f"radius"])
-            * iCa
+            * ca_current
             / (2 * self.channel_constants["F"])
         ) - ((Cai - CaRest) / tau_Ca)
         dCa_dt = jnp.maximum(dCa_dt, 1e-9)  # dCa_dt should not be negative
