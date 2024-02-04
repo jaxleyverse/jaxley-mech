@@ -195,8 +195,8 @@ class KA(Channel):
         alpha_a, beta_a = KA.A_gate(voltages)
         alpha_ha, beta_ha = KA.hA_gate(voltages)
         return {
-            f"{prefix}_a": alpha_a / (alpha_a + beta_a),
-            f"{prefix}_ha": alpha_ha / (alpha_ha + beta_ha),
+            f"{prefix}_A": alpha_a / (alpha_a + beta_a),
+            f"{prefix}_hA": alpha_ha / (alpha_ha + beta_ha),
         }
 
     @staticmethod
