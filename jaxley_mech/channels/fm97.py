@@ -41,6 +41,10 @@ class Leak(Channel):
         leak_conds = params[f"{prefix}_gl"] * 1000  # mS/cm^2
         return leak_conds * (voltages - params[f"{prefix}_el"])
 
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        return {}
+
 
 class Na(Channel):
     """Sodium channel"""
@@ -78,6 +82,16 @@ class Na(Channel):
         na_conds = params[f"{prefix}_gNa"] * (ms**3) * hs * 1000  # mS/cm^2
         current = na_conds * (voltages - params[f"{prefix}_vNa"])
         return current
+
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        alpha_m, beta_m = Na.m_gate(voltages)
+        alpha_h, beta_h = Na.h_gate(voltages)
+        return {
+            f"{prefix}_m": alpha_m / (alpha_m + beta_m),
+            f"{prefix}_h": alpha_h / (alpha_h + beta_h),
+        }
 
     @staticmethod
     def m_gate(e):
@@ -126,6 +140,14 @@ class K(Channel):
 
         return k_conds * (voltages - params[f"vK"])
 
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        alpha_n, beta_n = K.n_gate(voltages)
+        return {
+            f"{prefix}_n": alpha_n / (alpha_n + beta_n),
+        }
+
     @staticmethod
     def n_gate(e):
         alpha = 0.02 * efun(-(e + 40), 10)
@@ -166,6 +188,16 @@ class KA(Channel):
         As, hAs = u[f"{prefix}_A"], u[f"{prefix}_hA"]
         k_conds = params[f"{prefix}_gKA"] * (As**3) * hAs * 1000  # mS/cm^2
         return k_conds * (voltages - params[f"vK"])
+
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        alpha_a, beta_a = KA.A_gate(voltages)
+        alpha_ha, beta_ha = KA.hA_gate(voltages)
+        return {
+            f"{prefix}_A": alpha_a / (alpha_a + beta_a),
+            f"{prefix}_hA": alpha_ha / (alpha_ha + beta_ha),
+        }
 
     @staticmethod
     def A_gate(e):
@@ -248,6 +280,12 @@ class Ca(Channel):
         current = ca_conds * (voltages - u[f"{prefix}_vCa"])
         return current
 
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        alpha_c, beta_c = Ca.c_gate(voltages)
+        return {f"{prefix}_c": alpha_c / (alpha_c + beta_c)}
+
     @staticmethod
     def c_gate(e):
         alpha = 0.3 * efun(-(e + 13), 10)
@@ -290,3 +328,7 @@ class KCa(Channel):
         x = (u["CaCon_i"] / self.channel_constants["CaCon_diss"]) ** 2
         k_conds = params[f"{prefix}_gKCa"] * x / (1 + x) * 1000  # mS/cm^2
         return k_conds * (voltages - params["vK"])
+
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        return {}
