@@ -155,6 +155,65 @@ class Kdr(Channel):
         return alpha, beta
 
 
+class KA(Channel):
+    """A type Potassium channel"""
+
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        prefix = self._name
+        self.channel_params = {
+            f"{prefix}_gKA": 1.5e-9,  # S/cm^2
+            "vK": 45.0,  # mV
+        }
+        self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.META = META
+
+    def update_states(
+        self,
+        u: Dict[str, jnp.ndarray],
+        dt: float,
+        voltages: float,
+        params: Dict[str, jnp.ndarray],
+    ):
+        "Update state."
+        prefix = self._name
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        m_new = solve_gate_exponential(ms, dt, *KA.m_gate(voltages))
+        h_new = solve_inf_gate_exponential(hs, dt, *KA.h_gate(voltages))
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
+
+    def compute_current(
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+    ):
+        "Return current."
+        prefix = self._name
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        KA_conds = params[f"{prefix}_gKA"] * (ms**2) * hs * 1000  # mS/cm^2
+        current = KA_conds * (voltages - params[f"vK"])
+        return current
+
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        alpha_m, beta_m = KA.m_gate(voltages)
+        alpha_h, beta_h = KA.h_gate(voltages)
+        return {
+            f"{prefix}_m": alpha_m / (alpha_m + beta_m),
+            f"{prefix}_h": alpha_h / (alpha_h + beta_h),
+        }
+
+    @staticmethod
+    def m_gate(e):
+        alpha = 0.02 * (e + 15) / (1 - jnp.exp(-0.12 * (e + 15)))
+        beta = 0.05 * jnp.exp(-(e + 1.0) / 30.0)
+        return alpha, beta
+
+    @staticmethod
+    def h_gate(e):
+        h_inf = 1 / (1 + jnp.exp((e + 62.0) / 6.35))
+        return h_inf, 25 # tau_s
+
+
 class CaL(Channel):
     """L-type Calcium channel"""
 
