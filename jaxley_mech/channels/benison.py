@@ -95,14 +95,14 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = 0.5 * (e + 29) / (1 - jnp.exp(-0.18 * (e + 29)))
+        alpha = 0.5 * (e + 29.0) / (1 - jnp.exp(-0.18 * (e + 29.0)))
         beta = 6.0 * jnp.exp(-(e + 45.0) / 15.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(e):
         alpha = 0.15 * jnp.exp(-(e + 47.0) / 20.0)
-        beta = 2.8 / (1 + jnp.exp(-0.1 * (e + 20.0)))
+        beta = 2.8 / (1.0 + jnp.exp(-0.1 * (e + 20.0)))
         return alpha, beta
 
 
@@ -150,8 +150,8 @@ class Kdr(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = 0.0065 * (e + 30) / (1 - jnp.exp(-0.3 * e))
-        beta = 0.083 * jnp.exp((e + 15) / 15)
+        alpha = 0.0065 * (e + 30) / (1.0 - jnp.exp(-0.3 * e))
+        beta = 0.083 * jnp.exp((e + 15.0) / 15.0)
         return alpha, beta
 
 
@@ -179,7 +179,9 @@ class KA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         m_new = solve_gate_exponential(ms, dt, *KA.m_gate(voltages))
-        h_new = solve_inf_gate_exponential(hs, dt, *KA.h_gate(voltages))
+        h_new = solve_inf_gate_exponential(
+            hs, dt, KA.h_gate(voltages), jnp.array([25.0])
+        )
         return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
 
     def compute_current(
@@ -188,7 +190,7 @@ class KA(Channel):
         "Return current."
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        KA_conds = params[f"{prefix}_gKA"] * (ms**2) * hs * 1000  # mS/cm^2
+        KA_conds = params[f"{prefix}_gKA"] * (ms**3) * hs * 1000  # mS/cm^2
         current = KA_conds * (voltages - params[f"vK"])
         return current
 
@@ -210,8 +212,8 @@ class KA(Channel):
 
     @staticmethod
     def h_gate(e):
-        h_inf = 1 / (1 + jnp.exp((e + 62.0) / 6.35))
-        return h_inf, 25 # tau_s
+        h_inf = 1.0 / (1.0 + jnp.exp((e + 62.0) / 6.35))
+        return h_inf
 
 
 class CaL(Channel):
@@ -262,7 +264,7 @@ class CaL(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = 0.061 * (e - 3.0) / (1 - jnp.exp(-(e - 3.0) / 12.5))
+        alpha = 0.061 * (e - 3.0) / (1.0 - jnp.exp(-(e - 3.0) / 12.5))
         beta = 0.058 * jnp.exp(-(e - 10.0) / 15.0)
         return alpha, beta
 
@@ -316,12 +318,99 @@ class CaN(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = 0.1 * (e - 20) / (1 - jnp.exp(-0.1 * (e - 20)))
+        alpha = 0.1 * (e - 20) / (1.0 - jnp.exp(-0.1 * (e - 20)))
         beta = 0.4 * jnp.exp(-(e + 25.0) / 18.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(e):
         alpha = 0.01 * jnp.exp(-(e + 50.0) / 10.0)
-        beta = 0.1 / (1 + jnp.exp(-(e + 17.0) / 17))
+        beta = 0.1 / (1.0 + jnp.exp(-(e + 17.0) / 17.0))
         return alpha, beta
+
+
+class CaPumpNS(Channel):
+    """Non-spatial Calcium pump"""
+
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        self.channel_constants = {
+            "F": 96485.3329,  # C/mol (Faraday's constant)
+        }
+        self.channel_params = {
+            "CaCon_diss": 1e-4,  # mM (K_pump, equilibrium calcium value, calcium dissociation constant)
+            "CaCon_rest": 1e-4,  # mM (C_eq, resting calcium concentration)
+            "tau_store": 12.5,  # ms (characteristic relaxation time)
+            "fi": 1.0,  # (dimensionless, fraction of free calcium in the cytoplasm)
+            "v_pump": 0.0072e-3,  # mM/ms (pump rate)
+        }
+        self.channel_states = {
+            "CaCon_i": 1e-4  # mM (global internal calcium concentration)
+        }
+        self.META = META
+
+    def update_states(self, u, dt, voltages, params):
+        """Update internal calcium concentration due to the pump action."""
+        F = self.channel_constants["F"]
+
+        V_cell = jnp.pi * params["radius"] ** 2 * params["length"]
+        fi = params["fi"]
+        tau = params["tau_store"]
+        C = u["CaCon_i"]
+        C_eq = params["CaCon_rest"]
+
+        v_pump = params["v_pump"]
+        K_pump = params["CaCon_diss"]
+        j_pump = v_pump * (C**2 / (C**2 + K_pump**2))
+
+        CaN_current = u["CaN_current"]
+        CaL_current = u["CaL_current"]
+        ca_current = CaN_current + CaL_current
+
+        dCa_dt = -ca_current / (2 * F * V_cell) - (C - C_eq) / tau - j_pump
+        dCa_dt = jnp.maximum(
+            dCa_dt, 0
+        )  # Ensure that the calcium concentration is non-negative.
+
+        new_C = C + fi * dCa_dt * dt
+        return {"CaCon_i": new_C}
+
+    def compute_current(self, u, voltages, params):
+        """The pump does not directly contribute to the membrane current."""
+        return 0
+
+
+class KCa(Channel):
+
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        prefix = self._name
+        self.channel_params = {
+            f"{prefix}_gKCa": 2e-9,  # S/cm^2
+            "K_KCa": 0.6e-3,  # mM
+            "vK": -85.0,  # mV
+        }
+        self.channel_states = {"CaCon_i": 0.0001}
+        self.META = META
+
+    def update_states(
+        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+    ):
+        """Update state."""
+        return {}
+
+    def compute_current(
+        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+    ):
+        """Return current."""
+        prefix = self._name
+        C = u["CaCon_i"]
+        K_KCa = params["K_KCa"]  # mM
+        KCa_conds = params[f"{prefix}_gKCa"] * (C**4 / (C**4 + K_KCa**4))  # mS/cm^2
+        current = KCa_conds * (voltages - params[f"vK"]) * 1000
+        return current
+
+    def init_state(self, voltages, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        return {}
