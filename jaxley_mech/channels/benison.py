@@ -20,7 +20,7 @@ class Leak(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gl": 0.25e-9,  # S/cm^2
+            f"{prefix}_gl": 0.25e-3,  # S/cm^2
             f"{prefix}_el": -60.0,  # mV
         }
         self.channel_states = {}
@@ -53,7 +53,7 @@ class Na(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gNa": 150e-9,  # S/cm^2
+            f"{prefix}_gNa": 150e-3,  # S/cm^2
             f"{prefix}_vNa": 75.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
@@ -95,7 +95,7 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = 0.5 * (e + 29.0) / (1 - jnp.exp(-0.18 * (e + 29.0)))
+        alpha = 0.5 * (e + 29.0) / (1 - jnp.exp(-0.18 * (e + 29.0)) + 1e-6)
         beta = 6.0 * jnp.exp(-(e + 45.0) / 15.0)
         return alpha, beta
 
@@ -113,7 +113,7 @@ class Kdr(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gKdr": 75e-9,  # S/cm^2
+            f"{prefix}_gKdr": 75e-3,  # S/cm^2
             "vK": -85.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.1}
@@ -162,7 +162,7 @@ class KA(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gKA": 1.5e-9,  # S/cm^2
+            f"{prefix}_gKA": 1.5e-3,  # S/cm^2
             "vK": 45.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
@@ -179,9 +179,7 @@ class KA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         m_new = solve_gate_exponential(ms, dt, *KA.m_gate(voltages))
-        h_new = solve_inf_gate_exponential(
-            hs, dt, KA.h_gate(voltages), jnp.array([25.0])
-        )
+        h_new = solve_inf_gate_exponential(hs, dt, KA.h_gate(voltages), jnp.array(25.0))
         return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
 
     def compute_current(
@@ -206,7 +204,7 @@ class KA(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = 0.02 * (e + 15) / (1 - jnp.exp(-0.12 * (e + 15)))
+        alpha = 0.02 * (e + 15) / (1 - jnp.exp(-0.12 * (e + 15)) + 1e-6)
         beta = 0.05 * jnp.exp(-(e + 1.0) / 30.0)
         return alpha, beta
 
@@ -223,7 +221,7 @@ class CaL(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gCaL": 2e-9,  # S/cm^2
+            f"{prefix}_gCaL": 2e-3,  # S/cm^2
             "vCa": 45.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.1}
@@ -276,7 +274,7 @@ class CaN(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gCaN": 1.5e-9,  # S/cm^2
+            f"{prefix}_gCaN": 1.5e-3,  # S/cm^2
             "vCa": 45.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
@@ -318,7 +316,7 @@ class CaN(Channel):
 
     @staticmethod
     def m_gate(e):
-        alpha = 0.1 * (e - 20) / (1.0 - jnp.exp(-0.1 * (e - 20)))
+        alpha = 0.1 * (e - 20.0) / (1.0 - jnp.exp(-0.1 * (e - 20.0)) + 1e-6)
         beta = 0.4 * jnp.exp(-(e + 25.0) / 18.0)
         return alpha, beta
 
@@ -367,12 +365,11 @@ class CaPumpNS(Channel):
         CaL_current = u["CaL_current"]
         ca_current = CaN_current + CaL_current
 
-        dCa_dt = -ca_current / (2 * F * V_cell) - (C - C_eq) / tau - j_pump
-        dCa_dt = jnp.maximum(
-            dCa_dt, 0
-        )  # Ensure that the calcium concentration is non-negative.
-
+        driving_channel = -ca_current / (2 * F * V_cell)
+        driving_channel = jnp.maximum(driving_channel, 0.0)
+        dCa_dt = driving_channel - (C - C_eq) / tau - j_pump
         new_C = C + fi * dCa_dt * dt
+
         return {"CaCon_i": new_C}
 
     def compute_current(self, u, voltages, params):
@@ -386,7 +383,7 @@ class KCa(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_gKCa": 2e-9,  # S/cm^2
+            f"{prefix}_gKCa": 2e-3,  # S/cm^2
             "K_KCa": 0.6e-3,  # mM
             "vK": -85.0,  # mV
         }
