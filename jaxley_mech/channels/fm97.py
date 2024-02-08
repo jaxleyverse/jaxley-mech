@@ -102,7 +102,7 @@ class Na(Channel):
     @staticmethod
     def h_gate(e):
         alpha = 0.4 * jnp.exp(-(e + 50.0) / 20.0)
-        beta = 6.0 / (1 + jnp.exp(-0.1 * (e + 20.0)))
+        beta = 6.0 / (1.0 + jnp.exp(-0.1 * (e + 20.0)))
         return alpha, beta
 
 
@@ -208,7 +208,7 @@ class KA(Channel):
     @staticmethod
     def hA_gate(e):
         alpha = 0.04 * jnp.exp(-(e + 70) / 20)
-        beta = 0.6 / (1 + jnp.exp(-(e + 40) / 10))
+        beta = 0.6 / (1.0 + jnp.exp(-(e + 40) / 10))
         return alpha, beta
 
 
@@ -246,12 +246,15 @@ class Ca(Channel):
         tau_Ca = params["tau_Ca"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(voltages))
 
-        dCa_dt = (
+        driving_channel = (
             -(2 / params[f"length"] + 2 / params[f"radius"])
             * ca_current
             / (2 * self.channel_constants["F"])
-        ) - ((Cai - CaRest) / tau_Ca)
-        dCa_dt = jnp.maximum(dCa_dt, 1e-9)  # dCa_dt should not be negative
+        )
+        driving_channel = jnp.maximum(
+            driving_channel, 0.0
+        )  # driving_channel should not be negative
+        dCa_dt = driving_channel - ((Cai - CaRest) / tau_Ca)
         Cai += dCa_dt * dt
 
         vCa = self.compute_voltage(Cai, params)

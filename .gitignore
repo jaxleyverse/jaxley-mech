@@ -5,3 +5,5 @@ __pycache__
 notebooks/dev*
 notebooks/test*
 notebooks/debug*
+
+.DS_Store
