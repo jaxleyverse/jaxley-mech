@@ -15,7 +15,7 @@ class NaTaT(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gNaTaT": 0.00001,  # S/cm^2
-            f"{prefix}_ena": 55.0,  # mV, assuming ena for demonstration, needs to be set based on cell specifics
+            "ena": 50.0,  # mV
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -47,8 +47,8 @@ class NaTaT(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        gNaTaT = params[f"{prefix}_gNaTaT"]
-        current = gNaTaT * (ms**3) * hs * (voltages - params[f"{prefix}_ena"])
+        gNaTaT = params[f"{prefix}_gNaTaT"] * 1000
+        current = gNaTaT * (ms**3) * hs * (voltages - params["ena"])
         return current
 
     def init_state(self, voltages, params):
@@ -81,16 +81,21 @@ class NaTaT(Channel):
 
 
 class NaTs2T(Channel):
-    """Transient sodium current from Colbert and Pan, 2002."""
+    """Transient sodium current from Colbert and Pan, 2002.
+    Almost exactly the same as NaTaT, but with different voltage-dependent dynamics.
+    """
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gNaTs2T": 0.00001,  # S/cm^2
-            f"{prefix}_ena": None,  # TODO
+            "ena": 50.0,  # mV
         }
-        self.channel_states = {}
+        self.channel_states = {
+            f"{prefix}_m": 0.1,  # Initial value for m gating variable
+            f"{prefix}_h": 0.1,  # Initial value for h gating variable
+        }
         self.META = {
             "reference": "Colbert and Pan, 2002",
             "species": "unknown",
@@ -98,20 +103,56 @@ class NaTs2T(Channel):
         }
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        u: Dict[str, jnp.ndarray],
+        dt: float,
+        voltages: float,
+        params: Dict[str, jnp.ndarray],
     ):
-        return {}
+        """Update state of gating variables."""
+        prefix = self._name
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        m_new = solve_inf_gate_exponential(ms, dt, *self.m_gate(voltages))
+        h_new = solve_inf_gate_exponential(hs, dt, *self.h_gate(voltages))
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
 
     def compute_current(
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
-        # Multiply with 1000 to convert Siemens to milli Siemens.
+        """Compute the current through the channel."""
         prefix = self._name
-        cond = params[f"{prefix}_gNaTs2T"] * 1000  # mS/cm^2
-        return cond * (voltages - params[f"{prefix}_ena"])
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        gNaTaT = params[f"{prefix}_gNaTaT"] * 1000
+        current = gNaTaT * (ms**3) * hs * (voltages - params["ena"])
+        return current
 
     def init_state(self, voltages, params):
-        return {}
+        """Initialize the state at fixed point of gate dynamics."""
+        prefix = self._name
+        m_inf, _ = self.m_gate(voltages)
+        h_inf, _ = self.h_gate(voltages)
+        return {
+            f"{prefix}_m": m_inf,
+            f"{prefix}_h": h_inf,
+        }
+
+    @staticmethod
+    def m_gate(v):
+        """Voltage-dependent dynamics for the m gating variable."""
+        alpha = (0.182 * (v + 32 + 1e-6)) / (1 - jnp.exp(-(v + 32 + 1e-6) / 6))
+        beta = (0.124 * (-v - 32 + 1e-6)) / (1 - jnp.exp(-(-v - 32 + 1e-6) / 6))
+        m_inf = alpha / (alpha + beta)
+        tau_m = 1 / (alpha + beta) / (2.3 ** ((34 - 21) / 10))
+        return m_inf, tau_m
+
+    @staticmethod
+    def h_gate(v):
+        """Voltage-dependent dynamics for the h gating variable."""
+        alpha = (-0.015 * (v + 60 + 1e-6)) / (1 - jnp.exp((v + 60 + 1e-6) / 6))
+        beta = (-0.015 * (-v - 60 + 1e-6)) / (1 - jnp.exp((-v - 60 + 1e-6) / 6))
+        h_inf = alpha / (alpha + beta)
+        tau_h = 1 / (alpha + beta) / (2.3 ** ((34 - 21) / 10))
+        return h_inf, tau_h
 
 
 class NapEt2(Channel):
@@ -125,7 +166,7 @@ class NapEt2(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gNapEt2": 0.00001,  # S/cm^2
-            f"{prefix}_ena": None,  # TODO
+            "ena": 50,  # mV
         }
         self.channel_states = {}
         self.META = {
@@ -135,20 +176,58 @@ class NapEt2(Channel):
         }
 
     def update_states(
-        self, u: Dict[str, jnp.ndarray], dt, voltages, params: Dict[str, jnp.ndarray]
+        self,
+        u: Dict[str, jnp.ndarray],
+        dt: float,
+        voltages: float,
+        params: Dict[str, jnp.ndarray],
     ):
-        return {}
+        """Update state of gating variables."""
+        prefix = self._name
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        m_new = solve_inf_gate_exponential(ms, dt, *self.m_gate(voltages))
+        h_new = solve_inf_gate_exponential(hs, dt, *self.h_gate(voltages))
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
 
     def compute_current(
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
     ):
-        # Multiply with 1000 to convert Siemens to milli Siemens.
+        """Compute the current through the channel."""
         prefix = self._name
-        cond = params[f"{prefix}_gNapEt2"] * 1000  # mS/cm^2
-        return cond * (voltages - params[f"{prefix}_ena"])
+        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        gNaTaT = params[f"{prefix}_gNapEt2"] * 1000
+        current = gNaTaT * (ms**3) * hs * (voltages - params["ena"])
+        return current
 
     def init_state(self, voltages, params):
-        return {}
+        """Initialize the state at fixed point of gate dynamics."""
+        prefix = self._name
+        m_inf, _ = self.m_gate(voltages)
+        h_inf, _ = self.h_gate(voltages)
+        return {
+            f"{prefix}_m": m_inf,
+            f"{prefix}_h": h_inf,
+        }
+
+    @staticmethod
+    def m_gate(v):
+        """Voltage-dependent dynamics for the m gating variable."""
+        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - jnp.exp(-(v + 38 + 1e-6) / 6))
+        beta = (0.124 * (-v - 38 + 1e-6)) / (1 - jnp.exp(-(-v - 38 + 1e-6) / 6))
+        tau_m = 6 / (alpha + beta) / (2.3 ** ((34 - 21) / 10))
+        m_inf = 1.0 / (1 + jnp.exp((v + 52.7) / -4.6))
+
+        return m_inf, tau_m
+
+    @staticmethod
+    def h_gate(v):
+        """Voltage-dependent dynamics for the h gating variable."""
+        alpha = (-2.88e-6 * (v + 17 + 1e-6)) / (1 - jnp.exp((v + 17 + 1e-6) / 4.63))
+        beta = (-6.94e-6 * (v + 64.4 + 1e-6)) / (1 - jnp.exp((-(v + 64.4) + 1e-6) / 6))
+        tau_h = 1 / (alpha + beta) / (2.3 ** ((34 - 21) / 10))
+        h_inf = 1.0 / (1 + jnp.exp((v + 48.8) / 10))
+
+        return h_inf, tau_h
 
 
 class CaPump(Channel):
@@ -208,7 +287,7 @@ class CaHVA(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaHVA": 0.00001,  # S/cm^2
-            "vCa": 45.0,  # mV, assuming eca for demonstration
+            "eca": 45.0,  # mV, assuming eca for demonstration
         }
         self.channel_states = {
             f"{self._name}_m": 0.1,  # Initial value for m gating variable
@@ -240,7 +319,7 @@ class CaHVA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         gCaHVA = params[f"{prefix}_gCaHVA"]
-        current = gCaHVA * (ms**2) * hs * (voltages - params["vCa"])
+        current = gCaHVA * (ms**2) * hs * (voltages - params["eca"])
         return current
 
     def init_state(self, voltages, params):
@@ -275,7 +354,7 @@ class CaLVA(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaLVA": 0.00001,  # S/cm^2
-            "vCa": 45.0,  # mV, assuming eca for demonstration
+            "eca": 45.0,  # mV, assuming eca for demonstration
         }
         self.channel_states = {
             f"{self._name}_m": 0.0,  # Initial value for m gating variable
@@ -307,7 +386,7 @@ class CaLVA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         gCaLVA = params[f"{prefix}_gCaLVA"]
-        current = gCaLVA * (ms**2) * hs * (voltages - params["vCa"])
+        current = gCaLVA * (ms**2) * hs * (voltages - params["eca"])
         return current
 
     def init_state(self, voltages, params):
