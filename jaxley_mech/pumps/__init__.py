@@ -1,2 +1,2 @@
-from . import dbs93
-from .dbs93 import CaPump
+from . import destexhe
+from .destexhe import CaPump

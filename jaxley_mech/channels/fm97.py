@@ -251,9 +251,8 @@ class Ca(Channel):
             * ca_current
             / (2 * self.channel_constants["F"])
         )
-        driving_channel = jnp.maximum(
-            driving_channel, 0.0
-        )  # driving_channel should not be negative
+        driving_channel = jnp.where(driving_channel <= 0, 0, driving_channel)
+
         dCa_dt = driving_channel - ((Cai - CaRest) / tau_Ca)
         Cai += dCa_dt * dt
 
