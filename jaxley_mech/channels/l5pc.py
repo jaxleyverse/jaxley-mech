@@ -253,10 +253,10 @@ class NapEt2(Channel):
         return h_inf, tau_h
 
 
-############################
-## Potassium channels:    ##
-## KPst, KTst             ##
-############################
+###########################
+## Potassium channels    ##
+## KPst, KTst            ##
+###########################
 
 
 class KPst(Channel):
@@ -379,9 +379,7 @@ class KTst(Channel):
         """Compute the potassium current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        k_cond = (
-            params[f"{prefix}_gKTst"] * (ms**4) * hs * 1000
-        )  # Conversion factor for units
+        k_cond = params[f"{prefix}_gKTst"] * (ms**4) * hs * 1000
         current = k_cond * (voltages - params["ek"])
         return current
 
@@ -598,7 +596,7 @@ class CaHVA(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaHVA": 0.00001,  # S/cm^2
-            "eca": 120.0,  # mV, assuming eca for demonstration
+            "eca": 0.0,  # mV, assuming eca for demonstration
         }
         self.channel_states = {
             f"{self._name}_m": 0.1,  # Initial value for m gating variable
@@ -665,7 +663,7 @@ class CaLVA(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaLVA": 0.00001,  # S/cm^2
-            "eca": 120.0,  # mV, assuming eca for demonstration
+            "eca": 0.0,  # mV, assuming eca for demonstration
         }
         self.channel_states = {
             f"{self._name}_m": 0.0,  # Initial value for m gating variable
@@ -779,9 +777,10 @@ class CaPump(Channel):
         return 0
 
 
-#############################
-## Hypersecitivity channel ##
-#############################
+#################################
+## hyperpolarization-activated ##
+## cation channel              ##
+#################################
 
 
 class H(Channel):
@@ -834,7 +833,6 @@ class H(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        # Handling the case when v is very close to -154.9 mV
         m_alpha = (
             0.001 * 6.43 * (v + 154.9 + 1e-6) / (jnp.exp((v + 154.9 + 1e-6) / 11.9) - 1)
         )
