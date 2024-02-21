@@ -330,8 +330,8 @@ class KPst(Channel):
         # https://github.com/google/jax/issues/7934
         tau_m = select(
             v_adjusted < jnp.asarray([-50]),
-            (1.25 + 175.03 * jnp.exp(v_adjusted * -0.026)) / qt,
-            (1.25 + 13 * jnp.exp(v_adjusted * -0.026)) / qt,
+            (1.25 + 175.03 * jnp.exp(v_adjusted * 0.026)) / qt,
+            (1.25 + 13 * jnp.exp(-v_adjusted * 0.026)) / qt,
         )
         return m_inf, tau_m
 
