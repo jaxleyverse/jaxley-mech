@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+from jax.lax import select
 import jax.numpy as jnp
 from jaxley.channels import Channel
 from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential
@@ -11,6 +12,7 @@ __all__ = [
     "NaTs2T",
     "NapEt2",
     "KPst",
+    "KTst",
     "CaHVA",
     "CaLVA",
     "CaPump",
@@ -319,10 +321,14 @@ class KPst(Channel):
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         v_adjusted = v + 10  # Adjust for junction potential
         m_inf = 1 / (1 + jnp.exp(-(v_adjusted + 1) / 12))
-        if v_adjusted < -50:
-            tau_m = (1.25 + 175.03 * jnp.exp(v_adjusted * -0.026)) / qt
-        else:
-            tau_m = (1.25 + 13 * jnp.exp(v_adjusted * -0.026)) / qt
+
+        # See here for documentation of `select` vs `cond`:
+        # https://github.com/google/jax/issues/7934
+        tau_m = select(
+            v_adjusted < jnp.asarray([-50]),
+            (1.25 + 175.03 * jnp.exp(v_adjusted * -0.026)) / qt,
+            (1.25 + 13 * jnp.exp(v_adjusted * -0.026)) / qt,
+        )
         return m_inf, tau_m
 
     @staticmethod
