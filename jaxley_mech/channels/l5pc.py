@@ -273,7 +273,7 @@ class KPst(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gKPst": 0.00001,  # S/cm^2
-            "ek": -85.0,  # mV, from l5pc/config/parameters.json
+            "ek": -77.0,  # mV, from l5pc/config/parameters.json
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -357,7 +357,7 @@ class KTst(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gKTst": 0.00001,  # S/cm^2
-            "ek": -85.0,  # mV
+            "ek": -77.0,  # mV
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -430,7 +430,7 @@ class SKE2(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gSKE2": 0.000001,  # mho/cm^2
-            "ek": -85.0,  # mV, assuming ek for potassium
+            "ek": -77.0,  # mV, assuming ek for potassium
         }
         self.channel_states = {
             f"{prefix}_z": 0.0,  # Initial value for z gating variable
@@ -487,7 +487,7 @@ class SKv3_1(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gSKv3_1": 0.00001,  # S/cm^2
-            "ek": -85.0,  # mV, assuming ek for potassium
+            "ek": -77.0,  # mV, assuming ek for potassium
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -542,7 +542,7 @@ class M(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gM": 0.00001,  # S/cm^2
-            "ek": -85.0,  # mV, assuming ek for potassium
+            "ek": -77.0,  # mV, assuming ek for potassium
         }
         self.channel_states = {
             f"{prefix}_m": 0.0,  # Initial value for m gating variable
