@@ -13,9 +13,13 @@ __all__ = [
     "NapEt2",
     "KPst",
     "KTst",
+    "SKE2",
+    "SKv3_1",
+    "M",
     "CaHVA",
     "CaLVA",
     "CaPump",
+    "H",
 ]
 
 ############################
@@ -781,6 +785,10 @@ class CaPump(Channel):
     def compute_current(self, u, voltages, params):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
+    
+    def init_state(self, voltages, params):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
 
 
 #################################
