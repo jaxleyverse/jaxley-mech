@@ -19,6 +19,7 @@ __all__ = [
     "CaHVA",
     "CaLVA",
     "CaPump",
+    "CaNernstReversal",
     "H",
 ]
 
@@ -606,11 +607,11 @@ class CaHVA(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaHVA": 0.00001,  # S/cm^2
-            "eca": 0.0,  # mV, assuming eca for demonstration
         }
         self.channel_states = {
             f"{self._name}_m": 0.1,  # Initial value for m gating variable
             f"{self._name}_h": 0.1,  # Initial value for h gating variable
+            "eca": 0.0,  # mV, assuming eca for demonstration
         }
         self.META = {
             "reference": "Reuveni, Friedman, Amitai, and Gutnick, J.Neurosci. 1993",
@@ -629,7 +630,7 @@ class CaHVA(Channel):
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         m_new = solve_gate_exponential(ms, dt, *self.m_gate(voltages))
         h_new = solve_gate_exponential(hs, dt, *self.h_gate(voltages))
-        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eca": u["eca"]}
 
     def compute_current(
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -638,7 +639,7 @@ class CaHVA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         ca_cond = params[f"{prefix}_gCaHVA"] * (ms**2) * hs * 1000
-        current = ca_cond * (voltages - params["eca"])
+        current = ca_cond * (voltages - u["eca"])
         return current
 
     def init_state(self, voltages, params):
@@ -673,11 +674,11 @@ class CaLVA(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaLVA": 0.00001,  # S/cm^2
-            "eca": 0.0,  # mV, assuming eca for demonstration
         }
         self.channel_states = {
             f"{self._name}_m": 0.0,  # Initial value for m gating variable
             f"{self._name}_h": 0.0,  # Initial value for h gating variable
+            "eca": 0.0,  # mV, assuming eca for demonstration
         }
         self.META = {
             "reference": "Based on Avery and Johnston 1996 and Randall 1997",
@@ -696,7 +697,7 @@ class CaLVA(Channel):
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         m_new = solve_inf_gate_exponential(ms, dt, *self.m_gate(voltages))
         h_new = solve_inf_gate_exponential(hs, dt, *self.h_gate(voltages))
-        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eca": u["eca"]}
 
     def compute_current(
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -705,7 +706,7 @@ class CaLVA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         ca_cond = params[f"{prefix}_gCaLVA"] * (ms**2) * hs * 1000
-        current = ca_cond * (voltages - params["eca"])
+        current = ca_cond * (voltages - u["eca"])
         return current
 
     def init_state(self, voltages, params):
@@ -790,6 +791,43 @@ class CaPump(Channel):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
+
+class CaNernstReversal(Channel):
+    """Compute Calcium reversal from inner and outer concentration of calcium."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        super().__init__(name)
+        self.channel_constants = {
+            "F": 96485.3329,  # C/mol (Faraday's constant)
+            "T": 295.15,  # Kelvin (temperature)
+            "R": 8.314,  # J/(mol K) (gas constant)
+        }
+        self.channel_params = {}
+        self.channel_states = {"eca": 0.0, "CaCon_i": 2e-4, "CaCon_e": 2.0}
+
+    def update_states(self, u, dt, voltages, params):
+        """Update internal calcium concentration based on calcium current and decay."""
+        R, T, F = (
+            self.channel_constants["R"],
+            self.channel_constants["T"],
+            self.channel_constants["F"],
+        )
+        Cai = u["CaCon_i"]
+        Cao = u["CaCon_e"]
+        C = R * T / (2 * F) * 1000  # mV
+        vCa = C * jnp.log(Cao / Cai)
+        return {"eca": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
+
+    def compute_current(self, u, voltages, params):
+        """This dynamics model does not directly contribute to the membrane current."""
+        return 0
+    
+    def init_state(self, voltages, params):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
 
 #################################
 ## hyperpolarization-activated ##
