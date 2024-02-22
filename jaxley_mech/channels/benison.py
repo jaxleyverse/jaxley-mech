@@ -37,10 +37,11 @@ class Leak(Channel):
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        """Return current."""
-        # Multiply with 1000 to convert Siemens to milli Siemens.
+        """""Return the updated states.""" ""
         prefix = self._name
-        gLeak = params[f"{prefix}_gLeak"] * 1000  # m/cm^2
+        gLeak = (
+            params[f"{prefix}_gLeak"] * 1000
+        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gLeak * (v - params[f"{prefix}_eLeak"])
 
     def init_state(self, v, params):
@@ -68,7 +69,7 @@ class Na(Channel):
         v: float,
         params: Dict[str, jnp.ndarray],
     ):
-        "Update state."
+        """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         new_m = solve_gate_exponential(m, dt, *Na.m_gate(v))
@@ -78,10 +79,12 @@ class Na(Channel):
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        "Return current."
+        """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gNa = params[f"{prefix}_gNa"] * (m**3) * h * 1000  # m/cm^2
+        gNa = (
+            params[f"{prefix}_gNa"] * (m**3) * h * 1000
+        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gNa * (v - params[f"{prefix}_eNa"])
 
     def init_state(self, v, params):
@@ -123,7 +126,7 @@ class Kdr(Channel):
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
     ):
-        """Update state."""
+        """""Return the updated states.""" ""
         prefix = self._name
         m = states[f"{prefix}_m"]
         new_m = solve_gate_exponential(m, dt, *Kdr.m_gate(v))
@@ -132,12 +135,12 @@ class Kdr(Channel):
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        """Return current."""
+        """""Return the updated states.""" ""
         prefix = self._name
         m = states[f"{prefix}_m"]
-
-        # Multiply with 1000 to convert Siemens to milli Siemens.
-        gKdr = params[f"{prefix}_gKdr"] * (m**3) * 1000  # m/cm^2
+        gKdr = (
+            params[f"{prefix}_gKdr"] * (m**3) * 1000
+        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
 
         return gKdr * (v - params[f"eK"])
 
@@ -176,7 +179,7 @@ class KA(Channel):
         v: float,
         params: Dict[str, jnp.ndarray],
     ):
-        "Update state."
+        """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         new_m = solve_gate_exponential(m, dt, *KA.m_gate(v))
@@ -186,10 +189,12 @@ class KA(Channel):
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        "Return current."
+        """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gKA = params[f"{prefix}_gKA"] * (m**3) * h * 1000  # m/cm^2
+        gKA = (
+            params[f"{prefix}_gKA"] * (m**3) * h * 1000
+        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gKA * (v - params[f"eK"])
 
     def init_state(self, v, params):
@@ -234,7 +239,7 @@ class CaL(Channel):
         v: float,
         params: Dict[str, jnp.ndarray],
     ):
-        "Update state."
+        """Return the updated states."""
         prefix = self._name
         m = states[f"{prefix}_m"]
         new_m = solve_gate_exponential(m, dt, *CaL.m_gate(v))
@@ -245,10 +250,12 @@ class CaL(Channel):
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        "Return current."
+        """Return the updated states."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        gCaL = params[f"{prefix}_gCaL"] * (m**2) * 1000  # m/cm^2
+        gCaL = (
+            params[f"{prefix}_gCaL"] * (m**2) * 1000
+        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         current = gCaL * (v - params[f"eCa"])
         return current
 
@@ -287,7 +294,7 @@ class CaN(Channel):
         v: float,
         params: Dict[str, jnp.ndarray],
     ):
-        "Update state."
+        """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         new_m = solve_gate_exponential(m, dt, *CaN.m_gate(v))
@@ -297,10 +304,12 @@ class CaN(Channel):
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        "Return current."
+        """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gCaN = params[f"{prefix}_gCaN"] * (m**2) * h * 1000  # m/cm^2
+        gCaN = (
+            params[f"{prefix}_gCaN"] * (m**2) * h * 1000
+        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gCaN * (v - params[f"eCa"])
 
     def init_state(self, v, params):
@@ -392,17 +401,19 @@ class KCa(Channel):
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
     ):
-        """Update state."""
+        """""Return the updated states.""" ""
         return {}
 
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        """Return current."""
+        """""Return the updated states.""" ""
         prefix = self._name
         C = states["CaCon_i"]
         K_KCa = params["K_KCa"]  # mM
-        gKCa = params[f"{prefix}_gKCa"] * (C**4 / (C**4 + K_KCa**4)) * 1000  # m/cm^2
+        gKCa = (
+            params[f"{prefix}_gKCa"] * (C**4 / (C**4 + K_KCa**4)) * 1000
+        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gKCa * (v - params[f"eK"])
 
     def init_state(self, v, params):
