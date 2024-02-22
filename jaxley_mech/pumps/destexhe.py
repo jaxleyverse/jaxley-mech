@@ -20,7 +20,7 @@ class CaPump(Channel):
             f"{self.name}_cainf": 2.4e-4,  # Equilibrium calcium concentration in mM
         }
         self.channel_states = {
-            f"CaCon_i": 1e-4,  # Initial internal calcium concentration in mM
+            f"Cai": 1e-4,  # Initial internal calcium concentration in mM
         }
         self.META = {
             "reference": "Destexhe, A., Babloyantz, A., & Sejnowski, TJ. Ionic mechanisms for intrinsic slow oscillations in thalamic relay neurons. Biophys. J. 65: 1538-1552, 1993.",
@@ -31,7 +31,7 @@ class CaPump(Channel):
     def update_states(self, u, dt, voltages, params, ica):
         """Update internal calcium concentration due to pump action and calcium currents."""
         prefix = self._name
-        cai = u[f"CaCon_i"]
+        cai = u[f"Cai"]
         kt = params[f"{prefix}_kt"]
         kd = params[f"{prefix}_kd"]
         depth = params[f"{prefix}_depth"]
@@ -52,7 +52,7 @@ class CaPump(Channel):
         # Update internal calcium concentration with contributions from channel, pump, and decay to equilibrium
         new_cai = cai + dt * (drive_channel + drive_pump + (cainf - cai) / taur)
 
-        return {f"CaCon_i": new_cai}
+        return {f"Cai": new_cai}
 
     def compute_current(self, u, voltages, params):
         """The pump does not directly contribute to the membrane current."""

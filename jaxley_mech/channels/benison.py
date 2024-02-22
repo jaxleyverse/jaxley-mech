@@ -344,14 +344,14 @@ class CaPumpNS(Channel):
             "F": 96485.3329,  # C/mol (Faraday's constant)
         }
         self.channel_params = {
-            "CaCon_diss": 1e-4,  # mM (K_pump, equilibrium calcium value, calcium dissociation constant)
-            "CaCon_rest": 1e-4,  # mM (C_eq, resting calcium concentration)
+            "Cad": 1e-4,  # mM (or K_pump, equilibrium calcium value, calcium dissociation constant)
+            "Cab": 1e-4,  # mM (or C_eq, resting calcium concentration)
             "tau_store": 12.5,  # m (characteristic relaxation time)
             "fi": 1.0,  # (dimensionless, fraction of free calcium in the cytoplasm)
             "v_pump": 0.0072e-3,  # mM/m (pump rate)
         }
         self.channel_states = {
-            "CaCon_i": 1e-4  # mM (global internal calcium concentration)
+            "Cai": 1e-4  # mM (global internal calcium concentration)
         }
         self.META = META
 
@@ -362,12 +362,12 @@ class CaPumpNS(Channel):
         V_cell = jnp.pi * params["radius"] ** 2 * params["length"]
         fi = params["fi"]
         tau = params["tau_store"]
-        C = states["CaCon_i"]
-        C_eq = params["CaCon_rest"]
+        Cai = states["Cai"]
+        Cab = params["Cab"]
 
         v_pump = params["v_pump"]
-        K_pump = params["CaCon_diss"]
-        j_pump = v_pump * (C**2 / (C**2 + K_pump**2))
+        K_pump = params["Cad"]
+        j_pump = v_pump * (Cai**2 / (Cai**2 + K_pump**2))
 
         CaN_current = states["CaN_current"]
         CaL_current = states["CaL_current"]
@@ -375,10 +375,10 @@ class CaPumpNS(Channel):
 
         driving_channel = -ca_current / (2 * F * V_cell)
         driving_channel = jnp.maximum(driving_channel, 0.0)
-        dCa_dt = driving_channel - (C - C_eq) / tau - j_pump
-        new_C = C + fi * dCa_dt * dt
+        dCa_dt = driving_channel - (Cai - Cab) / tau - j_pump
+        new_Cai = Cai + fi * dCa_dt * dt
 
-        return {"CaCon_i": new_C}
+        return {"Cai": new_Cai}
 
     def compute_current(self, states, v, params):
         """The pump does not directly contribute to the membrane current."""
@@ -395,7 +395,7 @@ class KCa(Channel):
             "K_KCa": 0.6e-3,  # mM
             "eK": -85.0,  # mV
         }
-        self.channel_states = {"CaCon_i": 0.0001}
+        self.channel_states = {"Cai": 0.0001}  # mM, intracellular calcium concentration
         self.META = META
 
     def update_states(
@@ -409,7 +409,7 @@ class KCa(Channel):
     ):
         """""Return the updated states.""" ""
         prefix = self._name
-        C = states["CaCon_i"]
+        C = states["Cai"]
         K_KCa = params["K_KCa"]  # mM
         gKCa = (
             params[f"{prefix}_gKCa"] * (C**4 / (C**4 + K_KCa**4)) * 1000

@@ -232,13 +232,13 @@ class Ca(Channel):
         self.channel_params = {
             f"{prefix}_gCa": 2.2e-3,  # S/cm^2
             "tau_Ca": 50,  # mS (time constant for calcium removal)
-            "CaCon_rest": 1e-4,  # mM (resting internal calcium concentration)
-            "CaCon_e": 2.0,  # mM (vxternal calcium concentration)
+            "Cab": 1e-4,  # mM (resting internal calcium concentration, or baseline concentration)
+            "Cao": 2.0,  # mM (external calcium concentration)
         }
         self.channel_states = {
             f"{prefix}_c": 0.1,
             f"{prefix}_eCa": self.compute_voltage(1e-4, self.channel_params),
-            f"CaCon_i": 1e-4,
+            f"Cai": 1e-4,  # mM (internal calcium concentration)
         }
         self.META = META
 
@@ -246,9 +246,9 @@ class Ca(Channel):
         """Return the updated states."""
         prefix = self._name
         cs = states[f"{prefix}_c"]
-        Cai = states["CaCon_i"]
+        Cai = states["Cai"]
         ca_current = states[f"{prefix}_current"]
-        CaRest = params["CaCon_rest"]
+        Cab = params["Cab"]
         tau_Ca = params["tau_Ca"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(v))
 
@@ -259,12 +259,12 @@ class Ca(Channel):
         )
         driving_channel = jnp.where(driving_channel <= 0, 0, driving_channel)
 
-        dCa_dt = driving_channel - ((Cai - CaRest) / tau_Ca)
+        dCa_dt = driving_channel - ((Cai - Cab) / tau_Ca)
         Cai += dCa_dt * dt
 
         eCa = self.compute_voltage(Cai, params)
 
-        return {f"{prefix}_c": new_c, "CaCon_i": Cai, f"{prefix}_eCa": eCa}
+        return {f"{prefix}_c": new_c, "Cai": Cai, f"{prefix}_eCa": eCa}
 
     def compute_voltage(self, Cai, params):
         """Return Ca rev. potential."""
@@ -273,7 +273,7 @@ class Ca(Channel):
             self.channel_constants["T"],
             self.channel_constants["F"],
         )
-        Cao = params["CaCon_e"]
+        Cao = params["Cao"]
         C = R * T / (2 * F) * 1000  # mV
         eCa = C * jnp.log(Cao / Cai)
         return eCa
@@ -311,9 +311,9 @@ class KCa(Channel):
             "eK": -75.0,  # mV
         }
         self.channel_constants = {
-            "CaCon_diss": 1e-3,  # mM (calcium concentration for half-maximal activation)
+            "Cad": 1e-3,  # mM (calcium concentration for half-maximal activation; dissociation constant)
         }
-        self.channel_states = {"CaCon_i": 1e-4}
+        self.channel_states = {"Cai": 1e-4}
         self.META = META
 
     def update_states(
@@ -331,7 +331,7 @@ class KCa(Channel):
     ):
         """Given channel states and voltage, return the current through the channel."""
         prefix = self._name
-        x = (states["CaCon_i"] / self.channel_constants["CaCon_diss"]) ** 2
+        x = (states["Cai"] / self.channel_constants["Cad"]) ** 2
         gKCa = (
             params[f"{prefix}_gKCa"] * x / (1 + x) * 1000
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
