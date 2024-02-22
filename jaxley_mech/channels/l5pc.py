@@ -3,7 +3,7 @@ from typing import Dict, Optional
 from jax.lax import select
 import jax.numpy as jnp
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential
+from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential, exponential_euler
 
 from ..utils import efun
 
@@ -435,6 +435,7 @@ class SKE2(Channel):
         }
         self.channel_states = {
             f"{prefix}_z": 0.0,  # Initial value for z gating variable
+            f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
         }
         self.META = {
             "reference": "Kohler et al., 1996",
@@ -468,14 +469,19 @@ class SKE2(Channel):
     def init_state(self, voltages, params):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
-        cai = 1e-4  # Initial value for intracellular calcium concentration
+        cai = 5e-05  # Initial value for intracellular calcium concentration
         z_inf, _ = self.z_gate(cai)
         return {f"{prefix}_z": z_inf}
 
     @staticmethod
     def z_gate(cai):
         """Dynamics for the z gating variable, dependent on intracellular calcium concentration."""
-        z_inf = 1 / (1 + (0.00043 / cai + 1e-07) ** 4.8)
+        cai = select(
+            cai < jnp.asarray(1e-7),
+            cai + 1e-7,
+            cai,
+        )
+        z_inf = 1 / (1 + (0.00043 / cai) ** 4.8)
         tau_z = 1.0  # tau_z is fixed at 1 ms
         return z_inf, tau_z
 
@@ -763,7 +769,7 @@ class CaPump(Channel):
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        ica = u["CaHVA_current"] + u["CaLVA_current"]
+        ica = (u["CaHVA_current"] + u["CaLVA_current"]) / 1_000.0
         cai = u["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
@@ -773,13 +779,11 @@ class CaPump(Channel):
         FARADAY = 96485  # Coulombs per mole
 
         # Calculate the contribution of calcium currents to cai change
-        drive_channel = -ica * gamma / (2 * FARADAY * depth)
+        drive_channel = -10_000.0 * ica * gamma / (2 * FARADAY * depth)
 
-        # Update cai considering decay towards minCai
-        new_cai = cai + dt * (drive_channel - (cai - minCai) / decay)
-
-        # Ensure cai does not go below minCai
-        new_cai = jnp.maximum(new_cai, minCai)
+        cai_tau = decay
+        cai_inf = minCai + decay * drive_channel
+        new_cai = exponential_euler(cai, dt, cai_inf, cai_tau)
 
         return {f"CaCon_i": new_cai}
 
@@ -802,7 +806,7 @@ class CaNernstReversal(Channel):
         super().__init__(name)
         self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)
-            "T": 295.15,  # Kelvin (temperature)
+            "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
         self.channel_params = {}
