@@ -253,7 +253,7 @@ class NapEt2(Channel):
         """Voltage-dependent dynamics for the h gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         alpha = (-2.88e-6 * (v + 17 + 1e-6)) / (1 - jnp.exp((v + 17 + 1e-6) / 4.63))
-        beta = (-6.94e-6 * (v + 64.4 + 1e-6)) / (1 - jnp.exp((-(v + 64.4) + 1e-6) / 6))
+        beta = (6.94e-6 * (v + 64.4 + 1e-6)) / (1 - jnp.exp((-(v + 64.4) + 1e-6) / 6))
         tau_h = 1 / (alpha + beta) / qt
         h_inf = 1.0 / (1 + jnp.exp((v + 48.8) / 10))
 
@@ -753,7 +753,7 @@ class CaPump(Channel):
             f"{self._name}_minCai": 1e-4,  # Minimum intracellular calcium concentration in mM
         }
         self.channel_states = {
-            f"CaCon_i": 2 * 1e-4,  # Initial internal calcium concentration in mM
+            f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
         }
         self.META = {
             "reference": "Modified from Destexhe et al., 1994",
@@ -806,7 +806,7 @@ class CaNernstReversal(Channel):
             "R": 8.314,  # J/(mol K) (gas constant)
         }
         self.channel_params = {}
-        self.channel_states = {"eca": 0.0, "CaCon_i": 2e-4, "CaCon_e": 2.0}
+        self.channel_states = {"eca": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
