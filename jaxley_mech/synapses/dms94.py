@@ -3,6 +3,14 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 from jaxley.synapses import Synapse
 
+__all__ = ["AMPA", "GABAa", "GABAb", "NMDA"]
+
+META = {
+    "reference": "Destexhe, A., Mainen, Z. F., & Sejnowski, T. J. (1998). Kinetic models of synaptic transmission. Methods in neuronal modeling, 2, 1-25.",
+    "link": "https://www.csc.kth.se/utbildning/kth/kurser/DD2435/biomod12/kursbunt/f9/KochCh1Destexhe.pdf",
+    "source": "https://modeldb.science/18500?tab=2",
+}
+
 
 class AMPA(Synapse):
     """
@@ -30,6 +38,7 @@ class AMPA(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.META = META
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
@@ -144,6 +153,7 @@ class GABAa(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.META = META
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
@@ -261,6 +271,7 @@ class GABAb(Synapse):
             f"{name}_lastrelease": -1000,  # Time since last release (ms)
             f"{name}_timecount": -1,
         }
+        self.META = META
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
@@ -361,6 +372,7 @@ class NMDA(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.META = META
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
