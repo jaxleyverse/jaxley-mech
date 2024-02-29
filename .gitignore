@@ -2,8 +2,7 @@
 */__pycache__
 __pycache__
 
-notebooks/dev*
-notebooks/test*
-notebooks/debug*
+notebooks/_dev*
+notebooks/_test*
 
 .DS_Store
