@@ -4,12 +4,12 @@ from jaxley.synapses.synapse import Synapse
 
 class RibbonSynapse(Synapse):
     """
-    Compute synaptic current and update synapse state for a deterministic ribbon 
+    Compute synaptic current and update synapse state for a deterministic ribbon
     synapse.
 
-    Ribbon synapse from Schroeder et al. 2019 supplemented by the full synapse model of 
-    the Dayan & Abbott 2001 Theoretical Neuroscience textbook. A single exponential 
-    decay is used to model the postsynaptic conductance, also referred to as the 
+    Ribbon synapse from Schroeder et al. 2019 supplemented by the full synapse model of
+    the Dayan & Abbott 2001 Theoretical Neuroscience textbook. A single exponential
+    decay is used to model the postsynaptic conductance, also referred to as the
     probability that a postsynaptic channel opens given that transmitter was released.
     """
 
@@ -31,31 +31,30 @@ class RibbonSynapse(Synapse):
         P_max = 1.0
 
         # Presynaptic voltage to calcium to release probability
-        p_d_t = 1/(1 + jnp.exp(-k*(pre_voltage - V_half)))
-        
+        p_d_t = 1 / (1 + jnp.exp(-k * (pre_voltage - V_half)))
+
         # Vesicle release (NOTE: p_d_t is the mean of the beta distribution)
         new_released = p_d_t * u["docked"]
-        
+
         # Movement to the dock
         new_docked = u["docked"] + p_r * u["ribboned"] - new_released
         new_docked = jnp.maximum(new_docked, D_max)
-        
+
         # Movement to the ribbon
         new_ribboned = u["ribboned"] + λ - new_docked
         new_ribboned = jnp.maximum(new_ribboned, R_max)
 
         # Vesicle released to "transmitter release probability"
         P_rel = new_released / D_max
-        P_s = P_max * jnp.exp(-delta_t/params["tau"])
+        P_s = P_max * jnp.exp(-delta_t / params["tau"])
 
         return {
-            "released": new_released, 
-            "docked": new_docked, 
+            "released": new_released,
+            "docked": new_docked,
             "ribboned": new_ribboned,
             "P_rel": P_rel,
-            "P_s": P_s
-            }
-
+            "P_s": P_s,
+        }
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Return updated current."""
