@@ -17,7 +17,7 @@ class AMPA(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gAMPA": 0.1e-3,  # Maximum conductance (mS)
+            f"{name}_gAMPA": 0.1e-3,  # Maximum conductance (S)
             f"{name}_eAMPA": 0.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 1,  # Transmitter duration (ms)
@@ -128,7 +128,7 @@ class GABAa(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gGABAa": 0.1e-3,  # Maximum conductance (mS)
+            f"{name}_gGABAa": 0.1e-3,  # Maximum conductance (S)
             f"{name}_eGABAa": -80.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 1,  # Transmitter duration (ms)
@@ -239,7 +239,7 @@ class GABAb(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gGABAb": 0.1e-3,  # Maximum conductance (mS)
+            f"{name}_gGABAb": 0.1e-3,  # Maximum conductance (S)
             f"{name}_eGABAb": -95.0,  # Reversal potential (mV)
             f"{name}_Cmax": 0.5,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 0.3,  # Transmitter duration (ms)
@@ -338,7 +338,7 @@ class NMDA(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gNMDA": 0.1e-3,  # Maximum conductance (mS)
+            f"{name}_gNMDA": 0.1e-3,  # Maximum conductance (S)
             f"{name}_eNMDA": 0.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 1,  # Transmitter duration (ms)
