@@ -13,10 +13,6 @@ META = {
 
 
 class AMPA(Synapse):
-    """
-    AMPA/Kainate synapse model from Destexhe, Mainen, Sejnowski 1994.
-    """
-
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 
@@ -128,10 +124,6 @@ class AMPA(Synapse):
 
 
 class GABAa(Synapse):
-    """
-    GABAa synapse model from Destexhe, Mainen, Sejnowski 1994.
-    """
-
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 
@@ -243,10 +235,6 @@ class GABAa(Synapse):
 
 
 class GABAb(Synapse):
-    """
-    GABAb synapse model from Destexhe, Mainen, Sejnowski 1994.
-    """
-
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 
@@ -346,10 +334,6 @@ class GABAb(Synapse):
 
 
 class NMDA(Synapse):
-    """
-    NMDA synapse model from Destexhe, Mainen, Sejnowski 1994.
-    """
-
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 

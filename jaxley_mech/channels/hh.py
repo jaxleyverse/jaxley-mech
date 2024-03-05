@@ -154,7 +154,7 @@ class K(Channel):
         return alpha, beta
 
 
-class Na8States(Channel):
+class Na8States(Na):
     """Sodium channel in the formulation of Markov model with 8 states"""
 
     def __init__(self, name: Optional[str] = None):
@@ -279,25 +279,11 @@ class Na8States(Channel):
         states = self.channel_states
         params = self.channel_params
         for i in range(int(120 / dt)):
-            states = self.update_states(states, dt, -65, params)
+            states = self.update_states(states, dt, v, params)
         return states
 
-    @staticmethod
-    def m_gate(v):
-        v += 1e-6
-        alpha = 0.1 * (v + 40) / (1 - jnp.exp(-(v + 40) / 10))
-        beta = 4 * jnp.exp(-(v + 65) / 18)
-        return alpha, beta
 
-    @staticmethod
-    def h_gate(v):
-        v += 1e-6
-        alpha = 0.07 * jnp.exp(-(v + 65) / 20)
-        beta = 1 / (1 + jnp.exp(-(v + 35) / 10))
-        return alpha, beta
-
-
-class K5States(Channel):
+class K5States(K):
     """Potassium channel in the formulation of Markov model with 5 states"""
 
     def __init__(self, name: Optional[str] = None):
@@ -372,12 +358,5 @@ class K5States(Channel):
         states = self.channel_states
         params = self.channel_params
         for i in range(int(120 / dt)):
-            states = self.update_states(states, dt, -65, params)
+            states = self.update_states(states, dt, v, params)
         return states
-
-    @staticmethod
-    def n_gate(v):
-        v += 1e-6
-        alpha = 0.01 * (v + 55) / (1 - jnp.exp(-(v + 55) / 10))
-        beta = 0.125 * jnp.exp(-(v + 65) / 80)
-        return alpha, beta
