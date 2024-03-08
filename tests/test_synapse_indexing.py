@@ -10,7 +10,8 @@ import pytest
 
 import jaxley as jx
 from jaxley.channels import HH
-from jaxley.synapses import IonotropicSynapse, TanhRateSynapse, TestSynapse, GapJunction
+from jaxley.synapses import IonotropicSynapse
+from jaxley_mech.synapses import AMPA, GABAa, GABAb, NMDA, RibbonSynapse, GapJunction
 
 
 def test_multiparameter_setting():
@@ -41,14 +42,26 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
         full_syn_view = net.IonotropicSynapse
         single_syn_view = net.IonotropicSynapse(single_idx)
         double_syn_view = net.IonotropicSynapse(double_idxs)
-    if synapse_name == "TanhRateSynapse":
-        full_syn_view = net.TanhRateSynapse
-        single_syn_view = net.TanhRateSynapse(single_idx)
-        double_syn_view = net.TanhRateSynapse(double_idxs)
-    if synapse_name == "TestSynapse":
-        full_syn_view = net.TestSynapse
-        single_syn_view = net.TestSynapse(single_idx)
-        double_syn_view = net.TestSynapse(double_idxs)
+    if synapse_name == "AMPA":
+        full_syn_view = net.AMPA
+        single_syn_view = net.AMPA(single_idx)
+        double_syn_view = net.AMPA(double_idxs)
+    if synapse_name == "GABAa":
+        full_syn_view = net.GABAa
+        single_syn_view = net.GABAa(single_idx)
+        double_syn_view = net.GABAa(double_idxs)
+    if synapse_name == "GABAb":
+        full_syn_view = net.GABAb
+        single_syn_view = net.GABAb(single_idx)
+        double_syn_view = net.GABAb(double_idxs)
+    if synapse_name == "NMDA":
+        full_syn_view = net.NMDA
+        single_syn_view = net.NMDA(single_idx)
+        double_syn_view = net.NMDA(double_idxs)
+    if synapse_name == "RibbonSynapse":
+        full_syn_view = net.RibbonSynapse
+        single_syn_view = net.RibbonSynapse(single_idx)
+        double_syn_view = net.RibbonSynapse(double_idxs)
     if synapse_name == "GapJunction":
         full_syn_view = net.GapJunction
         single_syn_view = net.GapJunction(single_idx)
@@ -57,7 +70,8 @@ def _get_synapse_view(net, synapse_name, single_idx=1, double_idxs=[2, 3]):
 
 
 @pytest.mark.parametrize(
-    "synapse_type", [IonotropicSynapse, TanhRateSynapse, TestSynapse, GapJunction]
+    "synapse_type",
+    [IonotropicSynapse, AMPA, GABAa, GABAb, NMDA, RibbonSynapse, GapJunction],
 )
 def test_set_and_querying_params_one_type(synapse_type):
     """Test if the correct parameters are set if one type of synapses is inserted."""
@@ -99,7 +113,9 @@ def test_set_and_querying_params_one_type(synapse_type):
         assert np.all(net.edges[p].to_numpy()[np.asarray([2, 3])] == 0.12)
 
 
-@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse, GapJunction])
+@pytest.mark.parametrize(
+    "synapse_type", [AMPA, GABAa, GABAb, NMDA, RibbonSynapse, GapJunction]
+)
 def test_set_and_querying_params_two_types(synapse_type):
     """Test whether the correct parameters are set."""
     synapse_type = synapse_type()
@@ -158,7 +174,9 @@ def test_set_and_querying_params_two_types(synapse_type):
     assert np.all(net.edges[synapse_type_params[0]].to_numpy()[[1, 3]] == 0.21)
 
 
-@pytest.mark.parametrize("synapse_type", [TanhRateSynapse, TestSynapse, GapJunction])
+@pytest.mark.parametrize(
+    "synapse_type", [AMPA, GABAa, GABAb, NMDA, RibbonSynapse, GapJunction]
+)
 def test_shuffling_order_of_set(synapse_type):
     """Test whether the result is the same if the order of synapses is changed."""
     synapse_type = synapse_type()
