@@ -1,9 +1,13 @@
 from typing import Dict, Optional
 
-from jax.lax import select
 import jax.numpy as jnp
+from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential, exponential_euler
+from jaxley.solver_gate import (
+    exponential_euler,
+    solve_gate_exponential,
+    solve_inf_gate_exponential,
+)
 
 from ..utils import efun
 
@@ -790,7 +794,7 @@ class CaPump(Channel):
     def compute_current(self, u, voltages, params):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
-    
+
     def init_state(self, voltages, params):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
@@ -828,10 +832,11 @@ class CaNernstReversal(Channel):
     def compute_current(self, u, voltages, params):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
-    
+
     def init_state(self, voltages, params):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
+
 
 #################################
 ## hyperpolarization-activated ##

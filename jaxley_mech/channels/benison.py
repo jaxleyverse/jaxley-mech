@@ -386,7 +386,6 @@ class CaPumpNS(Channel):
 
 
 class KCa(Channel):
-
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
