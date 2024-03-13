@@ -7,9 +7,14 @@ from jaxley.synapses.synapse import Synapse
 
 class GapJunction(Synapse):
     """
-    Compute synaptic current for a gap junction.
+    Compute the synaptic current for a gap junction. Note that gap junctions are not 
+    solved with implicit Euler.
 
-    The synaptic parameters are:
+    This synapse can also be found in the book:
+        L. F. Abbott and E. Marder, "Modeling Small Networks," in Methods in Neuronal
+        Modeling, C. Koch and I. Sergev, Eds. Cambridge: MIT Press, 1998.
+
+    synapse_params:
         - gE: the conductance across the gap junction
     """
 
