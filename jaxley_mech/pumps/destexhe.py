@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
+from jax.lax import select
 from jaxley.channels import Channel
 
 
@@ -44,7 +45,7 @@ class CaPump(Channel):
         drive_channel = -ica / (
             2 * FARADAY * depth
         )  # why *10000 in the original code? Unit mismatch?
-        drive_channel = jnp.where(drive_channel <= 0, 0, drive_channel)
+        drive_channel = select(drive_channel <= 0, jnp.asarray([0.0]), drive_channel)
 
         # Michaelis-Menten dynamics for the pump's action on calcium concentration
         drive_pump = -kt * cai / (cai + kd)

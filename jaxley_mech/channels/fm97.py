@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
+from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import solve_gate_exponential
 
@@ -85,6 +86,7 @@ class Na(Channel):
         gNa = (
             params[f"{prefix}_gNa"] * (m**3) * h * 1000
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
+
         return gNa * (v - params[f"{prefix}_eNa"])
 
     def init_state(self, v, params):
@@ -257,7 +259,10 @@ class Ca(Channel):
             * ca_current
             / (2 * self.channel_constants["F"])
         )
-        driving_channel = jnp.where(driving_channel <= 0, 0, driving_channel)
+
+        driving_channel = select(
+            driving_channel <= 0, jnp.asarray([0.0]), driving_channel
+        )
 
         dCa_dt = driving_channel - ((Cai - Cab) / tau_Ca)
         Cai += dCa_dt * dt

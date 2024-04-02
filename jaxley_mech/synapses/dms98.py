@@ -1,6 +1,7 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
+from jax.lax import select
 from jaxley.synapses import Synapse
 
 __all__ = ["AMPA", "GABAa", "GABAb", "NMDA"]
@@ -41,7 +42,7 @@ class AMPA(Synapse):
         # Decrement timecount by delta_t, initialize if first run
         name = self.name
         timecount = u[f"{name}_timecount"]
-        new_timecount = jnp.where(
+        new_timecount = select(
             timecount == -1,
             params[f"{name}_Cdur"],
             timecount - delta_t,
@@ -54,15 +55,17 @@ class AMPA(Synapse):
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
         C = u[f"{name}_C"]
-        new_C = jnp.where(
+        new_C = select(
             new_release_condition,
             Cmax,
-            jnp.where(new_timecount > 0, C, 0),
+            select(new_timecount > 0, C, jnp.asarray([0.0])),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
-        new_lastrelease = jnp.where(
-            new_release_condition, 0, u[f"{name}_lastrelease"] + delta_t
+        new_lastrelease = select(
+            new_release_condition,
+            jnp.asarray([0.0]),
+            u[f"{name}_lastrelease"] + delta_t,
         )
 
         # Compute Rinf and Rtau for static parameters
@@ -75,23 +78,23 @@ class AMPA(Synapse):
         R0 = u[f"{name}_R0"]
         R1 = u[f"{name}_R1"]
         R = u[f"{name}_R"]
-        new_R0 = jnp.where(
+        new_R0 = select(
             new_release_condition, R, R0
         )  # Corrected to use previous R0 if no new release
 
         # Determine new_R1 for use when release ends
-        new_R1 = jnp.where(C > 0, R, R1)  # Update R1 if we were releasing
+        new_R1 = select(C > 0, R, R1)  # Update R1 if we were releasing
 
         # Update R based on whether there is a release
         time_since_release = new_lastrelease - Cdur
-        new_R = jnp.where(
+        new_R = select(
             new_C > 0,
             R_inf + (new_R0 - R_inf) * exptable(-(new_lastrelease) / R_tau),
             new_R1 * exptable(-time_since_release * beta),
         )
 
         # Update timecount: reset if new release, keep decrementing otherwise
-        new_timecount = jnp.where(new_release_condition, Cdur, new_timecount)
+        new_timecount = select(new_release_condition, Cdur, new_timecount)
 
         # Return updated states including R0 and R1 for future use
         return {
@@ -152,7 +155,7 @@ class GABAa(Synapse):
         # Decrement timecount by delta_t, initialize if first run
         name = self._name
         timecount = u[f"{name}_timecount"]
-        new_timecount = jnp.where(
+        new_timecount = select(
             timecount == -1,
             params[f"{name}_Cdur"],
             timecount - delta_t,
@@ -165,15 +168,17 @@ class GABAa(Synapse):
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
         C = u[f"{name}_C"]
-        new_C = jnp.where(
+        new_C = select(
             new_release_condition,
             Cmax,
-            jnp.where(new_timecount > 0, C, 0),
+            select(new_timecount > 0, C, jnp.asarray([0.0])),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
-        new_lastrelease = jnp.where(
-            new_release_condition, 0, u[f"{name}_lastrelease"] + delta_t
+        new_lastrelease = select(
+            new_release_condition,
+            jnp.asarray([0.0]),
+            u[f"{name}_lastrelease"] + delta_t,
         )
 
         # Compute Rinf and Rtau for static parameters
@@ -186,23 +191,23 @@ class GABAa(Synapse):
         R0 = u[f"{name}_R0"]
         R1 = u[f"{name}_R1"]
         R = u[f"{name}_R"]
-        new_R0 = jnp.where(
+        new_R0 = select(
             new_release_condition, R, R0
         )  # Corrected to use previous R if no new release
 
         # Determine new_R1 for use when release ends
-        new_R1 = jnp.where(C > 0, R, R1)  # Update R1 if we were releasing
+        new_R1 = select(C > 0, R, R1)  # Update R1 if we were releasing
 
         # Update R based on whether there is a release
         time_since_release = new_lastrelease - Cdur
-        new_R = jnp.where(
+        new_R = select(
             new_C > 0,
             R_inf + (new_R0 - R_inf) * exptable(-(new_lastrelease) / R_tau),
             new_R1 * exptable(-beta * time_since_release),
         )
 
         # Update timecount: reset if new release, keep decrementing otherwise
-        new_timecount = jnp.where(new_release_condition, Cdur, new_timecount)
+        new_timecount = select(new_release_condition, Cdur, new_timecount)
 
         # Return updated states including R0 and R1 for future use
         return {
@@ -266,7 +271,7 @@ class GABAb(Synapse):
         # Decrement timecount by delta_t, initialize if first run
         name = self._name
         timecount = u[f"{name}_timecount"]
-        new_timecount = jnp.where(
+        new_timecount = select(
             timecount == -1,
             params[f"{name}_Cdur"],
             timecount - delta_t,
@@ -279,15 +284,17 @@ class GABAb(Synapse):
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
         C = u[f"{name}_C"]
-        new_C = jnp.where(
+        new_C = select(
             new_release_condition,
             Cmax,
-            jnp.where(new_timecount > 0, C, 0),
+            select(new_timecount > 0, C, jnp.asarray([0.0])),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
-        new_lastrelease = jnp.where(
-            new_release_condition, 0, u[f"{name}_lastrelease"] + delta_t
+        new_lastrelease = select(
+            new_release_condition,
+            jnp.asarray([0.0]),
+            u[f"{name}_lastrelease"] + delta_t,
         )
 
         # Update receptor (R) and G-protein (G) fractions
@@ -301,7 +308,7 @@ class GABAb(Synapse):
         new_G = G + delta_t * (K3 * R - K4 * G)
 
         # Update timecount: reset if new release, keep decrementing otherwise
-        new_timecount = jnp.where(new_release_condition, Cdur, new_timecount)
+        new_timecount = select(new_release_condition, Cdur, new_timecount)
 
         # Return updated states including R and G for future use
         return {
@@ -363,7 +370,7 @@ class NMDA(Synapse):
         # Decrement timecount by delta_t, initialize if first run
         name = self._name
         timecount = u[f"{name}_timecount"]
-        new_timecount = jnp.where(
+        new_timecount = select(
             timecount == -1,
             params[f"{name}_Cdur"],
             timecount - delta_t,
@@ -376,15 +383,17 @@ class NMDA(Synapse):
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
         C = u[f"{name}_C"]
-        new_C = jnp.where(
+        new_C = select(
             new_release_condition,
             Cmax,
-            jnp.where(new_timecount > 0, C, 0),
+            select(new_timecount > 0, C, jnp.asarray([0.0])),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
-        new_lastrelease = jnp.where(
-            new_release_condition, 0, u[f"{name}_lastrelease"] + delta_t
+        new_lastrelease = select(
+            new_release_condition,
+            jnp.asarray([0.0]),
+            u[f"{name}_lastrelease"] + delta_t,
         )
 
         # Compute new_R0 and new_R1 based on the receptor dynamics
@@ -395,19 +404,19 @@ class NMDA(Synapse):
         beta = params[f"{name}_beta"]
         Rinf = Cmax * alpha / (Cmax * alpha + beta)
         Rtau = 1 / (alpha * Cmax + beta)
-        new_R0 = jnp.where(new_release_condition, R, R0)
-        new_R1 = jnp.where(C > 0, R, R1)
+        new_R0 = select(new_release_condition, R, R0)
+        new_R1 = select(C > 0, R, R1)
         time_since_release = new_lastrelease - Cdur
 
         # Update R based on whether there is a release
-        new_R = jnp.where(
+        new_R = select(
             new_C > 0,
             Rinf + (new_R0 - Rinf) * exptable(-(new_lastrelease) / Rtau),
             new_R1 * exptable(-beta * time_since_release),
         )
 
         # Update timecount: reset if new release, keep decrementing otherwise
-        new_timecount = jnp.where(new_release_condition, Cdur, new_timecount)
+        new_timecount = select(new_release_condition, Cdur, new_timecount)
 
         # Return updated states including R0 and R1 for future use
         return {
@@ -447,4 +456,4 @@ class NMDA(Synapse):
 
 def exptable(x):
     """Approximate exponential function used in NEURON's AMPA model."""
-    return jnp.where((x > -10) & (x < 10), jnp.exp(x), 0.0)
+    return select((x > -10) & (x < 10), jnp.exp(x), jnp.asarray([0.0]))
