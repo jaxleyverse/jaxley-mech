@@ -22,6 +22,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -65.0,  # mV
         }
         self.channel_states = {}
+        self.current_name = f"i_Leak"
         self.META = META
 
     def update_states(
@@ -55,6 +56,7 @@ class Na(Channel):
             f"{prefix}_eNa": 55.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.current_name = f"i_Na"
         self.META = META
 
     def update_states(
@@ -118,6 +120,7 @@ class K(Channel):
             f"{prefix}_eK": -77.0,  # mV
         }
         self.channel_states = {f"{prefix}_n": 0.1}
+        self.current_name = f"i_K"
         self.META = META
 
     def update_states(
@@ -175,6 +178,7 @@ class Na8States(Na):
             f"{prefix}_I1": 0.0,
             f"{prefix}_I": 0,
         }
+        self.current_name = f"i_Na"
         self.META = {
             "referece": [
                 "Fitzhugh, R. (1965). A kinetic model of the conductance changes in nerve membrane. Journal of Cellular and Comparative Physiology, 66(S2), 111–117. https://doi.org/10.1002/jcp.1030660518",
@@ -300,6 +304,7 @@ class K5States(K):
             f"{prefix}_C1": 0,
             f"{prefix}_O": 0.0,
         }
+        self.current_name = f"i_K"
         self.META = {
             "referece": [
                 "Fitzhugh, R. (1965). A kinetic model of the conductance changes in nerve membrane. Journal of Cellular and Comparative Physiology, 66(S2), 111–117. https://doi.org/10.1002/jcp.1030660518",

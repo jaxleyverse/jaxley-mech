@@ -27,6 +27,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -67.0,  # mV
         }
         self.channel_states = {}
+        self.current_name = f"i_Leak"
         self.META = META
 
     def update_states(
@@ -61,6 +62,7 @@ class Na(Channel):
             f"{prefix}_eNa": 35.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.current_name = f"i_Na"
         self.META = META
 
     def update_states(
@@ -123,6 +125,7 @@ class K(Channel):
             "eK": -75.0,  # mV
         }
         self.channel_states = {f"{prefix}_n": 0.1}
+        self.current_name = f"i_K"
         self.META = META
 
     def update_states(
@@ -170,6 +173,7 @@ class KA(Channel):
             f"eK": -75,  # mV
         }
         self.channel_states = {f"{prefix}_A": 0.2, f"{prefix}_hA": 0.2}
+        self.current_name = f"i_K"
         self.META = META
 
     def update_states(
@@ -242,6 +246,7 @@ class Ca(Channel):
             f"{prefix}_eCa": self.compute_voltage(1e-4, self.channel_params),
             f"Cai": 1e-4,  # mM (internal calcium concentration)
         }
+        self.current_name = f"i_Ca"
         self.META = META
 
     def update_states(self, states, dt, v, params):
@@ -319,6 +324,7 @@ class KCa(Channel):
             "Cad": 1e-3,  # mM (calcium concentration for half-maximal activation; dissociation constant)
         }
         self.channel_states = {"Cai": 1e-4}
+        self.current_name = f"i_K"
         self.META = META
 
     def update_states(
