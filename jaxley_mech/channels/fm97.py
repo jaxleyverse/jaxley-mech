@@ -241,7 +241,7 @@ class Ca(Channel):
         prefix = self._name
         cs = u[f"{prefix}_c"]
         Cai = u["CaCon_i"]
-        ca_current = u[f"{prefix}_current"]
+        ca_current = u[f"i{prefix}"]
         CaRest = params["CaCon_rest"]
         tau_Ca = params["tau_Ca"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(voltages))

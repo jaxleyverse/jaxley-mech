@@ -361,8 +361,8 @@ class CaPumpNS(Channel):
         K_pump = params["CaCon_diss"]
         j_pump = v_pump * (C**2 / (C**2 + K_pump**2))
 
-        CaN_current = u["CaN_current"]
-        CaL_current = u["CaL_current"]
+        CaN_current = u["iCaN"]
+        CaL_current = u["iCaL"]
         ca_current = CaN_current + CaL_current
 
         driving_channel = -ca_current / (2 * F * V_cell)
