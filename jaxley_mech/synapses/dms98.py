@@ -18,7 +18,7 @@ class AMPA(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gAMPA": 0.1e-3,  # Maximum conductance (S)
+            f"{name}_gAMPA": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eAMPA": 0.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 1,  # Transmitter duration (ms)
@@ -121,7 +121,7 @@ class AMPA(Synapse):
         """Compute and return synaptic current."""
         name = self.name
         g_syn = (
-            params[f"{name}_gAMPA"] * u[f"{name}_R"] * 1000
+            params[f"{name}_gAMPA"] * u[f"{name}_R"]
         )  # multiply with 1000 to convert Siemens to milli Siemens.
         return g_syn * (post_voltage - params[f"{name}_eAMPA"])
 
@@ -131,7 +131,7 @@ class GABAa(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gGABAa": 0.1e-3,  # Maximum conductance (S)
+            f"{name}_gGABAa": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eGABAa": -80.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 1,  # Transmitter duration (ms)
@@ -234,7 +234,7 @@ class GABAa(Synapse):
         """Compute and return synaptic current."""
         name = self._name
         g_syn = (
-            params[f"{name}_gGABAa"] * u[f"{name}_R"] * 1000
+            params[f"{name}_gGABAa"] * u[f"{name}_R"]
         )  # multiply with 1000 to convert Siemens to milli Siemens.
         return g_syn * (post_voltage - params[f"{name}_eGABAa"])
 
@@ -244,7 +244,7 @@ class GABAb(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gGABAb": 0.1e-3,  # Maximum conductance (S)
+            f"{name}_gGABAb": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eGABAb": -95.0,  # Reversal potential (mV)
             f"{name}_Cmax": 0.5,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 0.3,  # Transmitter duration (ms)
@@ -336,7 +336,7 @@ class GABAb(Synapse):
         KD = params[f"{name}_KD"]
         n = params[f"{name}_n"]
         Gn = u[f"{name}_G"] ** n
-        g_syn = params[f"{name}_gGABAb"] * Gn / (Gn + KD) * 1000  # Convert S to mS
+        g_syn = params[f"{name}_gGABAb"] * Gn / (Gn + KD)  # Convert S to mS
         return g_syn * (post_voltage - params[f"{name}_eGABAb"])
 
 
@@ -345,7 +345,7 @@ class NMDA(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gNMDA": 0.1e-3,  # Maximum conductance (S)
+            f"{name}_gNMDA": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eNMDA": 0.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
             f"{name}_Cdur": 1,  # Transmitter duration (ms)
@@ -445,7 +445,7 @@ class NMDA(Synapse):
         name = self._name
         R = u[f"{name}_R"]
         B = self.mgblock(post_voltage, params[f"{name}_mg"])
-        g_syn = params[f"{name}_gNMDA"] * R * B * 1000  # Convert S to mS
+        g_syn = params[f"{name}_gNMDA"] * R * B
         return g_syn * (post_voltage - params[f"{name}_eNMDA"])
 
     @staticmethod
