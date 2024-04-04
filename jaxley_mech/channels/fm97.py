@@ -254,7 +254,7 @@ class Ca(Channel):
         prefix = self._name
         cs = states[f"{prefix}_c"]
         Cai = states["Cai"]
-        ca_current = states[f"{prefix}_current"]
+        ca_current = states[self.current_name]
         Cab = params["Cab"]
         tau_Ca = params["tau_Ca"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(v))
