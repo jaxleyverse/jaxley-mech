@@ -47,6 +47,7 @@ class NaTaT(Channel):
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
             f"{prefix}_h": 0.1,  # Initial value for h gating variable
         }
+        self.current_name = f"i_Na"
         self.META = {
             "reference": "Colbert and Pan, 2002",
             "species": "unknown",
@@ -124,6 +125,7 @@ class NaTs2T(Channel):
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
             f"{prefix}_h": 0.1,  # Initial value for h gating variable
         }
+        self.current_name = f"i_Na"
         self.META = {
             "reference": "Colbert and Pan, 2002",
             "species": "unknown",
@@ -202,6 +204,7 @@ class NapEt2(Channel):
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
             f"{prefix}_h": 0.1,  # Initial value for h gating variable
         }
+        self.current_name = f"i_Na"
         self.META = {
             "reference": "Magistretti and Alonso 1999",
             "species": "unknown",
@@ -284,6 +287,7 @@ class KPst(Channel):
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
             f"{prefix}_h": 0.1,  # Initial value for h gating variable
         }
+        self.current_name = f"i_K"
         self.META = {
             "reference": "Korngreen and Sakmann, 2000",
             "mechanism": "Persistent component of the K current",
@@ -334,7 +338,7 @@ class KPst(Channel):
         # See here for documentation of `select` vs `cond`:
         # https://github.com/google/jax/issues/7934
         tau_m = select(
-            v_adjusted < jnp.asarray([-50]),
+            v_adjusted < jnp.asarray(-50.0),
             (1.25 + 175.03 * jnp.exp(v_adjusted * 0.026)) / qt,
             (1.25 + 13 * jnp.exp(-v_adjusted * 0.026)) / qt,
         )
@@ -368,6 +372,7 @@ class KTst(Channel):
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
             f"{prefix}_h": 0.1,  # Initial value for h gating variable
         }
+        self.current_name = f"i_K"
         self.META = {
             "reference": "Korngreen and Sakmann, 2000",
             "mechanism": "Transient component of the K current",
@@ -441,6 +446,7 @@ class SKE2(Channel):
             f"{prefix}_z": 0.0,  # Initial value for z gating variable
             f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
         }
+        self.current_name = f"i_K"
         self.META = {
             "reference": "Kohler et al., 1996",
             "mechanism": "SK-type calcium-activated potassium current",
@@ -503,6 +509,7 @@ class SKv3_1(Channel):
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
         }
+        self.current_name = f"i_K"
         self.META = {
             "reference": "The EMBO Journal, vol.11, no.7, 2473-2486, 1992",
             "mechanism": "Shaw-related potassium channel family SKv3_1",
@@ -558,6 +565,7 @@ class M(Channel):
         self.channel_states = {
             f"{prefix}_m": 0.0,  # Initial value for m gating variable
         }
+        self.current_name = f"i_K"
         self.META = {
             "reference": "Adams et al., 1982",
             "mechanism": "M-currents and other potassium currents",
@@ -623,6 +631,7 @@ class CaHVA(Channel):
             f"{self._name}_h": 0.1,  # Initial value for h gating variable
             "eca": 0.0,  # mV, assuming eca for demonstration
         }
+        self.current_name = f"i_Ca"
         self.META = {
             "reference": "Reuveni, Friedman, Amitai, and Gutnick, J.Neurosci. 1993",
             "mechanism": "HVA Ca2+ channel",
@@ -690,6 +699,7 @@ class CaLVA(Channel):
             f"{self._name}_h": 0.0,  # Initial value for h gating variable
             "eca": 0.0,  # mV, assuming eca for demonstration
         }
+        self.current_name = f"i_Ca"
         self.META = {
             "reference": "Based on Avery and Johnston 1996 and Randall 1997",
             "mechanism": "LVA Ca2+ channel",
@@ -765,6 +775,7 @@ class CaPump(Channel):
         self.channel_states = {
             f"CaCon_i": 5e-05,  # Initial internal calcium concentration in mM
         }
+        self.current_name = f"i_Ca"
         self.META = {
             "reference": "Modified from Destexhe et al., 1994",
             "mechanism": "Calcium dynamics",
@@ -773,7 +784,7 @@ class CaPump(Channel):
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        ica = (u["CaHVA_current"] + u["CaLVA_current"]) / 1_000.0
+        ica = u["i_Ca"] / 1_000.0
         cai = u["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
@@ -815,6 +826,7 @@ class CaNernstReversal(Channel):
         }
         self.channel_params = {}
         self.channel_states = {"eca": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
+        self.current_name = f"i_Ca"
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
@@ -857,6 +869,7 @@ class H(Channel):
         self.channel_states = {
             f"{prefix}_m": 0.0,  # Initial value for m gating variable
         }
+        self.current_name = f"i_H"
         self.META = {
             "reference": "Kole, Hallermann, and Stuart, J. Neurosci., 2006",
             "mechanism": "H-current (H)",
