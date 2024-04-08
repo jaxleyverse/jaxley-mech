@@ -5,6 +5,7 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import (
     exponential_euler,
+    save_exp,
     solve_gate_exponential,
     solve_inf_gate_exponential,
 )
@@ -92,8 +93,8 @@ class NaTaT(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - jnp.exp(-(v + 38 + 1e-6) / 6))
-        beta = (0.124 * (-v - 38 + 1e-6)) / (1 - jnp.exp(-(-v - 38 + 1e-6) / 6))
+        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - save_exp(-(v + 38 + 1e-6) / 6))
+        beta = (0.124 * (-v - 38 + 1e-6)) / (1 - save_exp(-(-v - 38 + 1e-6) / 6))
         m_inf = alpha / (alpha + beta)
         tau_m = 1 / (alpha + beta) / qt
         return m_inf, tau_m
@@ -102,8 +103,8 @@ class NaTaT(Channel):
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (-0.015 * (v + 66 + 1e-6)) / (1 - jnp.exp((v + 66 + 1e-6) / 6))
-        beta = (-0.015 * (-v - 66 + 1e-6)) / (1 - jnp.exp((-v - 66 + 1e-6) / 6))
+        alpha = (-0.015 * (v + 66 + 1e-6)) / (1 - save_exp((v + 66 + 1e-6) / 6))
+        beta = (-0.015 * (-v - 66 + 1e-6)) / (1 - save_exp((-v - 66 + 1e-6) / 6))
         h_inf = alpha / (alpha + beta)
         tau_h = 1 / (alpha + beta) / qt
         return h_inf, tau_h
@@ -170,8 +171,8 @@ class NaTs2T(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (0.182 * (v + 32 + 1e-6)) / (1 - jnp.exp(-(v + 32 + 1e-6) / 6))
-        beta = (0.124 * (-v - 32 + 1e-6)) / (1 - jnp.exp(-(-v - 32 + 1e-6) / 6))
+        alpha = (0.182 * (v + 32 + 1e-6)) / (1 - save_exp(-(v + 32 + 1e-6) / 6))
+        beta = (0.124 * (-v - 32 + 1e-6)) / (1 - save_exp(-(-v - 32 + 1e-6) / 6))
         m_inf = alpha / (alpha + beta)
         tau_m = 1 / (alpha + beta) / qt
         return m_inf, tau_m
@@ -180,8 +181,8 @@ class NaTs2T(Channel):
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (-0.015 * (v + 60 + 1e-6)) / (1 - jnp.exp((v + 60 + 1e-6) / 6))
-        beta = (-0.015 * (-v - 60 + 1e-6)) / (1 - jnp.exp((-v - 60 + 1e-6) / 6))
+        alpha = (-0.015 * (v + 60 + 1e-6)) / (1 - save_exp((v + 60 + 1e-6) / 6))
+        beta = (-0.015 * (-v - 60 + 1e-6)) / (1 - save_exp((-v - 60 + 1e-6) / 6))
         h_inf = alpha / (alpha + beta)
         tau_h = 1 / (alpha + beta) / qt
         return h_inf, tau_h
@@ -249,20 +250,20 @@ class NapEt2(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
-        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - jnp.exp(-(v + 38 + 1e-6) / 6))
-        beta = (0.124 * (-v - 38 + 1e-6)) / (1 - jnp.exp(-(-v - 38 + 1e-6) / 6))
+        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - save_exp(-(v + 38 + 1e-6) / 6))
+        beta = (0.124 * (-v - 38 + 1e-6)) / (1 - save_exp(-(-v - 38 + 1e-6) / 6))
         tau_m = 6 / (alpha + beta) / qt
-        m_inf = 1.0 / (1 + jnp.exp((v + 52.7) / -4.6))
+        m_inf = 1.0 / (1 + save_exp((v + 52.7) / -4.6))
         return m_inf, tau_m
 
     @staticmethod
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
-        alpha = (-2.88e-6 * (v + 17 + 1e-6)) / (1 - jnp.exp((v + 17 + 1e-6) / 4.63))
-        beta = (6.94e-6 * (v + 64.4 + 1e-6)) / (1 - jnp.exp((-(v + 64.4) + 1e-6) / 6))
+        alpha = (-2.88e-6 * (v + 17 + 1e-6)) / (1 - save_exp((v + 17 + 1e-6) / 4.63))
+        beta = (6.94e-6 * (v + 64.4 + 1e-6)) / (1 - save_exp((-(v + 64.4) + 1e-6) / 6))
         tau_h = 1 / (alpha + beta) / qt
-        h_inf = 1.0 / (1 + jnp.exp((v + 48.8) / 10))
+        h_inf = 1.0 / (1 + save_exp((v + 48.8) / 10))
 
         return h_inf, tau_h
 
@@ -333,14 +334,14 @@ class KPst(Channel):
         """Voltage-dependent dynamics for the m gating variable, adjusted for junction potential."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         v_adjusted = v + 10  # Adjust for junction potential
-        m_inf = 1 / (1 + jnp.exp(-(v_adjusted + 1) / 12))
+        m_inf = 1 / (1 + save_exp(-(v_adjusted + 1) / 12))
 
         # See here for documentation of `select` vs `cond`:
         # https://github.com/google/jax/issues/7934
         tau_m = select(
             v_adjusted < jnp.asarray(-50.0),
-            (1.25 + 175.03 * jnp.exp(v_adjusted * 0.026)) / qt,
-            (1.25 + 13 * jnp.exp(-v_adjusted * 0.026)) / qt,
+            (1.25 + 175.03 * save_exp(v_adjusted * 0.026)) / qt,
+            (1.25 + 13 * save_exp(-v_adjusted * 0.026)) / qt,
         )
         return m_inf, tau_m
 
@@ -349,11 +350,11 @@ class KPst(Channel):
         """Voltage-dependent dynamics for the h gating variable, adjusted for junction potential."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         v_adjusted = v + 10  # Adjust for junction potential
-        h_inf = 1 / (1 + jnp.exp(-(v_adjusted + 54) / -11))
+        h_inf = 1 / (1 + save_exp(-(v_adjusted + 54) / -11))
         tau_h = (
             360
             + (1010 + 24 * (v_adjusted + 55))
-            * jnp.exp(-(((v_adjusted + 75) / 48) ** 2))
+            * save_exp(-(((v_adjusted + 75) / 48) ** 2))
         ) / qt
         return h_inf, tau_h
 
@@ -418,8 +419,8 @@ class KTst(Channel):
         """Voltage-dependent dynamics for the m gating variable, adjusted for junction potential."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         v_adjusted = v + 10  # Adjust for junction potential
-        m_inf = 1 / (1 + jnp.exp(-(v_adjusted + 0) / 19))
-        tau_m = (0.34 + 0.92 * jnp.exp(-(((v_adjusted + 71) / 59) ** 2))) / qt
+        m_inf = 1 / (1 + save_exp(-(v_adjusted + 0) / 19))
+        tau_m = (0.34 + 0.92 * save_exp(-(((v_adjusted + 71) / 59) ** 2))) / qt
         return m_inf, tau_m
 
     @staticmethod
@@ -427,8 +428,8 @@ class KTst(Channel):
         """Voltage-dependent dynamics for the h gating variable, adjusted for junction potential."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         v_adjusted = v + 10  # Adjust for junction potential
-        h_inf = 1 / (1 + jnp.exp(-(v_adjusted + 66) / -10))
-        tau_h = (8 + 49 * jnp.exp(-(((v_adjusted + 73) / 23) ** 2))) / qt
+        h_inf = 1 / (1 + save_exp(-(v_adjusted + 66) / -10))
+        tau_h = (8 + 49 * save_exp(-(((v_adjusted + 73) / 23) ** 2))) / qt
         return h_inf, tau_h
 
 
@@ -547,8 +548,8 @@ class SKv3_1(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        m_inf = 1 / (1 + jnp.exp((v - 18.7) / -9.7))
-        tau_m = 0.2 * 20.0 / (1 + jnp.exp((v + 46.56) / -44.14))
+        m_inf = 1 / (1 + save_exp((v - 18.7) / -9.7))
+        tau_m = 0.2 * 20.0 / (1 + save_exp((v + 46.56) / -44.14))
         return m_inf, tau_m
 
 
@@ -605,8 +606,8 @@ class M(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable, with temperature correction."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
-        m_alpha = 3.3e-3 * jnp.exp(2.5 * 0.04 * (v + 35))
-        m_beta = 3.3e-3 * jnp.exp(-2.5 * 0.04 * (v + 35))
+        m_alpha = 3.3e-3 * save_exp(2.5 * 0.04 * (v + 35))
+        m_beta = 3.3e-3 * save_exp(-2.5 * 0.04 * (v + 35))
         m_inf = m_alpha / (m_alpha + m_beta)
         tau_m = (1 / (m_alpha + m_beta)) / qt
         return m_inf, tau_m
@@ -674,15 +675,15 @@ class CaHVA(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        alpha = (0.055 * (-27 - v + 1e-6)) / (jnp.exp((-27.0 - v + 1e-6) / 3.8) - 1.0)
-        beta = 0.94 * jnp.exp((-75.0 - v + 1e-6) / 17.0)
+        alpha = (0.055 * (-27 - v + 1e-6)) / (save_exp((-27.0 - v + 1e-6) / 3.8) - 1.0)
+        beta = 0.94 * save_exp((-75.0 - v + 1e-6) / 17.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
-        alpha = 0.000457 * jnp.exp((-13.0 - v) / 50.0)
-        beta = 0.0065 / (jnp.exp((-v - 15.0) / 28.0) + 1.0)
+        alpha = 0.000457 * save_exp((-13.0 - v) / 50.0)
+        beta = 0.0065 / (save_exp((-v - 15.0) / 28.0) + 1.0)
         return alpha, beta
 
 
@@ -744,8 +745,8 @@ class CaLVA(Channel):
         """Voltage-dependent dynamics for the m gating variable, adjusted for junction potential."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         v_shifted = v + 10  # Shift by 10 mV
-        m_inf = 1.0 / (1 + jnp.exp((v_shifted + 30) / -6))
-        tau_m = (5.0 + 20.0 / (1 + jnp.exp((v_shifted + 25) / 5))) / qt
+        m_inf = 1.0 / (1 + save_exp((v_shifted + 30) / -6))
+        tau_m = (5.0 + 20.0 / (1 + save_exp((v_shifted + 25) / 5))) / qt
         return m_inf, tau_m
 
     @staticmethod
@@ -753,8 +754,8 @@ class CaLVA(Channel):
         """Voltage-dependent dynamics for the h gating variable, adjusted for junction potential."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
         v_shifted = v + 10  # Shift by 10 mV
-        h_inf = 1.0 / (1 + jnp.exp((v_shifted + 80) / 6.4))
-        tau_h = (20.0 + 50.0 / (1 + jnp.exp((v_shifted + 40) / 7))) / qt
+        h_inf = 1.0 / (1 + save_exp((v_shifted + 80) / 6.4))
+        tau_h = (20.0 + 50.0 / (1 + save_exp((v_shifted + 40) / 7))) / qt
         return h_inf, tau_h
 
 
@@ -908,9 +909,12 @@ class H(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         m_alpha = (
-            0.001 * 6.43 * (v + 154.9 + 1e-6) / (jnp.exp((v + 154.9 + 1e-6) / 11.9) - 1)
+            0.001
+            * 6.43
+            * (v + 154.9 + 1e-6)
+            / (save_exp((v + 154.9 + 1e-6) / 11.9) - 1)
         )
-        m_beta = 0.001 * 193 * jnp.exp(v / 33.1)
+        m_beta = 0.001 * 193 * save_exp(v / 33.1)
         m_inf = m_alpha / (m_alpha + m_beta)
         tau_m = 1 / (m_alpha + m_beta)
         return m_inf, tau_m

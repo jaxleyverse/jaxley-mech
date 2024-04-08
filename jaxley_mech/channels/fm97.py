@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential
+from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 from ..utils import efun
 
@@ -104,13 +104,13 @@ class Na(Channel):
     @staticmethod
     def m_gate(v):
         alpha = 0.6 * efun(-(v + 30), 10.0)
-        beta = 20.0 * jnp.exp(-(v + 55.0) / 18.0)
+        beta = 20.0 * save_exp(-(v + 55.0) / 18.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        alpha = 0.4 * jnp.exp(-(v + 50.0) / 20.0)
-        beta = 6.0 / (1.0 + jnp.exp(-0.1 * (v + 20.0)))
+        alpha = 0.4 * save_exp(-(v + 50.0) / 20.0)
+        beta = 6.0 / (1.0 + save_exp(-0.1 * (v + 20.0)))
         return alpha, beta
 
 
@@ -160,7 +160,7 @@ class K(Channel):
     @staticmethod
     def n_gate(v):
         alpha = 0.02 * efun(-(v + 40), 10)
-        beta = 0.4 * jnp.exp(-(v + 50) / 80)
+        beta = 0.4 * save_exp(-(v + 50) / 80)
         return alpha, beta
 
 
@@ -214,13 +214,13 @@ class KA(Channel):
     @staticmethod
     def A_gate(v):
         alpha = 0.006 * efun(-(v + 90), 1)
-        beta = 0.1 * jnp.exp(-(v + 30) / 10)
+        beta = 0.1 * save_exp(-(v + 30) / 10)
         return alpha, beta
 
     @staticmethod
     def hA_gate(v):
-        alpha = 0.04 * jnp.exp(-(v + 70) / 20)
-        beta = 0.6 / (1.0 + jnp.exp(-(v + 40) / 10))
+        alpha = 0.04 * save_exp(-(v + 70) / 20)
+        beta = 0.6 / (1.0 + save_exp(-(v + 40) / 10))
         return alpha, beta
 
 
@@ -306,7 +306,7 @@ class Ca(Channel):
     @staticmethod
     def c_gate(v):
         alpha = 0.3 * efun(-(v + 13), 10)
-        beta = 10 * jnp.exp(-(v + 38) / 18)
+        beta = 10 * save_exp(-(v + 38) / 18)
         return alpha, beta
 
 

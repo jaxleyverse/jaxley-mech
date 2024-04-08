@@ -2,7 +2,11 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential, solve_inf_gate_exponential
+from jaxley.solver_gate import (
+    save_exp,
+    solve_gate_exponential,
+    solve_inf_gate_exponential,
+)
 
 from ..utils import efun
 
@@ -101,14 +105,14 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(v):
-        alpha = 0.5 * (v + 29.0) / (1 - jnp.exp(-0.18 * (v + 29.0)) + 1e-6)
-        beta = 6.0 * jnp.exp(-(v + 45.0) / 15.0)
+        alpha = 0.5 * (v + 29.0) / (1 - save_exp(-0.18 * (v + 29.0)) + 1e-6)
+        beta = 6.0 * save_exp(-(v + 45.0) / 15.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        alpha = 0.15 * jnp.exp(-(v + 47.0) / 20.0)
-        beta = 2.8 / (1.0 + jnp.exp(-0.1 * (v + 20.0)))
+        alpha = 0.15 * save_exp(-(v + 47.0) / 20.0)
+        beta = 2.8 / (1.0 + save_exp(-0.1 * (v + 20.0)))
         return alpha, beta
 
 
@@ -157,8 +161,8 @@ class Kdr(Channel):
 
     @staticmethod
     def m_gate(v):
-        alpha = 0.0065 * (v + 30) / (1.0 - jnp.exp(-0.3 * v))
-        beta = 0.083 * jnp.exp((v + 15.0) / 15.0)
+        alpha = 0.0065 * (v + 30) / (1.0 - save_exp(-0.3 * v))
+        beta = 0.083 * save_exp((v + 15.0) / 15.0)
         return alpha, beta
 
 
@@ -213,13 +217,13 @@ class KA(Channel):
 
     @staticmethod
     def m_gate(v):
-        alpha = 0.02 * (v + 15) / (1 - jnp.exp(-0.12 * (v + 15)) + 1e-6)
-        beta = 0.05 * jnp.exp(-(v + 1.0) / 30.0)
+        alpha = 0.02 * (v + 15) / (1 - save_exp(-0.12 * (v + 15)) + 1e-6)
+        beta = 0.05 * save_exp(-(v + 1.0) / 30.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        h_inf = 1.0 / (1.0 + jnp.exp((v + 62.0) / 6.35))
+        h_inf = 1.0 / (1.0 + save_exp((v + 62.0) / 6.35))
         return h_inf
 
 
@@ -274,8 +278,8 @@ class CaL(Channel):
 
     @staticmethod
     def m_gate(v):
-        alpha = 0.061 * (v - 3.0) / (1.0 - jnp.exp(-(v - 3.0) / 12.5))
-        beta = 0.058 * jnp.exp(-(v - 10.0) / 15.0)
+        alpha = 0.061 * (v - 3.0) / (1.0 - save_exp(-(v - 3.0) / 12.5))
+        beta = 0.058 * save_exp(-(v - 10.0) / 15.0)
         return alpha, beta
 
 
@@ -330,14 +334,14 @@ class CaN(Channel):
 
     @staticmethod
     def m_gate(v):
-        alpha = 0.1 * (v - 20.0) / (1.0 - jnp.exp(-0.1 * (v - 20.0)) + 1e-6)
-        beta = 0.4 * jnp.exp(-(v + 25.0) / 18.0)
+        alpha = 0.1 * (v - 20.0) / (1.0 - save_exp(-0.1 * (v - 20.0)) + 1e-6)
+        beta = 0.4 * save_exp(-(v + 25.0) / 18.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        alpha = 0.01 * jnp.exp(-(v + 50.0) / 10.0)
-        beta = 0.1 / (1.0 + jnp.exp(-(v + 17.0) / 17.0))
+        alpha = 0.01 * save_exp(-(v + 50.0) / 10.0)
+        beta = 0.1 / (1.0 + save_exp(-(v + 17.0) / 17.0))
         return alpha, beta
 
 
