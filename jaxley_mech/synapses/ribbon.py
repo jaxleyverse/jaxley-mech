@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
 
@@ -46,7 +47,7 @@ class RibbonSynapse(Synapse):
         V_half = -35
 
         # Presynaptic voltage to calcium to release probability
-        p_d_t = 1 / (1 + jnp.exp(-k * (pre_voltage - V_half)))
+        p_d_t = 1 / (1 + save_exp(-k * (pre_voltage - V_half)))
 
         # Vesicle release (NOTE: p_d_t is the mean of the beta distribution)
         new_released = p_d_t * u["docked"]
@@ -60,7 +61,7 @@ class RibbonSynapse(Synapse):
         new_ribboned = jnp.maximum(new_ribboned, params["R_max"])
 
         P_rel = new_released / params["D_max"]
-        P_s = jnp.exp(-delta_t / params["tau"])
+        P_s = save_exp(-delta_t / params["tau"])
 
         return {
             "released": new_released,

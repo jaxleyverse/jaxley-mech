@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jaxley.channels import Channel
-from jaxley.solver_gate import solve_gate_exponential
+from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 META = {
     "reference": "Hodgkin, A. L., & Huxley, A. F. (1952). A quantitative description of membrane current and its application to conduction and excitation in nerve. The Journal of Physiology, 117(4), 500–544. https://doi.org/10.1113/jphysiol.1952.sp004764",
@@ -97,15 +97,15 @@ class Na(Channel):
     @staticmethod
     def m_gate(v):
         v += 1e-6
-        alpha = 0.1 * (v + 40) / (1 - jnp.exp(-0.1 * (v + 40)))
-        beta = 4 * jnp.exp(-(v + 65) / 18)
+        alpha = 0.1 * (v + 40) / (1 - save_exp(-0.1 * (v + 40)))
+        beta = 4 * save_exp(-(v + 65) / 18)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
         v += 1e-6
-        alpha = 0.07 * jnp.exp(-(v + 65) / 20)
-        beta = 1 / (1 + jnp.exp(-0.1 * (v + 35)))
+        alpha = 0.07 * save_exp(-(v + 65) / 20)
+        beta = 1 / (1 + save_exp(-0.1 * (v + 35)))
         return alpha, beta
 
 
@@ -152,8 +152,8 @@ class K(Channel):
     @staticmethod
     def n_gate(v):
         v += 1e-6
-        alpha = 0.01 * (v + 55) / (1 - jnp.exp(-(v + 55) / 10))
-        beta = 0.125 * jnp.exp(-(v + 65) / 80)
+        alpha = 0.01 * (v + 55) / (1 - save_exp(-(v + 55) / 10))
+        beta = 0.125 * save_exp(-(v + 65) / 80)
         return alpha, beta
 
 

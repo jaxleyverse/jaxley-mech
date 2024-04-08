@@ -2,6 +2,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jax.lax import select
+from jaxley.solver_gate import save_exp
 from jaxley.synapses import Synapse
 
 __all__ = ["AMPA", "GABAa", "GABAb", "NMDA"]
@@ -451,9 +452,9 @@ class NMDA(Synapse):
     @staticmethod
     def mgblock(v, mg_concentration):
         """Magnesium block factor."""
-        return 1 / (1 + jnp.exp(0.062 * (-v)) * (mg_concentration / 3.57))
+        return 1 / (1 + save_exp(0.062 * (-v)) * (mg_concentration / 3.57))
 
 
 def exptable(x):
     """Approximate exponential function used in NEURON's AMPA model."""
-    return select((x > -10) & (x < 10), jnp.exp(x), jnp.asarray([0.0]))
+    return select((x > -10) & (x < 10), save_exp(x), jnp.asarray([0.0]))
