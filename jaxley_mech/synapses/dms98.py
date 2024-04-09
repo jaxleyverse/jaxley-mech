@@ -59,13 +59,13 @@ class AMPA(Synapse):
         new_C = select(
             new_release_condition,
             Cmax,
-            select(new_timecount > 0, C, jnp.asarray([0.0])),
+            select(new_timecount > 0, C, jnp.zeros_like(C)),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.asarray([0.0]),
+            jnp.zeros_like(u[f"{name}_lastrelease"]),
             u[f"{name}_lastrelease"] + delta_t,
         )
 
@@ -172,13 +172,13 @@ class GABAa(Synapse):
         new_C = select(
             new_release_condition,
             Cmax,
-            select(new_timecount > 0, C, jnp.asarray([0.0])),
+            select(new_timecount > 0, C, jnp.zeros_like(C)),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.asarray([0.0]),
+            jnp.zeros_like(u[f"{name}_lastrelease"]),
             u[f"{name}_lastrelease"] + delta_t,
         )
 
@@ -288,13 +288,13 @@ class GABAb(Synapse):
         new_C = select(
             new_release_condition,
             Cmax,
-            select(new_timecount > 0, C, jnp.asarray([0.0])),
+            select(new_timecount > 0, C, jnp.zeros_like(C)),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.asarray([0.0]),
+            jnp.zeros_like(u[f"{name}_lastrelease"]),
             u[f"{name}_lastrelease"] + delta_t,
         )
 
@@ -387,13 +387,13 @@ class NMDA(Synapse):
         new_C = select(
             new_release_condition,
             Cmax,
-            select(new_timecount > 0, C, jnp.asarray([0.0])),
+            select(new_timecount > 0, C, jnp.zeros_like(C)),
         )
 
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.asarray([0.0]),
+            jnp.zeros_like(u[f"{name}_lastrelease"]),
             u[f"{name}_lastrelease"] + delta_t,
         )
 
@@ -457,4 +457,4 @@ class NMDA(Synapse):
 
 def exptable(x):
     """Approximate exponential function used in NEURON's AMPA model."""
-    return select((x > -10) & (x < 10), save_exp(x), jnp.asarray([0.0]))
+    return select((x > -10) & (x < 10), save_exp(x), jnp.zeros_like(x))

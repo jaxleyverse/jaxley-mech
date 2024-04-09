@@ -266,7 +266,7 @@ class Ca(Channel):
         )
 
         driving_channel = select(
-            driving_channel <= 0, jnp.asarray([0.0]), driving_channel
+            driving_channel <= 0, jnp.zeros_like(driving_channel), driving_channel
         )
 
         dCa_dt = driving_channel - ((Cai - Cab) / tau_Ca)

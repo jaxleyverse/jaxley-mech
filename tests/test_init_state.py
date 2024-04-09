@@ -1,11 +1,12 @@
 import numpy as np
-from jaxley_mech.channels.fm97 import Na, K, KA, Leak, Ca, KCa
 import pytest
+
+from jaxley_mech.channels.fm97 import KA, Ca, K, KCa, Leak, Na
+
 
 @pytest.mark.parametrize("channel_class", [Na, K, KA, Leak, Ca, KCa])
 def test_init_state(channel_class):
-    """Test whether, if the channels are initialized in fixed point, they do not change.
-    """
+    """Test whether, if the channels are initialized in fixed point, they do not change."""
     voltages = -65.0
     dt = 0.025
 
@@ -16,7 +17,7 @@ def test_init_state(channel_class):
     updated_states = channel.channel_states
     for key, val in init_state.items():
         updated_states[key] = val
-    updated_states[f"{channel._name}_current"] = 0.0
+    updated_states[f"{channel.current_name}"] = 0.0
 
     # Add radius and length for those channels that rely on it (e.g. Ca).
     params = channel.channel_params
