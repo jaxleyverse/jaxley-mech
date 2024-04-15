@@ -42,7 +42,7 @@ class NaTaT(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gNaTaT": 0.00001,  # S/cm^2
-            "ena": 50.0,  # mV
+            "eNa": 50.0,  # mV
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -76,7 +76,7 @@ class NaTaT(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         na_cond = params[f"{prefix}_gNaTaT"] * 1000
-        current = na_cond * (ms**3) * hs * (voltages - params["ena"])
+        current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
     def init_state(self, voltages, params):
@@ -120,7 +120,7 @@ class NaTs2T(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gNaTs2T": 0.00001,  # S/cm^2
-            "ena": 50.0,  # mV
+            "eNa": 50.0,  # mV
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -154,7 +154,7 @@ class NaTs2T(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         na_cond = params[f"{prefix}_gNaTs2T"] * 1000
-        current = na_cond * (ms**3) * hs * (voltages - params["ena"])
+        current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
     def init_state(self, voltages, params):
@@ -199,7 +199,7 @@ class NapEt2(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gNapEt2": 0.00001,  # S/cm^2
-            "ena": 50,  # mV
+            "eNa": 50,  # mV
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -233,7 +233,7 @@ class NapEt2(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         na_cond = params[f"{prefix}_gNapEt2"] * 1000
-        current = na_cond * (ms**3) * hs * (voltages - params["ena"])
+        current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
     def init_state(self, voltages, params):
@@ -282,7 +282,7 @@ class KPst(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gKPst": 0.00001,  # S/cm^2
-            "ek": -77.0,  # mV, from l5pc/config/parameters.json
+            "eK": -77.0,  # mV, from l5pc/config/parameters.json
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -316,7 +316,7 @@ class KPst(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         k_cond = params[f"{prefix}_gKPst"] * (ms**2) * hs * 1000
-        current = k_cond * (voltages - params["ek"])
+        current = k_cond * (voltages - params["eK"])
         return current
 
     def init_state(self, voltages, params):
@@ -367,7 +367,7 @@ class KTst(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gKTst": 0.00001,  # S/cm^2
-            "ek": -77.0,  # mV
+            "eK": -77.0,  # mV
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -401,7 +401,7 @@ class KTst(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         k_cond = params[f"{prefix}_gKTst"] * (ms**4) * hs * 1000
-        current = k_cond * (voltages - params["ek"])
+        current = k_cond * (voltages - params["eK"])
         return current
 
     def init_state(self, voltages, params):
@@ -441,7 +441,7 @@ class SKE2(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gSKE2": 0.000001,  # mho/cm^2
-            "ek": -77.0,  # mV, assuming ek for potassium
+            "eK": -77.0,  # mV, assuming eK for potassium
         }
         self.channel_states = {
             f"{prefix}_z": 0.0,  # Initial value for z gating variable
@@ -474,7 +474,7 @@ class SKE2(Channel):
         prefix = self._name
         z = u[f"{prefix}_z"]
         k_cond = params[f"{prefix}_gSKE2"] * z * 1000  # Conversion factor for units
-        current = k_cond * (voltages - params["ek"])
+        current = k_cond * (voltages - params["eK"])
         return current
 
     def init_state(self, voltages, params):
@@ -505,7 +505,7 @@ class SKv3_1(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gSKv3_1": 0.00001,  # S/cm^2
-            "ek": -77.0,  # mV, assuming ek for potassium
+            "eK": -77.0,  # mV, assuming eK for potassium
         }
         self.channel_states = {
             f"{prefix}_m": 0.1,  # Initial value for m gating variable
@@ -536,7 +536,7 @@ class SKv3_1(Channel):
         prefix = self._name
         m = u[f"{prefix}_m"]
         k_cond = params[f"{prefix}_gSKv3_1"] * m * 1000  # Conversion factor for units
-        current = k_cond * (voltages - params["ek"])
+        current = k_cond * (voltages - params["eK"])
         return current
 
     def init_state(self, voltages, params):
@@ -561,7 +561,7 @@ class M(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gM": 0.00001,  # S/cm^2
-            "ek": -77.0,  # mV, assuming ek for potassium
+            "eK": -77.0,  # mV, assuming eK for potassium
         }
         self.channel_states = {
             f"{prefix}_m": 0.0,  # Initial value for m gating variable
@@ -593,7 +593,7 @@ class M(Channel):
         prefix = self._name
         m = u[f"{prefix}_m"]
         k_cond = params[f"{prefix}_gM"] * m * 1000  # Conversion factor for units
-        current = k_cond * (voltages - params["ek"])
+        current = k_cond * (voltages - params["eK"])
         return current
 
     def init_state(self, voltages, params):
@@ -630,7 +630,7 @@ class CaHVA(Channel):
         self.channel_states = {
             f"{self._name}_m": 0.1,  # Initial value for m gating variable
             f"{self._name}_h": 0.1,  # Initial value for h gating variable
-            "eca": 0.0,  # mV, assuming eca for demonstration
+            "eCa": 0.0,  # mV, assuming eca for demonstration
         }
         self.current_name = f"i_Ca"
         self.META = {
@@ -650,7 +650,7 @@ class CaHVA(Channel):
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         m_new = solve_gate_exponential(ms, dt, *self.m_gate(voltages))
         h_new = solve_gate_exponential(hs, dt, *self.h_gate(voltages))
-        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eca": u["eca"]}
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": u["eCa"]}
 
     def compute_current(
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -659,7 +659,7 @@ class CaHVA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         ca_cond = params[f"{prefix}_gCaHVA"] * (ms**2) * hs * 1000
-        current = ca_cond * (voltages - u["eca"])
+        current = ca_cond * (voltages - u["eCa"])
         return current
 
     def init_state(self, voltages, params):
@@ -698,7 +698,7 @@ class CaLVA(Channel):
         self.channel_states = {
             f"{self._name}_m": 0.0,  # Initial value for m gating variable
             f"{self._name}_h": 0.0,  # Initial value for h gating variable
-            "eca": 0.0,  # mV, assuming eca for demonstration
+            "eCa": 0.0,  # mV, assuming eCa for demonstration
         }
         self.current_name = f"i_Ca"
         self.META = {
@@ -718,7 +718,7 @@ class CaLVA(Channel):
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         m_new = solve_inf_gate_exponential(ms, dt, *self.m_gate(voltages))
         h_new = solve_inf_gate_exponential(hs, dt, *self.h_gate(voltages))
-        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eca": u["eca"]}
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": u["eCa"]}
 
     def compute_current(
         self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
@@ -727,7 +727,7 @@ class CaLVA(Channel):
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
         ca_cond = params[f"{prefix}_gCaLVA"] * (ms**2) * hs * 1000
-        current = ca_cond * (voltages - u["eca"])
+        current = ca_cond * (voltages - u["eCa"])
         return current
 
     def init_state(self, voltages, params):
@@ -826,7 +826,7 @@ class CaNernstReversal(Channel):
             "R": 8.314,  # J/(mol K) (gas constant)
         }
         self.channel_params = {}
-        self.channel_states = {"eca": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
+        self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         self.current_name = f"i_Ca"
 
     def update_states(self, u, dt, voltages, params):
@@ -840,7 +840,7 @@ class CaNernstReversal(Channel):
         Cao = u["CaCon_e"]
         C = R * T / (2 * F) * 1000  # mV
         vCa = C * jnp.log(Cao / Cai)
-        return {"eca": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
+        return {"eCa": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
 
     def compute_current(self, u, voltages, params):
         """This dynamics model does not directly contribute to the membrane current."""
@@ -865,7 +865,7 @@ class H(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gH": 0.00001,  # S/cm^2
-            "ehcn": -45.0,  # mV, reversal potential for H
+            "eH": -45.0,  # mV, reversal potential for H
         }
         self.channel_states = {
             f"{prefix}_m": 0.0,  # Initial value for m gating variable
@@ -896,7 +896,7 @@ class H(Channel):
         prefix = self._name
         m = u[f"{prefix}_m"]
         h_cond = params[f"{prefix}_gH"] * m * 1000  # Conversion factor for units
-        current = h_cond * (voltages - params["ehcn"])
+        current = h_cond * (voltages - params["eH"])
         return current
 
     def init_state(self, voltages, params):
