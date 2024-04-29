@@ -267,7 +267,7 @@ class NMDA(Synapse):
 
         # Determine whether a new release event should start
         new_release_intensity = 1 / (
-            1 + jnp.exp(-params[f"{name}_k"] * (pre_voltage - params[f"{name}_vt_pre"]))
+            1 + save_exp(-params[f"{name}_k"] * (pre_voltage - params[f"{name}_vt_pre"]))
         )
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
