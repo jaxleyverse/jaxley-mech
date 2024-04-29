@@ -47,8 +47,10 @@ class AMPA(Synapse):
         R = u[f"{name}_R"]
 
         decay_factor = save_exp(-delta_t / Cdur)
-        # new_C = select(new_release_intensity > 0.5, Cmax, C * decay_factor)
-        new_C = min(Cmax, new_release_intensity * Cmax + C * decay_factor)
+
+        new_C = min(
+            Cmax, new_release_intensity * Cmax + C * decay_factor
+        )  # smoothed release for gradients
 
         # Compute Rinf and Rtau for static parameters
         alpha = params[f"{name}_alpha"]
@@ -112,11 +114,16 @@ class GABAa(Synapse):
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
         C = u[f"{name}_C"]
-        new_C = select(
-            new_release_intensity > 0.5,
+        # new_C = select(
+        #     new_release_intensity > 0.5,
+        #     Cmax,
+        #     C * save_exp(-delta_t / Cdur),
+        # )
+
+        new_C = min(
             Cmax,
-            C * save_exp(-delta_t / Cdur),
-        )
+            new_release_intensity * Cmax + C * save_exp(-delta_t / Cdur),
+        )  # smoothed release for gradients
 
         # Compute Rinf and Rtau for static parameters
         alpha = params[f"{name}_alpha"]
@@ -185,11 +192,16 @@ class GABAb(Synapse):
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
         C = u[f"{name}_C"]
-        new_C = select(
-            new_release_intensity > 0.5,
+        # new_C = select(
+        #     new_release_intensity > 0.5,
+        #     Cmax,
+        #     C * save_exp(-delta_t / Cdur),
+        # )
+
+        new_C = min(
             Cmax,
-            C * save_exp(-delta_t / Cdur),
-        )
+            new_release_intensity * Cmax + C * save_exp(-delta_t / Cdur),
+        )  # smoothed release for gradients
 
         # Update receptor (R) and G-protein (G) fractions
         R = u[f"{name}_R"]
@@ -267,10 +279,8 @@ class NMDA(Synapse):
         # )
         new_C = min(
             Cmax,
-            new_release_intensity * Cmax +
-            C * save_exp(-delta_t / Cdur),
-        )
-
+            new_release_intensity * Cmax + C * save_exp(-delta_t / Cdur),
+        )  # smoothed release for gradients
 
         # Compute new_R0 and new_R1 based on the receptor dynamics
         R = u[f"{name}_R"]
