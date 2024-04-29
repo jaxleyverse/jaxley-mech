@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jax.debug import print
-from jax.lax import select
+from jax.lax import select, min
 from jaxley.solver_gate import save_exp
 from jaxley.synapses import Synapse
 
@@ -47,7 +47,8 @@ class AMPA(Synapse):
         R = u[f"{name}_R"]
 
         decay_factor = save_exp(-delta_t / Cdur)
-        new_C = select(new_release_intensity > 0.5, Cmax, C * decay_factor)
+        # new_C = select(new_release_intensity > 0.5, Cmax, C * decay_factor)
+        new_C = min(Cmax, new_release_intensity * Cmax + C * decay_factor)
 
         # Compute Rinf and Rtau for static parameters
         alpha = params[f"{name}_alpha"]
@@ -259,11 +260,17 @@ class NMDA(Synapse):
         Cmax = params[f"{name}_Cmax"]
         Cdur = params[f"{name}_Cdur"]
         C = u[f"{name}_C"]
-        new_C = select(
-            new_release_intensity > 0.5,
+        # new_C = select(
+        #     new_release_intensity > 0.5,
+        #     Cmax,
+        #     C * save_exp(-delta_t / Cdur),
+        # )
+        new_C = min(
             Cmax,
+            new_release_intensity * Cmax +
             C * save_exp(-delta_t / Cdur),
         )
+
 
         # Compute new_R0 and new_R1 based on the receptor dynamics
         R = u[f"{name}_R"]
