@@ -1,48 +1,42 @@
+from typing import Optional
+
 import jax.numpy as jnp
 from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
+META = {
+    "reference": [
+        "Schroeder, C., Klindt, D., Strauss, S., Franke, K., Bethge, M., Euler, T., Berens, P. (2020). System identification with biophysical constraints: a circuit model of the inner retina. NeurIPS 2020.",
+        "Dayan, P., & Abbott, L. F. (2001). Theoretical neuroscience: computational and mathematical modeling of neural systems. MIT press.",
+    ]
+}
+
 
 class RibbonSynapse(Synapse):
-    """
-    Compute synaptic current and update synapse state for a deterministic ribbon
-    synapse.
+    def __init__(self, name: Optional[str] = None):
+        self._name = name = name if name else self.__class__.__name__
 
-    Ribbon synapse from Schroeder et al. 2020 supplemented by the full synapse model of
-    the Dayan & Abbott 2001 Theoretical Neuroscience textbook. A single exponential
-    decay is used to model postsynaptic conductance.
-
-    synapse_params:
-        gS: Maximal synaptic conductance (S)
-        tau: Decay time constant of postsynaptic conductance (s)
-        e_syn: Reversal potential of postsynaptic membrane at the receptor (mV)
-        lam: Vesicle replenishment rate at the ribbon
-        p_r: Probability of a vesicle at the ribbon moving to the dock
-        D_max: Maximum number of docked vesicles
-        R_max: Maximum number of vesicles at the ribbon
-
-    synapse_states:
-        released: Number of vesicles released
-        docked: Number of vesicles at the dock
-        ribboned: Number of vesicles at the ribbon
-        P_rel: Normalized vesicle release
-        P_s: Kernel of postsynaptic conductance
-    """
-
-    synapse_params = {
-        "gS": 0.5,
-        "tau": 0.5,
-        "e_syn": 0,
-        "lam": 0.4,
-        "p_r": 0.1,
-        "D_max": 8,
-        "R_max": 50,
-    }
-    synapse_states = {"released": 0, "docked": 4, "ribboned": 25, "P_rel": 0, "P_s": 0}
+        self.synapse_params = {
+            f"{name}_gS": 0.1e-4,  # Maximal synaptic conductance (uS)
+            f"{name}_tau": 0.5,  # Decay time constant of postsynaptic conductance (s)
+            f"{name}_e_syn": 0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
+            f"{name}_lam": 0.4,  # Vesicle replenishment rate at the ribbon
+            f"{name}_p_r": 0.1,  # Probability of a vesicle at the ribbon moving to the dock
+            f"{name}_D_max": 8,  # Maximum number of docked vesicles
+            f"{name}_R_max": 50,  # Maximum number of vesicles at the ribbon
+        }
+        self.synapse_states = {
+            f"{name}_released": 0,  # Number of vesicles released
+            f"{name}_docked": 4,  # Number of vesicles at the dock
+            f"{name}_ribboned": 25,  # Number of vesicles at the ribbon
+            f"{name}_P_rel": 0,  # Normalized vesicle release
+            f"{name}_P_s": 0,  # Kernel of postsynaptic conductance
+        }
+        self.META = META
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
-
+        name = self.name
         k = 1.0
         V_half = -35
 
@@ -50,28 +44,34 @@ class RibbonSynapse(Synapse):
         p_d_t = 1 / (1 + save_exp(-k * (pre_voltage - V_half)))
 
         # Vesicle release (NOTE: p_d_t is the mean of the beta distribution)
-        new_released = p_d_t * u["docked"]
+        new_released = p_d_t * u[f"{name}_docked"]
 
         # Movement to the dock
-        new_docked = u["docked"] + params["p_r"] * u["ribboned"] - new_released
-        new_docked = jnp.maximum(new_docked, params["D_max"])
+        new_docked = (
+            u[f"{name}_docked"]
+            + params[f"{name}_p_r"] * u[f"{name}_ribboned"]
+            - new_released
+        )
+        new_docked = jnp.maximum(new_docked, params[f"{name}_D_max"])
 
         # Movement to the ribbon
-        new_ribboned = u["ribboned"] + params["lam"] - new_docked
-        new_ribboned = jnp.maximum(new_ribboned, params["R_max"])
+        new_ribboned = u[f"{name}_ribboned"] + params[f"{name}_lam"] - new_docked
+        new_ribboned = jnp.maximum(new_ribboned, params[f"{name}_R_max"])
 
-        P_rel = new_released / params["D_max"]
-        P_s = save_exp(-delta_t / params["tau"])
+        # Single exponential decay to model postsynaptic conductance (Dayan & Abbott)
+        P_rel = new_released / params[f"{name}_D_max"]
+        P_s = save_exp(-delta_t / params[f"{name}_tau"])
 
         return {
-            "released": new_released,
-            "docked": new_docked,
-            "ribboned": new_ribboned,
-            "P_rel": P_rel,
-            "P_s": P_s,
+            f"{name}_released": new_released,
+            f"{name}_docked": new_docked,
+            f"{name}_ribboned": new_ribboned,
+            f"{name}_P_rel": P_rel,
+            f"{name}_P_s": P_s,
         }
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Return updated current."""
-        g_syn = params["gS"] * u["P_rel"] * u["P_s"]
-        return g_syn * (post_voltage - params["e_syn"])
+        name = self.name
+        g_syn = params[f"{name}_gS"] * u[f"{name}_P_rel"] * u[f"{name}_P_s"]
+        return g_syn * (post_voltage - params[f"{name}_e_syn"])
