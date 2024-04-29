@@ -18,7 +18,7 @@ class GapJunction(Synapse):
         - gE: the conductance across the gap junction
     """
 
-    synapse_params = {"gE": 0.5}
+    synapse_params = {"gE": 0.001}
     synapse_states = {}
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
