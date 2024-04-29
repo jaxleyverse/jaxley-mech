@@ -17,7 +17,7 @@ class RibbonSynapse(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gS": 0.1e-3,  # Maximal synaptic conductance (uS)
+            f"{name}_gS": 0.1e-4,  # Maximal synaptic conductance (uS)
             f"{name}_tau": 0.5,  # Decay time constant of postsynaptic conductance (s)
             f"{name}_e_syn": 0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
             f"{name}_lam": 0.4,  # Vesicle replenishment rate at the ribbon
