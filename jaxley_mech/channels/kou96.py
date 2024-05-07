@@ -207,8 +207,8 @@ class CaNernstReversal(Channel):
         Cai = states["CaCon_i"]
         Cao = states["CaCon_e"]
         C = R * T / (2 * F) * 1000  # mV
-        vCa = C * jnp.log(Cao / Cai)
-        return {"eCa": vCa, "CaCon_i": Cai, "CaCon_e": Cao}
+        eCa = C * jnp.log(Cao / Cai)
+        return {"eCa": eCa, "CaCon_i": Cai, "CaCon_e": Cao}
 
     def compute_current(self, u, voltages, params):
         """This dynamics model does not directly contribute to the membrane current."""
