@@ -8,12 +8,13 @@ from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 from ..utils import efun
 
-__all__ = ["Leak", "Na", "K", "KA", "Ca", "KCa"]
+__all__ = ["Leak", "Ca", "KCa"]
 
 META = {
     "reference": "Fohlmeister, J. F., & Miller, R. F. (1997). Impulse Encoding Mechanisms of Ganglion Cells in the Tiger Salamander Retina. Journal of Neurophysiology, 78(4), 1935–1947. https://doi.org/10.1152/jn.1997.78.4.1935",
     "species": "Tiger salamander",
     "cell_type": "Retinal ganglion cells",
+    "status": "Buggy; Don't Use; Not working on it atm.",
 }
 
 
