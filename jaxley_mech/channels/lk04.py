@@ -1,6 +1,7 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 import jax.numpy as jnp
+from jax.debug import print
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
@@ -24,6 +25,42 @@ META = {
 }
 
 
+def vclamp(
+    self,
+    Vh: Union[float, int],  # holding potential
+    V: Union[float, int],  # step potential
+    T: int,
+    dt: float,
+    states: Optional[dict] = None,
+    params: Optional[Dict[str, jnp.ndarray]] = None,
+):
+    if states is None:
+        states = self.channel_states
+    if params is None:
+        params = self.channel_params
+
+    amps = []
+    # holding potential (should be longer than the step potential duration)
+    for _ in range(T * 2):
+        states = self.update_states(states, dt=dt, v=Vh, params=params)
+        amps.append(self.compute_current(states, v=V, params=params))
+
+    # step potential
+    for i in range(T):
+        states = self.update_states(states, dt=dt, v=V, params=params)
+        amps.append(self.compute_current(states, v=V, params=params))
+
+    # holding potential (should be longer than the step potential duration)
+    for _ in range(T * 2):
+        states = self.update_states(states, dt=dt, v=Vh, params=params)
+        amps.append(self.compute_current(states, v=V, params=params))
+
+    return amps
+
+
+Channel.vclamp = vclamp
+
+
 class Leak(Channel):
     """Leakage current"""
 
@@ -35,7 +72,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -74.0,  # mV
         }
         self.channel_states = {}
-        self.current_name = f"i_Leak"
+        self.current_name = f"iLeak"
         self.META = META
 
     def update_states(
@@ -51,8 +88,8 @@ class Leak(Channel):
         prefix = self._name
         gLeak = (
             params[f"{prefix}_gLeak"] * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        return gLeak * (v - params[f"{prefix}_eLeak"])
+        )  # mS/cm^2, multiply with 1000 to convert S to mS.
+        return gLeak * (v - params[f"{prefix}_eLeak"])  # mS/cm^2 * mV = uA/cm^2
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -71,7 +108,7 @@ class Kx(Channel):
         self.channel_states = {
             f"{self._name}_n": 0.1,  # Initial value for m gating variable
         }
-        self.current_name = f"i_Kx"
+        self.current_name = f"iKx"
         self.META = META
 
     def update_states(
@@ -90,7 +127,7 @@ class Kx(Channel):
         prefix = self._name
         ns = states[f"{prefix}_n"]
         k_cond = params[f"{prefix}_gKx"] * ns * 1000
-        return k_cond * (v - params["eK"])
+        return k_cond * (v - params["eK"])  # mS/cm^2 * mV = uA/cm^2
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -101,6 +138,7 @@ class Kx(Channel):
     @staticmethod
     def n_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
+        v += 1e-6
         alpha = 6.6e-4 * save_exp((v + 50) / 11.4)
         beta = 6.6e-4 * save_exp(-(v + 50) / 11.4)
         return alpha, beta
@@ -116,9 +154,9 @@ class Kv(Channel):
             "eK": -74,  # mV
         }
         self.channel_states = {
-            f"{self._name}_n": 1e-2,  # Initial value for n gating variable
+            f"{self._name}_n": 0.1,  # Initial value for n gating variable
         }
-        self.current_name = f"i_Kv"
+        self.current_name = f"iKv"
         self.META = META
 
     def update_states(
@@ -148,6 +186,7 @@ class Kv(Channel):
     @staticmethod
     def n_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
+        v += 1e-6
         alpha = 0.005 * (20 - v) / (save_exp((20 - v) / 22) - 1)
         beta = 0.0625 * save_exp(-v / 80)
         return alpha, beta
@@ -164,43 +203,44 @@ class Ca(Channel):
         self.channel_states = {
             f"{self._name}_m": 0.1,  # Initial value for m gating variable
             f"{self._name}_h": 0.1,  # Initial value for h gating variable
-            "eCa": 0.0,  # mV, dependent on CaNernstReversal
+            "eCa": 40.0,  # mV, dependent on CaNernstReversal
         }
-        self.current_name = f"i_Ca"
+        self.current_name = f"iCa"
         self.META = META
 
     def update_states(
         self,
-        u: Dict[str, jnp.ndarray],
+        states: Dict[str, jnp.ndarray],
         dt: float,
-        voltages: float,
+        v: float,
         params: Dict[str, jnp.ndarray],
     ):
         """Update state of gating variables."""
         prefix = self._name
-        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        m_new = solve_gate_exponential(ms, dt, *self.m_gate(voltages))
-        h_new = solve_gate_exponential(hs, dt, *self.h_gate(voltages))
-        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": u["eCa"]}
+        ms, hs = states[f"{prefix}_m"], states[f"{prefix}_h"]
+        m_new = solve_gate_exponential(ms, dt, *self.m_gate(v))
+        h_new = solve_gate_exponential(hs, dt, *self.h_gate(v))
+        return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": states["eCa"]}
 
     def compute_current(
-        self, u: Dict[str, jnp.ndarray], voltages, params: Dict[str, jnp.ndarray]
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Compute the current through the channel."""
         prefix = self._name
-        ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
+        ms, hs = states[f"{prefix}_m"], states[f"{prefix}_h"]
         ca_cond = params[f"{prefix}_gCa"] * ms * hs * 1000
-        current = ca_cond * (voltages - u["eCa"])
+        current = ca_cond * (v - states["eCa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(voltages)
-        alpha_h, beta_h = self.h_gate(voltages)
+        alpha_m, beta_m = self.m_gate(v)
+        alpha_h, beta_h = self.h_gate(v)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
+            "eCa": 40.0,
         }
 
     @staticmethod
@@ -213,6 +253,7 @@ class Ca(Channel):
     @staticmethod
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
+        v += 1e-6
         alpha = 0.01 * save_exp((v - 11) / 18.0)
         beta = 0.0005 / (save_exp(-(v - 11) / 18.0))
         return alpha, beta
@@ -229,40 +270,40 @@ class CaPump(Channel):
         self.channel_params = {
             f"{self._name}_depth": 0.1,  # Depth of shell in um
             f"{self._name}_Cai_tau": 200,  # Rate of removal of calcium in ms
-            f"{self._name}_Cai_inf": 2e-3,  # mM
+            f"{self._name}_Cai_min": 1e-4,  # mM
+            "Cao": 2.0,  # External calcium concentration in mM
         }
         self.channel_states = {
-            f"Cai": 5e-05,  # Initial internal calcium concentration in mM
+            "Cai": 2e-3,  # Initial internal calcium concentration in mM
         }
-        self.current_name = f"i_Ca"
+        self.current_name = f"iCa"
         self.META = {
             "reference": "Modified from Destexhe et al., 1994",
             "mechanism": "Calcium dynamics",
         }
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        iCa = u["i_Ca"] / 1_000.0
-        Cai = u["Cai"]
+        iCa = states["iCa"] # Calcium current
+        Cai = states["Cai"] # Internal calcium concentration
         depth = params[f"{prefix}_depth"]
         Cai_tau = params[f"{prefix}_Cai_tau"]
-        Cai_inf = params[f"{prefix}_Cai_inf"]
+        Cai_min = params[f"{prefix}_Cai_min"]
 
-        FARADAY = 96485.3329  # Coulombs per mole
+        FARADAY = 96485  # Coulombs per mole
 
         # Calculate the contribution of calcium currents to cai change
-        drive_channel = -10_000.0 * iCa / (2 * FARADAY * depth)
-        drive_channel = jnp.clip(drive_channel, a_min=0.0)
+        drive_channel = -10 * iCa / (2 * FARADAY * depth)
+        Cai_inf = Cai_min + Cai_tau * drive_channel
         new_Cai = exponential_euler(Cai, dt, Cai_inf, Cai_tau)
-
         return {f"Cai": new_Cai}
 
-    def compute_current(self, u, voltages, params):
+    def compute_current(self, states, v, params):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -276,32 +317,32 @@ class CaNernstReversal(Channel):
     ):
         super().__init__(name)
         self.channel_constants = {
-            "F": 96485.3329,  # C/mol (Faraday's constant)
+            "F": 96485,  # C/mol (Faraday's constant)
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {}
-        self.channel_states = {"eCa": 0.0, "Cai": 5e-05, "Cao": 2.0}
-        self.current_name = f"i_Ca"
+        self.channel_params = {"Cao": 2.0}
+        self.channel_states = {"eCa": 0.0, "Cai": 2e-3}
+        self.current_name = f"iCa"
 
-    def update_states(self, u, dt, voltages, params):
+    def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
         R, T, F = (
             self.channel_constants["R"],
             self.channel_constants["T"],
             self.channel_constants["F"],
         )
-        Cai = u["Cai"]
-        Cao = u["Cao"]
+        Cao = params["Cao"]
+        Cai = states["Cai"]
         C = R * T / (2 * F) * 1000  # mV
-        vCa = C * jnp.log(Cao / Cai)
-        return {"eCa": vCa, "Cai": Cai, "Cao": Cao}
+        eCa = C * jnp.log(Cao / Cai)
+        return {"eCa": eCa, "Cai": Cai}
 
-    def compute_current(self, u, voltages, params):
+    def compute_current(self, states, v, params):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, voltages, params):
+    def init_state(self, v, params):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -319,9 +360,9 @@ class KCa(Channel):
         }
         self.channel_states = {
             f"{self._name}_n": 0.1,  # Initial value for n gating variable
-            "Cai": 5e-05,  # Initial internal calcium concentration in mM
+            "Cai": 2e-3,  # Initial internal calcium concentration in mM
         }
-        self.current_name = f"i_KCa"
+        self.current_name = f"iKCa"
         self.META = META
 
     def update_states(
@@ -367,9 +408,9 @@ class ClCa(Channel):
         }
         self.channel_states = {
             f"{self._name}_n": 0.1,  # Initial value for n gating variable
-            "Cai": 5e-05,  # Initial internal calcium concentration in mM
+            "Cai": 2e-3,  # Initial internal calcium concentration in mM
         }
-        self.current_name = f"i_KCa"
+        self.current_name = f"iKCa"
         self.META = META
 
     def update_states(
@@ -414,7 +455,7 @@ class hRod(Channel):
         self.channel_states = {
             f"{self._name}_hRod": 0.1,  # Initial value for h gating variable
         }
-        self.current_name = f"i_hRod"
+        self.current_name = f"ihRod"
         self.META = META
 
     def update_states(
@@ -456,12 +497,12 @@ class hCone(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_ghCone": 3.5e-3,  # S/cm^2
-            "ehCone": -32.5,  # mV
+            "ehCone": -32,  # mV
         }
         self.channel_states = {
             f"{self._name}_hCone": 0.1,  # Initial value for h gating variable
         }
-        self.current_name = f"i_hCone"
+        self.current_name = f"ihCone"
         self.META = {
             "cell_type": "cone",
             "reference": "Kourennyi, D. E., Liu, X., Hart, J., Mahmud, F., Baldridge, W. H., & Barnes, S. (2004). Reciprocal Modulation of Calcium Dynamics at Rod and Cone Photoreceptor Synapses by Nitric Oxide. Journal of Neurophysiology, 92(1), 477–483. https://doi.org/10.1152/jn.00606.2003",
