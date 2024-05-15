@@ -161,7 +161,6 @@ class Kv(Channel):
         """Update state of gating variables."""
         prefix = self._name
         m1s = states[f"{prefix}_m1"]
-        m2s = states[f"{prefix}_m2"]
         hs = states[f"{prefix}_h"]
         m1_new = solve_gate_exponential(m1s, dt, *self.m1_gate(v))
         m2_new = self.m2_gate(v)
@@ -209,6 +208,7 @@ class Kv(Channel):
 
     @staticmethod
     def m2_gate(v):
+        v += 1e-6
         return 1e-3 / (1 + save_exp(-(v + 15) / 5))
 
     @staticmethod
@@ -218,3 +218,234 @@ class Kv(Channel):
         alpha = 1e-3 * 1.2 * save_exp(-(v - 20) / 21.9)
         beta = 1e-3 * 1.316 / (save_exp(-(v - 47.5) / 22) + 1)
         return alpha, beta
+
+
+class Ca(Channel):
+    """L-type calcium channel"""
+
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        self.channel_params = {
+            f"{self._name}_gCa": 1e-3,  # S/cm^2
+        }
+        self.channel_states = {
+            f"{self._name}_m": 0.1,  # Initial value for m gating variable
+            "eCa": 40.0,  # mV, dependent on CaNernstReversal
+        }
+        self.current_name = f"iCa"
+        self.META = META
+
+    def update_states(
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt: float,
+        v: float,
+        params: Dict[str, jnp.ndarray],
+    ):
+        """Update state of gating variables."""
+        prefix = self._name
+        ms = states[f"{prefix}_m"]
+        m_new = solve_gate_exponential(ms, dt, *self.m_gate(v))
+        return {f"{prefix}_m": m_new}
+
+    def compute_current(
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+    ):
+        """Compute the current through the channel."""
+        prefix = self._name
+        m = states[f"{prefix}_m"]
+        ca_cond = params[f"{prefix}_gCa"] * m**4 * 1000
+        current = ca_cond * (v - states["eCa"])
+        return current
+
+    def init_state(self, v, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        alpha_m, beta_m = self.m_gate(v)
+        return {
+            f"{prefix}_m": alpha_m / (alpha_m + beta_m),
+            "eCa": 40.0,
+        }
+
+    @staticmethod
+    def m_gate(v):
+        """Voltage-dependent dynamics for the m gating variable."""
+        v += 1e-6
+        alpha = 0.3 * (30 - v) / (save_exp((30 - v) / 15) - 1)
+        beta = 1 / (save_exp((v + 30) / 12.7) + 1)
+        return alpha, beta
+
+
+class CaPump(Channel):
+    """Calcium dynamics tracking inside calcium concentration, modeled after Destexhe et al. 1994."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        super().__init__(name)
+        self.channel_params = {
+            f"{self._name}_depth": 0.1,  # Depth of shell in um
+            f"{self._name}_Cai_tau": 200,  # Rate of removal of calcium in ms
+            f"{self._name}_Cai_inf": 5e-5,  # mM
+            "Cao": 3.0,  # External calcium concentration in mM
+        }
+        self.channel_states = {
+            "Cai": 2e-3,  # Initial internal calcium concentration in mM
+        }
+        self.current_name = f"iCa"
+        self.META = {
+            "reference": "Modified from Destexhe et al., 1994",
+            "mechanism": "Calcium dynamics",
+        }
+
+    def update_states(
+        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
+    ):
+        """Update internal calcium concentration based on calcium current and decay."""
+        prefix = self._name
+        iCa = states["iCa"] / 1_000  # Calcium current
+
+        Cai = states["Cai"]  # Internal calcium concentration
+
+        depth = params[f"{prefix}_depth"]
+        Cai_tau = params[f"{prefix}_Cai_tau"]
+        Cai_inf = params[f"{prefix}_Cai_inf"]
+
+        FARADAY = 96485  # Coulombs per mole
+
+        # Calculate the contribution of calcium currents to cai change
+        drive_channel = -10_000.0 * iCa / (2 * FARADAY * depth)
+        dCai_dt = drive_channel / 2 + (Cai_inf - Cai) / Cai_tau
+        Cai += dCai_dt * dt
+        return {"Cai": Cai}  # Convert to scalar
+
+    def compute_current(self, states, v, params):
+        """This dynamics model does not directly contribute to the membrane current."""
+        return 0
+
+    def init_state(self, v, params):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
+
+
+class CaNernstReversal(Channel):
+    """Compute Calcium reversal from inner and outer concentration of calcium."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        super().__init__(name)
+        self.channel_params = {"Cao": 3.0}
+        self.channel_states = {"eCa": 40.0, "Cai": 2e-3}
+        self.current_name = f"iCa"
+
+    def update_states(self, states, dt, v, params):
+        """Update internal calcium concentration based on calcium current and decay."""
+
+        Cao = params["Cao"]
+        Cai = states["Cai"]
+        eCa = 12.9 * jnp.log(Cao / Cai)
+        return {"eCa": eCa, "Cai": Cai}
+
+    def compute_current(self, states, v, params):
+        """This dynamics model does not directly contribute to the membrane current."""
+        return 0
+
+    def init_state(self, v, params):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
+
+
+class KCa(Channel):
+    """Calcium-dependent potassium channel"""
+
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        self.channel_params = {
+            f"{self._name}_gKCa": 13e-3,  # S/cm^2
+            # with an unfortunate name conflict with potassium K
+            "eK": -86.6,  # mV
+        }
+        self.channel_states = {
+            f"{self._name}_m": 0.1,  # Initial value for m gating variable
+            "Cai": 2e-3,  # Initial internal calcium concentration in mM
+        }
+        self.current_name = f"iKCa"
+        self.META = META
+
+    def update_states(
+        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
+    ):
+        """Update state of gating variables."""
+        prefix = self._name
+        m_new = self.m_gate(states["Cai"])
+        return {f"{prefix}_m": m_new}
+
+    def compute_current(
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+    ):
+        """Compute the current through the channel."""
+        prefix = self._name
+        m = states[f"{prefix}_m"]
+        k_cond = params[f"{prefix}_gKCa"] * m * 1000
+        current = k_cond * (v - params["eK"])
+        return current
+
+    def init_state(self, v, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        m = self.m_gate(2e-3)
+        return {f"{prefix}_m": m}
+
+    @staticmethod
+    def m_gate(Cai):
+        """Calcium-dependent m gating variable."""
+        # Cai *= 1e3
+        return Cai / (Cai + 12)
+
+
+class ClCa(Channel):
+    """Calcium-dependent Chloride channel"""
+
+    def __init__(self, name: Optional[str] = None):
+        super().__init__(name)
+        self.channel_params = {
+            f"{self._name}_gClCa": 16e-3,  # S/cm^2
+            f"{self._name}_eCl": -20,  # mV
+        }
+        self.channel_states = {
+            f"{self._name}_m": 0.1,  # Initial value for n gating variable
+            "Cai": 2e-3,  # Initial internal calcium concentration in mM
+        }
+        self.current_name = f"iKCa"
+        self.META = META
+
+    def update_states(
+        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
+    ):
+        """Update state of gating variables."""
+        prefix = self._name
+        m_new = self.m_gate(states["Cai"])
+        return {f"{prefix}_m": m_new}
+
+    def compute_current(
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+    ):
+        """Compute the current through the channel."""
+        prefix = self._name
+        m = states[f"{prefix}_m"]
+        k_cond = params[f"{prefix}_gClCa"] * m * 1000
+        return k_cond * (v - params[f"{prefix}_eCl"])
+
+    def init_state(self, v, params):
+        """Initialize the state such at fixed point of gate dynamics."""
+        prefix = self._name
+        m = self.m_gate(v)
+        return {f"{prefix}_m": m}
+
+    @staticmethod
+    def m_gate(Cai):
+        """Calcium-dependent m gating variable."""
+        return Cai / (Cai + 10)

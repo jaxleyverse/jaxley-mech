@@ -32,6 +32,7 @@ class CaPump(Channel):
     def update_states(self, u, dt, voltages, params, ica):
         """Update internal calcium concentration due to pump action and calcium currents."""
         prefix = self._name
+        ica /= 1000  # Convert from uA to mA
         cai = u[f"Cai"]
         kt = params[f"{prefix}_kt"]
         kd = params[f"{prefix}_kd"]
@@ -42,9 +43,7 @@ class CaPump(Channel):
         FARADAY = 96489  # Coulombs per mole
 
         # Compute inward calcium flow contribution, should not pump inwards
-        drive_channel = -ica / (
-            2 * FARADAY * depth
-        )  # why *10000 in the original code? Unit mismatch?
+        drive_channel = -10_000.0 * ica / (2 * FARADAY * depth)
         drive_channel = select(
             drive_channel <= 0, jnp.zeros_like(drive_channel), drive_channel
         )
