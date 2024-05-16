@@ -141,19 +141,19 @@ class Kv(Channel):
         return alpha, beta
 
 
-class hRod(Channel):
+class h(Channel):
     """Rod Hyperpolarization-activated h Channel"""
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         self.channel_params = {
-            f"{self._name}_ghRod": 2.5e-3,  # S/cm^2
-            "ehRod": -32,  # mV
+            f"{self._name}_gh": 2.5e-3,  # S/cm^2
+            "eh": -32,  # mV
         }
         self.channel_states = {
-            f"{self._name}_hRod": 0.1,  # Initial value for h gating variable
+            f"{self._name}_n": 0.1,  # Initial value for h gating variable
         }
-        self.current_name = f"ihRod"
+        self.current_name = f"ih"
         self.META = META
 
     def update_states(
@@ -161,27 +161,27 @@ class hRod(Channel):
     ):
         """Update state of gating variables."""
         prefix = self._name
-        hs = states[f"{prefix}_hRod"]
-        h_new = solve_gate_exponential(hs, dt, *self.h_gate(v))
-        return {f"{prefix}_hRod": h_new}
+        ns = states[f"{prefix}_n"]
+        n_new = solve_gate_exponential(ns, dt, *self.n_gate(v))
+        return {f"{prefix}_n": n_new}
 
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Compute the current through the channel."""
         prefix = self._name
-        hs = states[f"{prefix}_hRod"]
-        h_cond = params[f"{prefix}_ghRod"] * hs * 1000
-        return h_cond * (v - params["ehRod"])
+        ns = states[f"{prefix}_n"]
+        h_cond = params[f"{prefix}_gh"] * ns * 1000
+        return h_cond * (v - params["eh"])
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha, beta = self.h_gate(v)
-        return {f"{prefix}_hRod": alpha / (alpha + beta)}
+        alpha, beta = self.n_gate(v)
+        return {f"{prefix}_h": alpha / (alpha + beta)}
 
     @staticmethod
-    def h_gate(v):
+    def n_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         alpha = 0.001 * save_exp(-(v + 75) / 10.6)
         beta = 0.001 / save_exp((v + 75) / 10.6)
@@ -265,10 +265,8 @@ class CaPump(Channel):
     ):
         super().__init__(name)
         self.channel_params = {
-            f"{self._name}_depth": 0.1,  # Depth of shell in um
             f"{self._name}_Cai_tau": 20,  # Rate of removal of calcium in ms
             f"{self._name}_Cai_inf": 5e-5,  # mM
-            "Cao": 2.0,  # External calcium concentration in mM
         }
         self.channel_states = {
             "Cai": 2e-3,  # Initial internal calcium concentration in mM
@@ -284,15 +282,13 @@ class CaPump(Channel):
         prefix = self._name
         iCa = states["iCa"]  # Calcium current
         Cai = states["Cai"]  # Internal calcium concentration
-        depth = params[f"{prefix}_depth"]
         Cai_tau = params[f"{prefix}_Cai_tau"]
         Cai_inf = params[f"{prefix}_Cai_inf"]
 
-        FARADAY = 96485  # Coulombs per mole
+        FARADAY = 96500  # Coulombs per mole
 
         # Calculate the contribution of calcium currents to cai change
-        drive_channel = -10 * iCa / (2 * FARADAY * depth)
-        # drive_channel = -10 * iCa / (2000 * 2 * FARADAY)
+        drive_channel = -10 * iCa / (0.2 * FARADAY)
         dCai_dt = drive_channel / 2 + (Cai_inf - Cai) / Cai_tau
         Cai += dCai_dt * dt
         return {"Cai": Cai}
