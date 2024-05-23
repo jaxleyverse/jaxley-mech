@@ -174,7 +174,7 @@ class KA(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gKA": 1.5e-3,  # S/cm^2
-            "eK": 45.0,  # mV
+            "eK": -85.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
         self.current_name = f"i_K"
