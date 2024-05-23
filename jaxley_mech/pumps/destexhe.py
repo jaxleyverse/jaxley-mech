@@ -29,10 +29,11 @@ class CaPump(Channel):
             "source": "https://modeldb.science/3670?tab=2&file=NTW_NEW/capump.mod",
         }
 
-    def update_states(self, u, dt, voltages, params, ica):
+    def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration due to pump action and calcium currents."""
         prefix = self._name
-        cai = u[f"Cai"]
+        iCa = u[f"iCa"] / 1_000  # Convert from uA/cm^2 to mA/cm^2
+        Cai = u[f"Cai"]
         kt = params[f"{prefix}_kt"]
         kd = params[f"{prefix}_kd"]
         depth = params[f"{prefix}_depth"]
@@ -42,20 +43,20 @@ class CaPump(Channel):
         FARADAY = 96489  # Coulombs per mole
 
         # Compute inward calcium flow contribution, should not pump inwards
-        drive_channel = -ica / (
-            2 * FARADAY * depth
-        )  # why *10000 in the original code? Unit mismatch?
+        drive_channel = -10_000.0 * iCa / (2 * FARADAY * depth)
         drive_channel = select(
             drive_channel <= 0, jnp.zeros_like(drive_channel), drive_channel
         )
 
         # Michaelis-Menten dynamics for the pump's action on calcium concentration
-        drive_pump = -kt * cai / (cai + kd)
+        drive_pump = -kt * Cai / (Cai + kd)
+
+        dCai_dt = drive_channel + drive_pump + (cainf - Cai) / taur
 
         # Update internal calcium concentration with contributions from channel, pump, and decay to equilibrium
-        new_cai = cai + dt * (drive_channel + drive_pump + (cainf - cai) / taur)
+        new_Cai = Cai + dt * dCai_dt
 
-        return {f"Cai": new_cai}
+        return {f"Cai": new_Cai}
 
     def compute_current(self, u, voltages, params):
         """The pump does not directly contribute to the membrane current."""
