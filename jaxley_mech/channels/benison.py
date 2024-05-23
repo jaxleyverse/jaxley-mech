@@ -30,7 +30,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -60.0,  # mV
         }
         self.channel_states = {}
-        self.current_name = f"i_Leak"
+        self.current_name = f"iLeak"
         self.META = META
 
     def update_states(
@@ -65,7 +65,7 @@ class Na(Channel):
             f"{prefix}_eNa": 75.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
-        self.current_name = f"i_Na"
+        self.current_name = f"iNa"
         self.META = META
 
     def update_states(
@@ -127,7 +127,7 @@ class Kdr(Channel):
             "eK": -85.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.1}
-        self.current_name = f"i_K"
+        self.current_name = f"iK"
         self.META = META
 
     def update_states(
@@ -177,7 +177,7 @@ class KA(Channel):
             "eK": 45.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
-        self.current_name = f"i_K"
+        self.current_name = f"iK"
         self.META = META
 
     def update_states(
@@ -238,7 +238,7 @@ class CaL(Channel):
             "eCa": 45.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.1}
-        self.current_name = f"i_Ca"
+        self.current_name = f"iCa"
         self.META = META
 
     def update_states(
@@ -294,7 +294,7 @@ class CaN(Channel):
             "eCa": 45.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
-        self.current_name = f"i_Ca"
+        self.current_name = f"iCa"
         self.META = META
 
     def update_states(
@@ -363,7 +363,7 @@ class CaPumpNS(Channel):
         self.channel_states = {
             "Cai": 1e-4  # mM (global internal calcium concentration)
         }
-        self.current_name = f"i_Ca"
+        self.current_name = f"iCa"
         self.META = META
 
     def update_states(self, states, dt, v, params):
@@ -380,9 +380,9 @@ class CaPumpNS(Channel):
         K_pump = params["Cad"]
         j_pump = v_pump * (Cai**2 / (Cai**2 + K_pump**2))
 
-        ca_current = states["i_Ca"]
+        iCa = states["iCa"] / 1_000
 
-        driving_channel = -ca_current / (2 * F * V_cell)
+        driving_channel = -10_000.0 * iCa / (2 * F * V_cell)
         driving_channel = jnp.maximum(driving_channel, 0.0)
         dCa_dt = driving_channel - (Cai - Cab) / tau - j_pump
         new_Cai = Cai + fi * dCa_dt * dt
@@ -404,7 +404,7 @@ class KCa(Channel):
             "eK": -85.0,  # mV
         }
         self.channel_states = {"Cai": 0.0001}  # mM, intracellular calcium concentration
-        self.current_name = f"i_K"
+        self.current_name = f"iK"
         self.META = META
 
     def update_states(
