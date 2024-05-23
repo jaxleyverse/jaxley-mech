@@ -7,7 +7,7 @@ from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 from ..utils import efun
 
-__all__ = ["Leak", "Na", "K", "KA", "Ca", "KCa"]
+__all__ = ["Leak", "Na", "K", "KA", "Ca", "CaNernstReversal", "KCa"]
 
 META = {
     "reference": "Fohlmeister, J. F., & Miller, R. F. (1997). Impulse Encoding Mechanisms of Ganglion Cells in the Tiger Salamander Retina. Journal of Neurophysiology, 78(4), 1935–1947. https://doi.org/10.1152/jn.1997.78.4.1935",
@@ -27,7 +27,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -67.0,  # mV
         }
         self.channel_states = {}
-        self.current_name = f"i_Leak"
+        self.current_name = f"iLeak"
         self.META = META
 
     def update_states(
@@ -62,7 +62,7 @@ class Na(Channel):
             f"{prefix}_eNa": 35.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
-        self.current_name = f"i_Na"
+        self.current_name = f"iNa"
         self.META = META
 
     def update_states(
@@ -125,7 +125,7 @@ class K(Channel):
             "eK": -75.0,  # mV
         }
         self.channel_states = {f"{prefix}_n": 0.1}
-        self.current_name = f"i_K"
+        self.current_name = f"iK"
         self.META = META
 
     def update_states(
@@ -173,7 +173,7 @@ class KA(Channel):
             f"eK": -75,  # mV
         }
         self.channel_states = {f"{prefix}_A": 0.2, f"{prefix}_hA": 0.2}
-        self.current_name = f"i_K"
+        self.current_name = f"iK"
         self.META = META
 
     def update_states(
@@ -237,56 +237,21 @@ class Ca(Channel):
         }
         self.channel_params = {
             f"{prefix}_gCa": 2.2e-3,  # S/cm^2
-            "tau_Ca": 50,  # mS (time constant for calcium removal)
-            "Cab": 1e-4,  # mM (resting internal calcium concentration, or baseline concentration)
-            "Cao": 2.0,  # mM (external calcium concentration)
         }
         self.channel_states = {
             f"{prefix}_c": 0.1,
-            f"{prefix}_eCa": self.compute_voltage(1e-4, self.channel_params),
+            f"eCa": 40.0,  # mV
             f"Cai": 1e-4,  # mM (internal calcium concentration)
         }
-        self.current_name = f"i_Ca"
+        self.current_name = f"iCa"
         self.META = META
 
     def update_states(self, states, dt, v, params):
         """Return the updated states."""
         prefix = self._name
         cs = states[f"{prefix}_c"]
-        Cai = states["Cai"]
-        ca_current = states[self.current_name]
-        Cab = params["Cab"]
-        tau_Ca = params["tau_Ca"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(v))
-
-        driving_channel = (
-            -(2 / params[f"length"] + 2 / params[f"radius"])
-            * ca_current
-            / (2 * self.channel_constants["F"])
-        )
-
-        driving_channel = select(
-            driving_channel <= 0, jnp.zeros_like(driving_channel), driving_channel
-        )
-
-        dCa_dt = driving_channel - ((Cai - Cab) / tau_Ca)
-        Cai += dCa_dt * dt
-
-        eCa = self.compute_voltage(Cai, params)
-
-        return {f"{prefix}_c": new_c, "Cai": Cai, f"{prefix}_eCa": eCa}
-
-    def compute_voltage(self, Cai, params):
-        """Return Ca rev. potential."""
-        R, T, F = (
-            self.channel_constants["R"],
-            self.channel_constants["T"],
-            self.channel_constants["F"],
-        )
-        Cao = params["Cao"]
-        C = R * T / (2 * F) * 1000  # mV
-        eCa = C * jnp.log(Cao / Cai)
-        return eCa
+        return {f"{prefix}_c": new_c}
 
     def compute_current(self, states, v, params):
         """Given channel states and voltage, return the current through the channel."""
@@ -295,7 +260,7 @@ class Ca(Channel):
         gCa = (
             params[f"{prefix}_gCa"] * (c**3) * 1000
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        return gCa * (v - states[f"{prefix}_eCa"])
+        return gCa * (v - states[f"eCa"])
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -310,6 +275,185 @@ class Ca(Channel):
         return alpha, beta
 
 
+class CaNernstReversal(Channel):
+    """Compute Calcium reversal from inner and outer concentration of calcium."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        super().__init__(name)
+        self.channel_constants = {
+            "F": 96485.3329,  # C/mol (Faraday's constant)
+            "T": 279.45,  # Kelvin (temperature)
+            "R": 8.314,  # J/(mol K) (gas constant)
+        }
+        self.channel_params = {"Cao": 2.0}
+        self.channel_states = {"eCa": 125.0, "Cai": 5e-05}
+        self.current_name = f"iCa"
+
+    def update_states(self, states, dt, v, params):
+        """Update internal calcium concentration based on calcium current and decay."""
+        R, T, F = (
+            self.channel_constants["R"],
+            self.channel_constants["T"],
+            self.channel_constants["F"],
+        )
+        Cai = states["Cai"]
+        Cao = params["Cao"]
+        C = R * T / (2 * F) * 1000  # mV
+        eCa = C * jnp.log(Cao / Cai)
+        return {"eCa": eCa, "Cai": Cai}
+
+    def compute_current(self, states, v, params):
+        """This dynamics model does not directly contribute to the membrane current."""
+        return 0
+
+    def init_state(self, v, params):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
+
+
+class CaPump(Channel):
+    """Calcium ATPase pump modeled after Destexhe et al., 1993/1994."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        super().__init__(name)
+        self.channel_params = {
+            f"{self.name}_taur": 1e10,  # Time constant of calcium removal in ms
+            f"{self.name}_cainf": 2.4e-4,  # Equilibrium calcium concentration in mM
+        }
+        self.channel_states = {
+            f"Cai": 5e-5,  # Initial internal calcium concentration in mM
+        }
+        self.current_name = f"iCa"
+        self.META = {
+            "reference": "Destexhe, A., Babloyantz, A., & Sejnowski, TJ. Ionic mechanisms for intrinsic slow oscillations in thalamic relay neurons. Biophys. J. 65: 1538-1552, 1993.",
+            "mechanism": "ATPase pump",
+            "source": "https://modeldb.science/3670?tab=2&file=NTW_NEW/capump.mod",
+        }
+
+    def update_states(self, states, dt, v, params):
+        """Update internal calcium concentration due to pump action and calcium currents."""
+        prefix = self._name
+        iCa = states[f"iCa"] / 1_000  # Convert from uA/cm^2 to mA/cm^2
+        Cai = states[f"Cai"]
+
+        taur = params[f"{prefix}_taur"]
+        cainf = params[f"{prefix}_cainf"]
+
+        FARADAY = 96489  # Coulombs per mole
+
+        # Compute inward calcium flow contribution, should not pump inwards
+        drive_channel = (
+            -10_000.0 * (2 / params[f"length"] + 2 / params[f"radius"]) * iCa / (2 * FARADAY)
+        )
+
+        drive_channel = select(
+            drive_channel <= 0, jnp.zeros_like(drive_channel), drive_channel
+        )
+
+        dCai_dt = drive_channel + (cainf - Cai) / taur
+
+        # Update internal calcium concentration with contributions from channel, pump, and decay to equilibrium
+        new_Cai = Cai + dt * dCai_dt
+
+        return {f"Cai": new_Cai}
+
+    def compute_current(self, states, v, params):
+        """The pump does not directly contribute to the membrane current."""
+        return 0
+
+
+# class Ca(Channel):
+#     """Calcium channel and pump"""
+
+#     def __init__(self, name: Optional[str] = None):
+#         super().__init__(name)
+#         prefix = self._name
+#         self.channel_constants = {
+#             "F": 96485.3329,  # C/mol (Faraday's constant)
+#             "T": 295.15,  # Kelvin (temperature)
+#             "R": 8.314,  # J/(mol K) (gas constant)
+#         }
+#         self.channel_params = {
+#             f"{prefix}_gCa": 2.2e-3,  # S/cm^2
+#             "tau_Ca": 50,  # mS (time constant for calcium removal)
+#             "Cab": 1e-4,  # mM (resting internal calcium concentration, or baseline concentration)
+#             "Cao": 2.0,  # mM (external calcium concentration)
+#         }
+#         self.channel_states = {
+#             f"{prefix}_c": 0.1,
+#             f"{prefix}_eCa": self.compute_voltage(1e-4, self.channel_params),
+#             f"Cai": 1e-4,  # mM (internal calcium concentration)
+#         }
+#         self.current_name = f"iCa"
+#         self.META = META
+
+#     def update_states(self, states, dt, v, params):
+#         """Return the updated states."""
+#         prefix = self._name
+#         cs = states[f"{prefix}_c"]
+#         Cai = states["Cai"]
+#         ca_current = states[self.current_name]
+#         Cab = params["Cab"]
+#         tau_Ca = params["tau_Ca"]
+#         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(v))
+
+#         driving_channel = (
+#             -(2 / params[f"length"] + 2 / params[f"radius"])
+#             * ca_current
+#             / (2 * self.channel_constants["F"])
+#         )
+
+#         driving_channel = select(
+#             driving_channel <= 0, jnp.zeros_like(driving_channel), driving_channel
+#         )
+
+#         dCa_dt = driving_channel - ((Cai - Cab) / tau_Ca)
+#         Cai += dCa_dt * dt
+
+#         eCa = self.compute_voltage(Cai, params)
+
+#         return {f"{prefix}_c": new_c, "Cai": Cai, f"{prefix}_eCa": eCa}
+
+#     def compute_voltage(self, Cai, params):
+#         """Return Ca rev. potential."""
+#         R, T, F = (
+#             self.channel_constants["R"],
+#             self.channel_constants["T"],
+#             self.channel_constants["F"],
+#         )
+#         Cao = params["Cao"]
+#         C = R * T / (2 * F) * 1000  # mV
+#         eCa = C * jnp.log(Cao / Cai)
+#         return eCa
+
+#     def compute_current(self, states, v, params):
+#         """Given channel states and voltage, return the current through the channel."""
+#         prefix = self._name
+#         c = states[f"{prefix}_c"]
+#         gCa = (
+#             params[f"{prefix}_gCa"] * (c**3) * 1000
+#         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
+#         return gCa * (v - states[f"{prefix}_eCa"])
+
+#     def init_state(self, v, params):
+#         """Initialize the state such at fixed point of gate dynamics."""
+#         prefix = self._name
+#         alpha_c, beta_c = Ca.c_gate(v)
+#         return {f"{prefix}_c": alpha_c / (alpha_c + beta_c)}
+
+#     @staticmethod
+#     def c_gate(v):
+#         alpha = 0.3 * efun(-(v + 13), 10)
+#         beta = 10 * save_exp(-(v + 38) / 18)
+#         return alpha, beta
+
+
 class KCa(Channel):
     "Calcium-dependent ligand gated potassium channel"
 
@@ -319,12 +463,10 @@ class KCa(Channel):
         self.channel_params = {
             f"{prefix}_gKCa": 0.05e-3,  # S/cm^2
             "eK": -75.0,  # mV
-        }
-        self.channel_constants = {
-            "Cad": 1e-3,  # mM (calcium concentration for half-maximal activation; dissociation constant)
+            f"{prefix}_Cad": 1e-3,
         }
         self.channel_states = {"Cai": 1e-4}
-        self.current_name = f"i_K"
+        self.current_name = f"iK"
         self.META = META
 
     def update_states(
@@ -342,7 +484,9 @@ class KCa(Channel):
     ):
         """Given channel states and voltage, return the current through the channel."""
         prefix = self._name
-        x = (states["Cai"] / self.channel_constants["Cad"]) ** 2
+        Cai = states["Cai"]
+        Cad = params[f"{prefix}_Cad"]
+        x = (Cai / Cad) ** 2
         gKCa = (
             params[f"{prefix}_gKCa"] * x / (1 + x) * 1000
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
