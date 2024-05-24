@@ -2,6 +2,7 @@ from typing import Dict, Optional, Union
 
 import jax.numpy as jnp
 from jax.debug import print
+from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
@@ -184,7 +185,7 @@ class h(Channel):
     def n_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         alpha = 0.001 * save_exp(-(v + 75) / 10.6)
-        beta = 0.001 / save_exp((v + 75) / 10.6)
+        beta = 0.001 * save_exp((v + 75) / 10.6)
         return alpha, beta
 
 
@@ -289,11 +290,13 @@ class CaPump(Channel):
         Cai_inf = params[f"{prefix}_cainf"]
         depth = params[f"{prefix}_depth"]
 
-        FARADAY = 96500  # Coulombs per mole
+        FARADAY = 96485.3329  # Coulombs per mole
 
         # Calculate the contribution of calcium currents to cai change
         drive_channel = -10_000.0 * iCa / (2 * FARADAY * depth)
-        drive_channel = jnp.maximum(drive_channel, 0.0)
+        drive_channel = select(
+            drive_channel <= 0, jnp.zeros_like(drive_channel), drive_channel
+        )
         dCai_dt = drive_channel / 2 + (Cai_inf - Cai) / Cai_tau
         Cai += dCai_dt * dt
         return {"Cai": Cai}
@@ -316,7 +319,7 @@ class CaNernstReversal(Channel):
     ):
         super().__init__(name)
         self.channel_constants = {
-            "F": 96485,  # C/mol (Faraday's constant)
+            "F": 96485.3329,  # C/mol (Faraday's constant)
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
@@ -353,7 +356,7 @@ class KCa(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gKCa": 5e-3,  # S/cm^2
-            f"{self._name}_Khalf": 3.2e-4,  # mM, half-activation concentration
+            f"{self._name}_Khalf": 3.32,  # mM, half-activation concentration
             # with an unfortunate name conflict with potassium K
             "eK": -74,  # mV
         }
@@ -401,7 +404,7 @@ class ClCa(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gClCa": 1.3e-3,  # S/cm^2
-            f"{self._name}_Khalf": 1.5e-3,  # mM, half-activation concentration
+            f"{self._name}_Khalf": 1,  # uM, half-activation concentration
             # with an unfortunate name conflict with potassium K
             f"{self._name}_eClCa": -20,  # mV
         }
