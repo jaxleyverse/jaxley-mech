@@ -148,10 +148,10 @@ class h(Channel):
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gh": 2.5e-3,  # S/cm^2
-            "eh": -32,  # mV
+            f"{self._name}_eh": -32,  # mV
         }
         self.channel_states = {
-            f"{self._name}_n": 0.1,  # Initial value for h gating variable
+            f"{self._name}_n": 0.1,
         }
         self.current_name = f"ih"
         self.META = META
@@ -172,7 +172,7 @@ class h(Channel):
         prefix = self._name
         ns = states[f"{prefix}_n"]
         h_cond = params[f"{prefix}_gh"] * ns * 1000
-        return h_cond * (v - params["eh"])
+        return h_cond * (v - params[f"{prefix}_eh"])
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -197,8 +197,8 @@ class Ca(Channel):
             f"{self._name}_gCa": 4e-3,  # S/cm^2
         }
         self.channel_states = {
-            f"{self._name}_m": 0.1,  # Initial value for m gating variable
-            f"{self._name}_h": 0.1,  # Initial value for h gating variable
+            f"{self._name}_m": 0.0,  # Initial value for m gating variable
+            f"{self._name}_h": 1.0,  # Initial value for h gating variable
             "eCa": 40.0,  # mV, dependent on CaNernstReversal
         }
         self.current_name = f"iCa"
@@ -214,6 +214,7 @@ class Ca(Channel):
         """Update state of gating variables."""
         prefix = self._name
         ms, hs = states[f"{prefix}_m"], states[f"{prefix}_h"]
+
         m_new = solve_gate_exponential(ms, dt, *self.m_gate(v))
         h_new = solve_gate_exponential(hs, dt, *self.h_gate(v))
         return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": states["eCa"]}
@@ -231,6 +232,7 @@ class Ca(Channel):
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
+
         alpha_m, beta_m = self.m_gate(v)
         alpha_h, beta_h = self.h_gate(v)
         return {
@@ -251,8 +253,8 @@ class Ca(Channel):
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         v += 1e-6
-        alpha = 0.01 * save_exp((v - 11) / 18.0)
-        beta = 5e-4 / (save_exp(-(v - 11) / 18.0))
+        alpha = 5e-4 * save_exp(-(v - 11) / 18.0)
+        beta = 0.01 * save_exp((v - 11) / 18.0)
         return alpha, beta
 
 
@@ -265,8 +267,9 @@ class CaPump(Channel):
     ):
         super().__init__(name)
         self.channel_params = {
-            f"{self._name}_Cai_tau": 20,  # Rate of removal of calcium in ms
-            f"{self._name}_Cai_inf": 5e-5,  # mM
+            f"{self._name}_depth": 10.0,
+            f"{self._name}_taur": 20,  # Rate of removal of calcium in ms
+            f"{self._name}_cainf": 5e-5,  # mM
         }
         self.channel_states = {
             "Cai": 2e-3,  # Initial internal calcium concentration in mM
@@ -280,15 +283,17 @@ class CaPump(Channel):
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        iCa = states["iCa"]  # Calcium current
+        iCa = states["iCa"] / 1000  # Calcium current
         Cai = states["Cai"]  # Internal calcium concentration
-        Cai_tau = params[f"{prefix}_Cai_tau"]
-        Cai_inf = params[f"{prefix}_Cai_inf"]
+        Cai_tau = params[f"{prefix}_taur"]
+        Cai_inf = params[f"{prefix}_cainf"]
+        depth = params[f"{prefix}_depth"]
 
         FARADAY = 96500  # Coulombs per mole
 
         # Calculate the contribution of calcium currents to cai change
-        drive_channel = -10 * iCa / (0.2 * FARADAY)
+        drive_channel = -10_000.0 * iCa / (2 * FARADAY * depth)
+        drive_channel = jnp.maximum(drive_channel, 0.0)
         dCai_dt = drive_channel / 2 + (Cai_inf - Cai) / Cai_tau
         Cai += dCai_dt * dt
         return {"Cai": Cai}
@@ -330,7 +335,6 @@ class CaNernstReversal(Channel):
         Cai = states["Cai"]
         C = R * T / (2 * F) * 1000  # mV
         eCa = C * jnp.log(Cao / Cai)
-        # eCa = 12.9 * jnp.log(Cao / Cai)
         return {"eCa": eCa, "Cai": Cai}
 
     def compute_current(self, states, v, params):
@@ -436,4 +440,3 @@ class ClCa(Channel):
     def n_gate(Cai, Khalf):
         """Calcium-dependent n gating variable."""
         return 1 / (1 + (Khalf / Cai) ** 4)
-        # return Cai / (Cai + 10)

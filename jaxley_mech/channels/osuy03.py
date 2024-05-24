@@ -98,16 +98,6 @@ class h(Channel):
         )
         new_O3 = states[f"{prefix}_O3"] + dt * (O2_to_O3 - O3_to_O2)
 
-        # jax.debug.print(
-        #     "sum={sum:.5f}\tnew_C1={new_C1:.5f}\tnew_C2={new_C2:.5f}\tnew_O1={new_O1:.5f}\tnew_O2={new_O2:.5f}\tnew_O3={new_O3:.5f}",
-        #     sum=new_C1 + new_C2 + new_O1 + new_O2 + new_O3,
-        #     new_C1=new_C1,
-        #     new_C2=new_C2,
-        #     new_O1=new_O1,
-        #     new_O2=new_O2,
-        #     new_O3=new_O3,
-        # )
-
         return {
             f"{prefix}_C1": new_C1,
             f"{prefix}_C2": new_C2,
@@ -316,7 +306,7 @@ class CaPump(Channel):
     ):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        iCa = states["iCa"]  # Calcium current
+        iCa = states["iCa"] / 1000  # Calcium current
         Cai = states["Cai"]  # Internal calcium concentration
 
         depth = params[f"{prefix}_depth"]
@@ -326,11 +316,10 @@ class CaPump(Channel):
         FARADAY = 96485  # Coulombs per mole
 
         # Calculate the contribution of calcium currents to cai change
-        drive_channel = -10 * iCa / (2 * FARADAY * depth)
+        drive_channel = -10_000 * iCa / (2 * FARADAY * depth)
         drive_channel = jnp.maximum(drive_channel, 0)
-        dCai_dt = drive_channel / 2 + (Cai_inf - Cai) / Cai_tau / 7
+        dCai_dt = drive_channel + (Cai_inf - Cai) / Cai_tau
         Cai += dCai_dt * dt
-        # jax.debug.print("dCai_dt={dCai_dt}\tCai={Cai}", dCai_dt=dCai_dt, Cai=Cai)
         return {"Cai": Cai}
 
     def compute_current(self, states, v, params):
@@ -377,7 +366,7 @@ class KCa(Channel):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         self.channel_params = {
-            f"{self._name}_gKCa": 13e-3,  # S/cm^2
+            f"{self._name}_gKCa": 1.3e-3,  # S/cm^2
             # with an unfortunate name conflict with potassium K
             "eK": -86.6,  # mV
         }
