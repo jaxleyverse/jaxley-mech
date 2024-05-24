@@ -1,6 +1,6 @@
 # jaxley-mech
 
-A [Jaxley](https://github.com/mackelab/jaxley)-based library of ion channels and synapses for retinal neurons.
+A [Jaxley](https://github.com/mackelab/jaxley)-based library of ion channels and synapses for biophysical neuron models.
 
 ## Installation
 
