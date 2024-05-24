@@ -369,6 +369,10 @@ class CaPump(Channel):
     def compute_current(self, states, v, params):
         """The pump does not directly contribute to the membrane current."""
         return 0
+    
+    def init_state(self, voltages, params):
+        """Initialize the state at fixed point of gate dynamics."""
+        return {}
 
 
 class KCa(Channel):
