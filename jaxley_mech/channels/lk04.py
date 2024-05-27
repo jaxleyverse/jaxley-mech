@@ -347,7 +347,7 @@ class CaNernstReversal(Channel):
 
     def init_state(self, v, params):
         """Initialize the state at fixed point of gate dynamics."""
-        return {}
+        return {"Cai": 2e-3}
 
 
 class KCa(Channel):
