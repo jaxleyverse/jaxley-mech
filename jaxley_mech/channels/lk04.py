@@ -1,13 +1,14 @@
 from typing import Dict, Optional, Union
 
+import jax.debug
 import jax.numpy as jnp
-from jax.debug import print
 from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 META = {
     "cell_type": "rod",
+    "species": "Larval tiger salamanders (Ambystoma tigrinum)",
     "reference": "Liu, X.-D., & Kourennyi, D. E. (2004). Effects of Tetraethylammonium on Kx Channels and Simulated Light Response in Rod Photoreceptorss. Annals of Biomedical Engineering, 32(10), 1428–1442. https://doi.org/10.1114/B:ABME.0000042230.99614.8d",
     "code": "https://modeldb.science/64228",
 }
@@ -89,8 +90,8 @@ class Kx(Channel):
     def n_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
         v += 1e-6
-        alpha = 6.6e-4 * save_exp((v + 50) / 11.4)
-        beta = 6.6e-4 * save_exp(-(v + 50) / 11.4)
+        alpha = 6.6e-4 * save_exp((v + 49.9) / 11.4)
+        beta = 6.6e-4 * save_exp(-(v + 49.9) / 11.4)
         return alpha, beta
 
 
@@ -152,7 +153,7 @@ class h(Channel):
             f"{self._name}_eh": -32,  # mV
         }
         self.channel_states = {
-            f"{self._name}_n": 0.1,
+            f"{self._name}_n": 0.000456,
         }
         self.current_name = f"ih"
         self.META = META
@@ -179,7 +180,7 @@ class h(Channel):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha, beta = self.n_gate(v)
-        return {f"{prefix}_h": alpha / (alpha + beta)}
+        return {f"{prefix}_n": alpha / (alpha + beta)}
 
     @staticmethod
     def n_gate(v):
@@ -307,7 +308,7 @@ class CaPump(Channel):
 
     def init_state(self, v, params):
         """Initialize the state at fixed point of gate dynamics."""
-        return {}
+        return {"Cai": 2e-3}
 
 
 class CaNernstReversal(Channel):
@@ -389,7 +390,7 @@ class KCa(Channel):
         prefix = self._name
         Khalf = params[f"{prefix}_Khalf"]
         n = self.n_gate(v, Khalf)
-        return {f"{prefix}_n": n}
+        return {f"{prefix}_n": n, "Cai": 2e-3}
 
     @staticmethod
     def n_gate(Cai, Khalf):
@@ -437,7 +438,7 @@ class ClCa(Channel):
         prefix = self._name
         Khalf = params[f"{prefix}_Khalf"]
         n = self.n_gate(v, Khalf)
-        return {f"{prefix}_n": n}
+        return {f"{prefix}_n": n, "Cai": 0.002}
 
     @staticmethod
     def n_gate(Cai, Khalf):
