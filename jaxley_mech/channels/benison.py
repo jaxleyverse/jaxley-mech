@@ -167,8 +167,14 @@ class Kdr(Channel):
     @staticmethod
     def m_gate(v):
         v += 1e-6
-        alpha = 0.0065 * (v + 30) / (1.0 - save_exp(-0.3 * v))
-        beta = 0.083 * save_exp((v + 15.0) / 15.0)
+
+        # original rate constants do not work
+        # alpha = 0.0065 * (v + 30.0) / (1.0 - jnp.exp(-0.3 * v))
+        # beta = 0.083 * jnp.exp(-(v + 15.0) / 15.0)
+
+        # modified rate constant
+        alpha = -0.0065 * (v + 30.0) / (jnp.exp(-(v + 30.0) / 10.0) - 1.0)
+        beta = 0.083 * jnp.exp(-(v + 15.0) / 15.0)
         return alpha, beta
 
 
