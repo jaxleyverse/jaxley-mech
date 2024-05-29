@@ -66,7 +66,7 @@ class Na(Channel):
             f"{prefix}_gNa": 150e-3,  # S/cm^2
             f"{prefix}_eNa": 75.0,  # mV
         }
-        self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.channel_states = {f"{prefix}_m": 0.1, f"{prefix}_h": 0.0}
         self.current_name = f"iNa"
         self.META = META
 
@@ -173,7 +173,7 @@ class Kdr(Channel):
         # beta = 0.083 * jnp.exp(-(v + 15.0) / 15.0)
 
         # modified rate constant
-        alpha = -0.0065 * (v + 30.0) / (jnp.exp(-(v + 30.0) / 10.0) - 1.0)
+        alpha = 0.0065 * (v + 30.0) / (1.0 - jnp.exp(-(v + 30.0) / 10.0))
         beta = 0.083 * jnp.exp(-(v + 15.0) / 15.0)
         return alpha, beta
 
@@ -250,9 +250,8 @@ class CaL(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gCaL": 2e-3,  # S/cm^2
-            "eCa": 45.0,  # mV
         }
-        self.channel_states = {f"{prefix}_m": 0.1}
+        self.channel_states = {f"{prefix}_m": 0.1, "eCa": 125.0}
         self.current_name = f"iCa"
         self.META = META
 
@@ -280,7 +279,7 @@ class CaL(Channel):
         gCaL = (
             params[f"{prefix}_gCaL"] * (m**2) * 1000
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        current = gCaL * (v - params[f"eCa"])
+        current = gCaL * (v - states["eCa"])
         return current
 
     def init_state(self, v, params):
@@ -307,9 +306,8 @@ class CaN(Channel):
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gCaN": 1.5e-3,  # S/cm^2
-            "eCa": 45.0,  # mV
         }
-        self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.channel_states = {f"{prefix}_m": 1.0, f"{prefix}_h": 0.0, "eCa": 125.0}
         self.current_name = f"iCa"
         self.META = META
 
@@ -336,7 +334,7 @@ class CaN(Channel):
         gCaN = (
             params[f"{prefix}_gCaN"] * (m**2) * h * 1000
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        return gCaN * (v - params[f"eCa"])
+        return gCaN * (v - states[f"eCa"])
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -372,14 +370,14 @@ class CaPumpNS(Channel):
             "F": 96485.3329,  # C/mol (Faraday's constant)
         }
         self.channel_params = {
-            "Cad": 1e-4,  # mM (or K_pump, equilibrium calcium value, calcium dissociation constant)
-            "Cab": 1e-4,  # mM (or C_eq, resting calcium concentration)
+            "Ceq": 1e-4,  # mM (or C_eq, resting calcium concentration)
             "tau_store": 12.5,  # ms (characteristic relaxation time)
+            "K_pump": 1e-4,  # mM (or K_pump, equilibrium calcium value, calcium dissociation constant)
+            "v_pump": 0.0072e-3,  # mM/ms (pump rate)
             "fi": 0.025,  # (dimensionless, fraction of free calcium in the cytoplasm)
-            "v_pump": 0.0072e-3,  # mM/m (pump rate)
         }
         self.channel_states = {
-            "Cai": 5e-5  # mM (global internal calcium concentration)
+            "Cai": 1e-4  # mM (global internal calcium concentration)
         }
         self.current_name = f"iCa"
         self.META = META
@@ -388,21 +386,28 @@ class CaPumpNS(Channel):
         """Update internal calcium concentration due to the pump action."""
         F = self.channel_constants["F"]
 
-        V_cell = jnp.pi * params["radius"] ** 2 * params["length"]
+        V_cell = (
+            jnp.pi * params["radius"] ** 2 * params["length"]
+        )  # volume of the cell, assuming cylindrical
+        # V_cell = (
+        #     4 * jnp.pi * (params["radius"] ** 3) / 3
+        # )  # volume of the cell, assuming spherical
         fi = params["fi"]
-        tau = params["tau_store"]
-        Cai = states["Cai"]
-        Cab = params["Cab"]
+        tau_store = params["tau_store"]
+        Cai = states["Cai"]  # C in eq(6)
+        Ceq = params["Ceq"]
 
         v_pump = params["v_pump"]
-        K_pump = params["Cad"]
-        j_pump = v_pump * (Cai**2 / (Cai**2 + K_pump**2))
+        K_pump = params["K_pump"]
+        j_pump = v_pump * (Cai**4 / (Cai**4 + K_pump**4))
 
         iCa = states["iCa"] / 1_000
 
         driving_channel = -10_000.0 * iCa / (2 * F * V_cell)
-        driving_channel = jnp.maximum(driving_channel, 0.0)
-        dCa_dt = driving_channel - (Cai - Cab) / tau - j_pump
+        driving_channel = select(
+            driving_channel <= 0.0, jnp.zeros_like(driving_channel), driving_channel
+        )
+        dCa_dt = driving_channel - (Cai - Ceq) / tau_store - j_pump
         new_Cai = Cai + fi * dCa_dt * dt
 
         return {"Cai": new_Cai}
@@ -425,7 +430,7 @@ class KCa(Channel):
             "K_KCa": 0.6e-3,  # mM
             "eK": -85.0,  # mV
         }
-        self.channel_states = {"Cai": 0.0001}  # mM, intracellular calcium concentration
+        self.channel_states = {"Cai": 1e-4}  # mM, intracellular calcium concentration
         self.current_name = f"iK"
         self.META = META
 
@@ -440,11 +445,19 @@ class KCa(Channel):
     ):
         """""Return the updated states.""" ""
         prefix = self._name
-        C = states["Cai"]
+        Cai = states["Cai"]
         K_KCa = params["K_KCa"]  # mM
-        gKCa = (
-            params[f"{prefix}_gKCa"] * (C**4 / (C**4 + K_KCa**4)) * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
+
+        # current resulted from the fourth-power will be too small
+        # given the values of Cai and K_KCa provided in the paper
+        # gKCa = (
+        #     params[f"{prefix}_gKCa"] * (Cai**4 / (Cai**4 + K_KCa**4)) * 1000
+        # )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
+
+        # changed to the second-power from fm97
+        x = (Cai / K_KCa) ** 2
+        gKCa = params[f"{prefix}_gKCa"] * (x / (1 + x)) * 1000
+
         return gKCa * (v - params[f"eK"])
 
     def init_state(self, v, params):
