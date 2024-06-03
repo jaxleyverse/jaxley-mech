@@ -13,37 +13,38 @@ class Phototransduction(Channel):
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
+        prefix = self._name
         self.channel_params = {
-            "alpha1": 50.0,  # /s, rate constant of Rh* inactivation
-            "alpha2": 0.0003,  # /s, rate constant of the reaction Rhi -> Rh*
-            "alpha3": 0.03,  # /s, rate constant of the decay of inactive rhodopsin
-            "epsilon": 0.5,  # /s * /μM, rate constant of T* activation
-            "T_tot": 1000.0,  # μM, total transduction
-            "beta1": 2.5,  # /s, rate constant of T* inactivation
-            "tau1": 0.2,  # /s * /μM, rate constant of PDE activation
-            "tau2": 5.0,  # /s, rate constant of PDE inactivation
-            "PDE_tot": 100.0,  # μM, total phosphodiesterase
-            "sigma": 1.0,  # /s * /μM, proportionality constant
-            "gamma_Ca": 50.0,  # /s, rate constant of Ca2+ extrusion in the absence of Ca2+ buffers mediated by the Na+/Ca2+ exchanger
-            "C0": 0.1,  # μM, intracellular Ca2+ concentration at the steady state
-            "b": 0.25,  # μM / s * /pA,proportionality constant between Ca2+ influx and photocurrent
-            "k1": 0.2,  # /s * /μM, on rate constants for binding of Ca2+ to the buffer
-            "k2": 0.8,  # /s, off rate constants for binding of Ca2+ to the buffer
-            "eT": 500,  # μM, low affinity Ca2+ buffer concentration
-            "V_max": 0.4,  # /s, cGMP hydrolysis in dark
-            "A_max": 65.6,  # μM/s, guanylate cyclase activity
-            "K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
-            "J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
+            f"{prefix}_alpha1": 50.0,  # /s, rate constant of Rh* inactivation
+            f"{prefix}_alpha2": 0.0003,  # /s, rate constant of the reaction Rhi -> Rh*
+            f"{prefix}_alpha3": 0.03,  # /s, rate constant of the decay of inactive rhodopsin
+            f"{prefix}_epsilon": 0.5,  # /s * /μM, rate constant of T* activation
+            f"{prefix}_T_tot": 1000.0,  # μM, total transduction
+            f"{prefix}_beta1": 2.5,  # /s, rate constant of T* inactivation
+            f"{prefix}_tau1": 0.2,  # /s * /μM, rate constant of PDE activation
+            f"{prefix}_tau2": 5.0,  # /s, rate constant of PDE inactivation
+            f"{prefix}_PDE_tot": 100.0,  # μM, total phosphodiesterase
+            f"{prefix}_sigma": 1.0,  # /s * /μM, proportionality constant
+            f"{prefix}_gamma_Ca": 50.0,  # /s, rate constant of Ca2+ extrusion in the absence of Ca2+ buffers mediated by the Na+/Ca2+ exchanger
+            f"{prefix}_C0": 0.1,  # μM, intracellular Ca2+ concentration at the steady state
+            f"{prefix}_b": 0.25,  # μM / s * /pA,proportionality constant between Ca2+ influx and photocurrent
+            f"{prefix}_k1": 0.2,  # /s * /μM, on rate constants for binding of Ca2+ to the buffer
+            f"{prefix}_k2": 0.8,  # /s, off rate constants for binding of Ca2+ to the buffer
+            f"{prefix}_eT": 500,  # μM, low affinity Ca2+ buffer concentration
+            f"{prefix}_V_max": 0.4,  # /s, cGMP hydrolysis in dark
+            f"{prefix}_A_max": 65.6,  # μM/s, guanylate cyclase activity
+            f"{prefix}_K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
+            f"{prefix}_J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
         }
         self.channel_states = {
-            "cGMP": 2.0,  # μM, cGMP concentration
-            "Ca": 0.3,  # μM, intracellular Ca concentration
-            "Cab": 34.9,  # μM, Bound intra Ca concentration
-            "Rh": 0.0,  # μM, Rhodopsin concentration
-            "Rhi": 0.0,  # μM, Activated rhodopsin concentration
-            "Tr": 0.0,  # μM, Activated transducin concentration
-            "PDE": 0.0,  # μM, Activated phosphodiesterase concentration
-            "Jhv": 0.0,  # Rh*/s, theoretical flux of photoisomerization
+            f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
+            f"{prefix}_Ca": 0.3,  # μM, intracellular Ca concentration
+            f"{prefix}_Cab": 34.9,  # μM, Bound intra Ca concentration
+            f"{prefix}_Rh": 0.0,  # μM, Rhodopsin concentration
+            f"{prefix}_Rhi": 0.0,  # μM, Activated rhodopsin concentration
+            f"{prefix}_Tr": 0.0,  # μM, Activated transducin concentration
+            f"{prefix}_PDE": 0.0,  # μM, Activated phosphodiesterase concentration
+            f"{prefix}_Jhv": 0.0,  # Rh*/s, theoretical flux of photoisomerization
         }
         self.current_name = f"iPhoto"
         self.META = {
@@ -63,24 +64,46 @@ class Phototransduction(Channel):
         **kwargs,
     ):
         """Update state of phototransduction variables."""
-        Jhv = kwargs["Jhv"] if "Jhv" in kwargs else states["Jhv"]
+        prefix = self._name
+        Jhv = states[f"{prefix}_Jhv"]
 
-        Rh, Rhi, Tr, PDE = states["Rh"], states["Rhi"], states["Tr"], states["PDE"]
-        Ca, Cab, cGMP = states["Ca"], states["Cab"], states["cGMP"]
-        alpha1, alpha2, alpha3 = params["alpha1"], params["alpha2"], params["alpha3"]
-        beta1, tau1, tau2 = params["beta1"], params["tau1"], params["tau2"]
-        T_tot, PDE_tot = params["T_tot"], params["PDE_tot"]
-        gamma_Ca, k1, k2 = params["gamma_Ca"], params["k1"], params["k2"]
-        b, V_max, A_max, K_c = (
-            params["b"],
-            params["V_max"],
-            params["A_max"],
-            params["K_c"],
+        Rh, Rhi, Tr, PDE = (
+            states[f"{prefix}_Rh"],
+            states[f"{prefix}_Rhi"],
+            states[f"{prefix}_Tr"],
+            states[f"{prefix}_PDE"],
         )
-        sigma, epsilon = params["sigma"], params["epsilon"]
-        C0 = params["C0"]
-        eT = params["eT"]
-        J_max = params["J_max"]
+        Ca, Cab, cGMP = (
+            states[f"{prefix}_Ca"],
+            states[f"{prefix}_Cab"],
+            states[f"{prefix}_cGMP"],
+        )
+        alpha1, alpha2, alpha3 = (
+            params[f"{prefix}_alpha1"],
+            params[f"{prefix}_alpha2"],
+            params[f"{prefix}_alpha3"],
+        )
+        beta1, tau1, tau2 = (
+            params[f"{prefix}_beta1"],
+            params[f"{prefix}_tau1"],
+            params[f"{prefix}_tau2"],
+        )
+        T_tot, PDE_tot = params[f"{prefix}_T_tot"], params[f"{prefix}_PDE_tot"]
+        gamma_Ca, k1, k2 = (
+            params[f"{prefix}_gamma_Ca"],
+            params[f"{prefix}_k1"],
+            params[f"{prefix}_k2"],
+        )
+        b, V_max, A_max, K_c = (
+            params[f"{prefix}_b"],
+            params[f"{prefix}_V_max"],
+            params[f"{prefix}_A_max"],
+            params[f"{prefix}_K_c"],
+        )
+        sigma, epsilon = params[f"{prefix}_sigma"], params[f"{prefix}_epsilon"]
+        C0 = params[f"{prefix}_C0"]
+        eT = params[f"{prefix}_eT"]
+        J_max = params[f"{prefix}_J_max"]
 
         J_Ca = J_max * cGMP**3 / (cGMP**3 + 1000)
 
@@ -111,39 +134,38 @@ class Phototransduction(Channel):
         Cab_new = Cab + dCab_dt * dt
         cGMP_new = cGMP + dcGMP_dt * dt
 
-        new_states = {
-            "Rh": Rh_new,
-            "Rhi": Rhi_new,
-            "Tr": Tr_new,
-            "PDE": PDE_new,
-            "Ca": Ca_new,
-            "Cab": Cab_new,
-            "cGMP": cGMP_new,
+        return {
+            f"{prefix}_Rh": Rh_new,
+            f"{prefix}_Rhi": Rhi_new,
+            f"{prefix}_Tr": Tr_new,
+            f"{prefix}_PDE": PDE_new,
+            f"{prefix}_Ca": Ca_new,
+            f"{prefix}_Cab": Cab_new,
+            f"{prefix}_cGMP": cGMP_new,
+            f"{prefix}_Jhv": Jhv,
         }
-        if not "Jhv" in kwargs:
-            new_states.update({"Jhv": Jhv})
-
-        return new_states
 
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Compute the current through the phototransduction channel."""
-        cGMP = states["cGMP"]
-        J_max = params["J_max"]
+        prefix = self._name
+        cGMP = states[f"{prefix}_cGMP"]
+        J_max = params[f"{prefix}_J_max"]
         J = J_max * cGMP**3 / (cGMP**3 + 1000)
         current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)
         return current
 
     def init_state(self, v, params):
         """Initialize the state at fixed point of gate dynamics."""
+        prefix = self._name
         return {
-            "cGMP": 2.0,  # μM, cGMP concentration
-            "Ca": 0.3,  # μM, intracellular Ca concentration
-            "Cab": 34.9,  # μM, Bound intra Ca concentration
-            "Rh": 0.0,  # μM, Rhodopsin concentration
-            "Rhi": 0.0,  # μM, Activated rhodopsin concentration
-            "Tr": 0.0,  # μM, Activated transducin concentration
-            "PDE": 0.0,  # μM, Activated phosphodiesterase concentration
-            "Jhv": 0.0,  # Rh*/s, theoretical flux of photoisomerization
+            f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
+            f"{prefix}_Ca": 0.3,  # μM, intracellular Ca concentration
+            f"{prefix}_Cab": 34.9,  # μM, Bound intra Ca concentration
+            f"{prefix}_Rh": 0.0,  # μM, Rhodopsin concentration
+            f"{prefix}_Rhi": 0.0,  # μM, Activated rhodopsin concentration
+            f"{prefix}_Tr": 0.0,  # μM, Activated transducin concentration
+            f"{prefix}_PDE": 0.0,  # μM, Activated phosphodiesterase concentration
+            f"{prefix}_Jhv": 0.0,  # Rh*/s, theoretical flux of photoisomerization
         }
