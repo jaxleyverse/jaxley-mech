@@ -48,6 +48,8 @@ class Phototransduction(Channel):
         }
         self.current_name = f"iPhoto"
         self.META = {
+            "cell_type": "rod",
+            "species": "salamander (Ambystoma tigrinum)",
             "reference": [
                 "Torre, V., Forti, S., Menini, A., & Campani, M. (1990). Model of Phototransduction in Retinal Rods. Cold Spring Harbor Symposia on Quantitative Biology, 55(0), 563–573. https://doi.org/10.1101/SQB.1990.055.01.054",
                 "Kamiyama, Y., Wu, S. M., & Usui, S. (2009). Simulation analysis of bandpass filtering properties of a rod photoreceptor network. Vision Research, 49(9), 970–978. https://doi.org/10.1016/j.visres.2009.03.003",
