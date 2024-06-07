@@ -65,6 +65,8 @@ class Phototransduction(Channel):
     ):
         """Update state of phototransduction variables."""
         prefix = self._name
+        dt /= 1000  # the original implementation is in the time scale of seconds
+        # but the solver is in milliseconds
         Jhv = states[f"{prefix}_Jhv"]
 
         Rh, Rhi, Tr, PDE = (
