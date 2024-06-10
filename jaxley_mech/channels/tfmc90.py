@@ -33,6 +33,7 @@ class Phototransduction(Channel):
             f"{prefix}_eT": 500,  # μM, low affinity Ca2+ buffer concentration
             f"{prefix}_V_max": 0.4,  # /s, cGMP hydrolysis in dark
             f"{prefix}_A_max": 65.6,  # μM/s, guanylate cyclase activity
+            f"{prefix}_K": 10,  # # μM, half-saturation constant for cGMP hydrolysis
             f"{prefix}_K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
             f"{prefix}_J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
         }
@@ -107,9 +108,10 @@ class Phototransduction(Channel):
         sigma, epsilon = params[f"{prefix}_sigma"], params[f"{prefix}_epsilon"]
         C0 = params[f"{prefix}_C0"]
         eT = params[f"{prefix}_eT"]
+        K = params[f"{prefix}_K"]
         J_max = params[f"{prefix}_J_max"]
 
-        J_Ca = J_max * cGMP**3 / (cGMP**3 + 1000)
+        J_Ca = J_max * cGMP**3 / (cGMP**3 + K**3)
 
         # Update Rhodopsin concentrations
         dRh_dt = Jhv - alpha1 * Rh + alpha2 * Rhi
