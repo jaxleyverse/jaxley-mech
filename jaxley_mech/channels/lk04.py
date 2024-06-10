@@ -143,19 +143,19 @@ class Kv(Channel):
         return alpha, beta
 
 
-class h(Channel):
+class Hyper(Channel):
     """Rod Hyperpolarization-activated h Channel"""
 
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         self.channel_params = {
-            f"{self._name}_gh": 2.5e-3,  # S/cm^2
-            f"{self._name}_eh": -32,  # mV
+            f"{self._name}_gHyper": 2.5e-3,  # S/cm^2
+            f"{self._name}_eHyper": -32,  # mV
         }
         self.channel_states = {
             f"{self._name}_n": 0.000456,
         }
-        self.current_name = f"ih"
+        self.current_name = f"iHyper"
         self.META = META
 
     def update_states(
@@ -173,8 +173,8 @@ class h(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         ns = states[f"{prefix}_n"]
-        h_cond = params[f"{prefix}_gh"] * ns * 1000
-        return h_cond * (v - params[f"{prefix}_eh"])
+        h_cond = params[f"{prefix}_gHyper"] * ns * 1000
+        return h_cond * (v - params[f"{prefix}_eHyper"])
 
     def init_state(self, v, params):
         """Initialize the state such at fixed point of gate dynamics."""
