@@ -108,10 +108,8 @@ class Phototransduction(Channel):
         sigma, epsilon = params[f"{prefix}_sigma"], params[f"{prefix}_epsilon"]
         C0 = params[f"{prefix}_C0"]
         eT = params[f"{prefix}_eT"]
-        K = params[f"{prefix}_K"]
-        J_max = params[f"{prefix}_J_max"]
 
-        J_Ca = J_max * cGMP**3 / (cGMP**3 + K**3)
+        J_Ca = -states[self.current_name]
 
         # Update Rhodopsin concentrations
         dRh_dt = Jhv - alpha1 * Rh + alpha2 * Rhi
@@ -157,9 +155,10 @@ class Phototransduction(Channel):
         """Compute the current through the phototransduction channel."""
         prefix = self._name
         cGMP = states[f"{prefix}_cGMP"]
-        J_max = params[f"{prefix}_J_max"]
-        J = J_max * cGMP**3 / (cGMP**3 + 1000)
+        J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
+        J = J_max * cGMP**3 / (cGMP**3 + K**3)
         current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)
+
         return current
 
     def init_state(self, v, params):
