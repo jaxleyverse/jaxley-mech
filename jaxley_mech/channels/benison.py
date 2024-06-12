@@ -370,7 +370,7 @@ class CaPumpNS(Channel):
             "F": 96485.3329,  # C/mol (Faraday's constant)
         }
         self.channel_params = {
-            "Ceq": 1e-4,  # mM (or C_eq, resting calcium concentration)
+            "Ceq": 1e-4,  # mM (or C_eq, resting calcium concentration, 0.1 μM = 1e-4 mM)
             "tau_store": 12.5,  # ms (characteristic relaxation time)
             "K_pump": 1e-4,  # mM (or K_pump, equilibrium calcium value, calcium dissociation constant)
             "v_pump": 0.0072e-3,  # mM/ms (pump rate)
