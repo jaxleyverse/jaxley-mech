@@ -11,5 +11,5 @@ def prettify(outputs_array, rec_states, dt):
     """For single compartment model output only."""
     outputs_length = outputs_array.shape[1]
     outputs_dict = {key: outputs_array[i] for (i, key) in enumerate(rec_states)}
-    outputs_dict["time"] = jnp.arange(0, outputs_length * dt, dt)
+    outputs_dict["time"] = jnp.arange(0, outputs_length * dt, dt)[:outputs_length]
     return outputs_dict

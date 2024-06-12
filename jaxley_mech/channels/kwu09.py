@@ -306,8 +306,8 @@ class CaPump(Channel):
     def update_states(self, states, dt, v, params):
         """Update the states based on differential equations."""
         prefix = self._name
+        v += 1e-6  # jitter to avoid division by zero
         dt /= 1000  # convert to seconds
-        # v += 1e-6
         F, V1, V2, D_Ca, delta, S1 = (
             params[f"{prefix}_F"],
             params[f"{prefix}_V1"],
