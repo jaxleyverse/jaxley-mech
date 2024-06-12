@@ -112,8 +112,8 @@ class Phototransduction(Channel):
         J_Ca = -states[self.current_name]
 
         # Update Rhodopsin concentrations
-        dRh_dt = Jhv - alpha1 * Rh + alpha2 * Rhi
-        dRhi_dt = alpha1 * Rh - (alpha2 + alpha3) * Rhi
+        dRh_dt = Jhv - alpha1 * Rh + alpha2 * Rhi  # eq(8.1) of Torre et al. (1990)
+        dRhi_dt = alpha1 * Rh - (alpha2 + alpha3) * Rhi  # eq(8.2)
 
         # Update Transducin and PDE concentrations
         dTr_dt = (
@@ -121,13 +121,17 @@ class Phototransduction(Channel):
             - beta1 * Tr
             + tau2 * PDE
             - tau1 * Tr * (PDE_tot - PDE)
-        )
-        dPDE_dt = tau1 * Tr * (PDE_tot - PDE) - tau2 * PDE
+        )  # eq(8.3)
+        dPDE_dt = tau1 * Tr * (PDE_tot - PDE) - tau2 * PDE  # eq(8.4)
 
         # Update cGMP and G-protein concentrations
-        dCa_dt = b * J_Ca - gamma_Ca * (Ca - C0) - k1 * (eT - Cab) * Ca + k2 * Cab
-        dCab_dt = k1 * (eT - Cab) * Ca - k2 * Cab
-        dcGMP_dt = A_max / (1 + (Ca / K_c) ** 4) - cGMP * (V_max + sigma * PDE)
+        dCa_dt = (
+            b * J_Ca - gamma_Ca * (Ca - C0) - k1 * (eT - Cab) * Ca + k2 * Cab
+        )  # eq(9)
+        dCab_dt = k1 * (eT - Cab) * Ca - k2 * Cab  # eq(10)
+        dcGMP_dt = A_max / (1 + (Ca / K_c) ** 4) - cGMP * (
+            V_max + sigma * PDE
+        )  # eq(11)
 
         # Update states
         Rh_new = Rh + dRh_dt * dt
@@ -156,9 +160,8 @@ class Phototransduction(Channel):
         prefix = self._name
         cGMP = states[f"{prefix}_cGMP"]
         J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
-        J = J_max * cGMP**3 / (cGMP**3 + K**3)
-        current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)
-
+        J = J_max * cGMP**3 / (cGMP**3 + K**3)  # eq(12)
+        current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)  # from Kamiyama et al. (2009)
         return current
 
     def init_state(self, v, params):
