@@ -15,19 +15,20 @@ class Phototransduction(Channel):
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
-            f"{prefix}_alpha1": 50.0,  # /s, rate constant of Rh* inactivation
-            f"{prefix}_alpha2": 0.0003,  # /s, rate constant of the reaction Rhi -> Rh*
-            f"{prefix}_alpha3": 0.03,  # /s, rate constant of the decay of inactive rhodopsin
+            f"{prefix}_alpha1": 20.0,  # /s, rate constant of Rh* inactivation
+            f"{prefix}_alpha2": 0.0005,  # /s, rate constant of the reaction Rhi -> Rh*
+            f"{prefix}_alpha3": 0.05,  # /s, rate constant of the decay of inactive rhodopsin
             f"{prefix}_epsilon": 0.5,  # /s * /μM, rate constant of T* activation
             f"{prefix}_T_tot": 1000.0,  # μM, total transduction
-            f"{prefix}_beta1": 2.5,  # /s, rate constant of T* inactivation
-            f"{prefix}_tau1": 0.2,  # /s * /μM, rate constant of PDE activation
-            f"{prefix}_tau2": 5.0,  # /s, rate constant of PDE inactivation
+            f"{prefix}_beta1": 10.6,  # /s, rate constant of T* inactivation
+            f"{prefix}_tau1": 0.1,  # /s * /μM, rate constant of PDE activation
+            f"{prefix}_tau2": 10.0,  # /s, rate constant of PDE inactivation
             f"{prefix}_PDE_tot": 100.0,  # μM, total phosphodiesterase
             f"{prefix}_sigma": 1.0,  # /s * /μM, proportionality constant
             f"{prefix}_gamma_Ca": 50.0,  # /s, rate constant of Ca2+ extrusion in the absence of Ca2+ buffers mediated by the Na+/Ca2+ exchanger
             f"{prefix}_C0": 0.1,  # μM, intracellular Ca2+ concentration at the steady state
-            f"{prefix}_b": 0.25,  # μM / s * /pA,proportionality constant between Ca2+ influx and photocurrent
+            f"{prefix}_b": 0.25,  # μM / s * /pA,proportionality constant between Ca2+ influx and photocurrent,
+            # b is set to 0.625 in the paper, but only with 0.25 can we reproduce Figure 2B and 2D
             f"{prefix}_k1": 0.2,  # /s * /μM, on rate constants for binding of Ca2+ to the buffer
             f"{prefix}_k2": 0.8,  # /s, off rate constants for binding of Ca2+ to the buffer
             f"{prefix}_eT": 500,  # μM, low affinity Ca2+ buffer concentration
@@ -120,7 +121,7 @@ class Phototransduction(Channel):
             epsilon * Rh * (T_tot - Tr)
             - beta1 * Tr
             + tau2 * PDE
-            - tau1 * Tr * (PDE_tot - PDE)
+            # - tau1 * Tr * (PDE_tot - PDE) # not in torre et al, 1990, only in Kamiyama et al. (1996 / 2009)
         )  # eq(8.3)
         dPDE_dt = tau1 * Tr * (PDE_tot - PDE) - tau2 * PDE  # eq(8.4)
 
