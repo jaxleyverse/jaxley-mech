@@ -61,6 +61,7 @@ class Phototransduction(Channel):
         prefix = self._name
         dt /= 1000
 
+        # parameters
         gamma, sigma, phi, eta, q, beta, S_max, K_GC, m = (
             params[f"{prefix}_gamma"],
             params[f"{prefix}_sigma"],
@@ -73,14 +74,15 @@ class Phototransduction(Channel):
             params[f"{prefix}_m"],
         )
         k, n = params[f"{prefix}_k"], params[f"{prefix}_n"]
-        I_dark, C_dark, G_dark = (
-            params[f"{prefix}_I_dark"],
+        C_dark, G_dark = (
             params[f"{prefix}_Ca_dark"],
             params[f"{prefix}_G_dark"],
         )
+        I_dark = G_dark**n * k
         q = beta * C_dark / I_dark
         S_max = eta / phi * G_dark * (1 + (C_dark / K_GC) ** m)
 
+        # states
         Stim = states[f"{prefix}_Stim"]
         P, R, G, S, C = (
             states[f"{prefix}_P"],
@@ -89,7 +91,7 @@ class Phototransduction(Channel):
             states[f"{prefix}_S"],
             states[f"{prefix}_C"],
         )
-        I = states[self.current_name]
+        I = -states[self.current_name]
 
         # stimulus activates opsin molecules
         dR_dt = gamma * Stim - sigma * R  # eq(1)
@@ -101,7 +103,6 @@ class Phototransduction(Channel):
         dG_dt = S - P * G  # eq(3)
 
         # ca2+
-        I = k * G**n
         dC_dt = q * I - beta * C  # eq(5)
         # jax.debug.print("dC_dt={dC_dt}", dC_dt=dC_dt)
 
