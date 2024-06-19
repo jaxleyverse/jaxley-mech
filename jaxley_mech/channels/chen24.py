@@ -23,11 +23,9 @@ class Phototransduction(Channel):
             f"{prefix}_G_dark": 20,  # μM, Dark GMP concentration
             f"{prefix}_k": 0.01,  # pA^2μM^-3, cGMP-to_current constant
             f"{prefix}_h": 4,  # unitless, Ca2+ GC cooperativity
-            f"{prefix}_Ca_dark": 1,  # μM, Dark Ca2+ concentration
+            f"{prefix}_C_dark": 1,  # μM, Dark Ca2+ concentration
             f"{prefix}_beta": 9,  # β, /s, Ca2+ extrusion rate constant
             f"{prefix}_n": 3,  # unitless, cGMP channel cooperativity
-            f"{prefix}_q": 1.0,  # unitless, Fraction of current carried by calcium
-            f"{prefix}_S_max": 30909,  # /s, maximal cGMP synthesis rate by GC
             f"{prefix}_K_GC": 0.5,  # μM, Ca2+ GC affinity
             f"{prefix}_m": 4,  # unitless, Ca2+ GC cooperativity
             f"{prefix}_I_dark": 20**3 * 0.01,  # pA, Dark current
@@ -42,10 +40,10 @@ class Phototransduction(Channel):
         }
         self.current_name = f"iPhoto"
         self.META = {
-            "cell_type": "rod",
-            "species": "monkeys (Macaca fascicularis, nemestrina, mulatta)",
+            "cell_type": "rod and cones",
+            "species": "monkey and mouse",
             "reference": [
-                "Angueyra, J. M., Baudin, J., Schwartz, G. W., & Rieke, F. (2022). Predicting and Manipulating Cone Responses to Naturalistic Inputs. The Journal of Neuroscience, 42(7), 1254–1274. https://doi.org/10.1523/JNEUROSCI.0793-21.2021"
+                "Chen, Q., Ingram, N. T., Baudin, J., Angueyra, J. M., Sinha, R., & Rieke, F. (2024). Light-adaptation clamp: A tool to predictably manipulate photoreceptor light responses. https://doi.org/10.7554/eLife.93795.1",
             ],
         }
 
@@ -62,20 +60,17 @@ class Phototransduction(Channel):
         dt /= 1000
 
         # parameters
-        gamma, sigma, phi, eta, q, beta, S_max, K_GC, m = (
+        gamma, sigma, phi, eta, beta, K_GC = (
             params[f"{prefix}_gamma"],
             params[f"{prefix}_sigma"],
             params[f"{prefix}_phi"],
             params[f"{prefix}_eta"],
-            params[f"{prefix}_q"],
             params[f"{prefix}_beta"],
-            params[f"{prefix}_S_max"],
             params[f"{prefix}_K_GC"],
-            params[f"{prefix}_m"],
         )
-        k, n = params[f"{prefix}_k"], params[f"{prefix}_n"]
+        k, m, n = params[f"{prefix}_k"], params[f"{prefix}_m"], params[f"{prefix}_n"]
         C_dark, G_dark = (
-            params[f"{prefix}_Ca_dark"],
+            params[f"{prefix}_C_dark"],
             params[f"{prefix}_G_dark"],
         )
         I_dark = G_dark**n * k
@@ -99,17 +94,14 @@ class Phototransduction(Channel):
         # active opsin molecules activate phosphodiesterase (PDE) molecules through transducin
         dP_dt = R - phi * P + eta  # eq(2)
 
+        # ca2+
+        dC_dt = q * I - beta * C  # eq(5)
+
         # concentration of cGMP in the outer segment depends on the activity of PDE
         dG_dt = S - P * G  # eq(3)
 
-        # ca2+
-        dC_dt = q * I - beta * C  # eq(5)
-        # jax.debug.print("dC_dt={dC_dt}", dC_dt=dC_dt)
-
-        # S
-        S_new = S_max / (1 + (C / K_GC) ** m)
-
         # Update states
+        S_new = S_max / (1 + (C / K_GC) ** m)
         R_new = R + dR_dt * dt
         P_new = P + dP_dt * dt
         G_new = G + dG_dt * dt
@@ -140,17 +132,17 @@ class Phototransduction(Channel):
     def init_state(self, v, params):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
-        eta, phi, G_dark, Ca_dark = (
+        eta, phi, G_dark, C_dark = (
             params[f"{prefix}_eta"],
             params[f"{prefix}_phi"],
             params[f"{prefix}_G_dark"],
-            params[f"{prefix}_Ca_dark"],
+            params[f"{prefix}_C_dark"],
         )
         return {
             f"{prefix}_R": 0.0,
             f"{prefix}_P": eta / phi,
             f"{prefix}_G": G_dark,
             f"{prefix}_S": G_dark * eta / phi,
-            f"{prefix}_C": Ca_dark,
+            f"{prefix}_C": C_dark,
             f"{prefix}_Stim": 0.0,
         }
