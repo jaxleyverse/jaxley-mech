@@ -19,7 +19,7 @@ class mGluR6(Synapse):
             f"{name}_gTRPM1": 1.65 * 10**-2,  # Maximum conductance (μS)
             f"{name}_eTRPM1": -11.5,  # Reversal potential (mV)
             f"{name}_KGlu": 50,  # Max transmitter concentration (mM)
-            f"{name}_CGlu": 200,  # Constant of transmitted release
+            f"{name}_CGlu": 864,  # Constant of transmitted release (from eqn solving)
             f"{name}_Vhalf": -22,  # Voltage of half-saturation (mV)
             f"{name}_kGlu": 4.3,  # Slope factor of glutamate release
             f"{name}_r0": 0,  # Baseline glutamate release rate
