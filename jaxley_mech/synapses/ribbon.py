@@ -52,11 +52,12 @@ class RibbonSynapse(Synapse):
             + params[f"{name}_p_r"] * u[f"{name}_ribboned"]
             - new_released
         )
-        new_docked = jnp.maximum(new_docked, params[f"{name}_D_max"])
+        new_docked = jnp.clip(new_docked, 0, params[f"{name}_D_max"])
 
         # Movement to the ribbon
-        new_ribboned = u[f"{name}_ribboned"] + params[f"{name}_lam"] - new_docked
-        new_ribboned = jnp.maximum(new_ribboned, params[f"{name}_R_max"])
+        dock_moved = jnp.maximum(0, new_docked - u[f"{name}_docked"])
+        new_ribboned = u[f"{name}_ribboned"] + params[f"{name}_lam"] - dock_moved
+        new_ribboned = jnp.clip(new_ribboned, 0, params[f"{name}_R_max"])
 
         # Single exponential decay to model postsynaptic conductance (Dayan & Abbott)
         P_rel = new_released / params[f"{name}_D_max"]

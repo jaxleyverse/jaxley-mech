@@ -16,16 +16,16 @@ class mGluR6(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gTRPM1": 1.65 * 10**-2,  # Maximum conductance (μS)
+            f"{name}_gTRPM1": 1.65 * 10**-3,  # Maximum conductance (μS)
             f"{name}_eTRPM1": -11.5,  # Reversal potential (mV)
-            f"{name}_KGlu": 50,  # Max transmitter concentration (mM)
+            f"{name}_KGlu": 50,  # Max transmitter concentration (uM)
             f"{name}_CGlu": 864,  # Constant of transmitted release (from eqn solving)
             f"{name}_Vhalf": -22,  # Voltage of half-saturation (mV)
             f"{name}_kGlu": 4.3,  # Slope factor of glutamate release
             f"{name}_r0": 0,  # Baseline glutamate release rate
         }
         self.synapse_states = {
-            f"{name}_Glu": 0,  # Neurotransmitter concentration
+            f"{name}_Glu": 25,  # Neurotransmitter concentration (uM)
             f"{name}_mTRPM1": 0,  # Channel activation
         }
         self.META = META
