@@ -323,7 +323,7 @@ class CaPump(Channel):
     ):
         super().__init__(name)
         self.channel_params = {
-            f"{self.name}_taur": 1e10,  # Time constant of calcium removal in ms
+            f"{self.name}_taur": 10,  # Time constant of calcium removal in ms
             f"{self.name}_cainf": 2.4e-4,  # Equilibrium calcium concentration in mM
         }
         self.channel_states = {
