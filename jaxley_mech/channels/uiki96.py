@@ -60,8 +60,8 @@ class Kv(Channel):
             "eK": -58,  # mV
         }
         self.channel_states = {
-            f"{self._name}_m": 0.0345,  # Initial value for n gating variable
-            f"{self._name}_h": 0.8594,  # Initial value for n gating variable
+            f"{self._name}_m": 0.824374,  # Initial value for n gating variable
+            f"{self._name}_h": 0.109794,  # Initial value for n gating variable
         }
         self.current_name = f"iKv"
         self.META = META
@@ -167,15 +167,18 @@ class KA(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
         v += 1e-6
-        alpha = 1_200 / (save_exp(-(v - 50) / 28) + 1)
-        beta = 6 * save_exp(-v / 10)
+        # alpha = 1_200 / (save_exp(-(v - 50) / 28) + 1)
+        # beta = 6 * save_exp(-v / 10)
+        alpha = 2_400 / (save_exp(-(v - 50) / 28) + 1)
+        beta = 12 * save_exp(-v / 10)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
         v += 1e-6
         alpha = 0.045 * save_exp(-v / 13)
-        beta = 75 / ((save_exp(-v + 50) / 15) + 1)
+        # beta = 75 / ((save_exp(-v + 50) / 15) + 1)
+        beta = 75 / (save_exp(-(v + 30) / 15) + 1)
         return alpha, beta
 
 
@@ -190,11 +193,11 @@ class Hyper(Channel):
             f"{prefix}_eHyper": -17.7,  # mV
         }
         self.channel_states = {
-            f"{prefix}_C1": 0.646,
-            f"{prefix}_C2": 0.298,
-            f"{prefix}_O1": 0.0517,
-            f"{prefix}_O2": 0.00398,
-            f"{prefix}_O3": 0.000115,
+            f"{prefix}_C1": 0.92823,
+            f"{prefix}_C2": 0.05490,
+            f"{prefix}_O1": 0.00122,
+            f"{prefix}_O2": 1.20061e-5,
+            f"{prefix}_O3": 4.43854e-8,
         }
         self.current_name = f"iHyper"
         self.META = {
@@ -273,7 +276,7 @@ class Ca(Channel):
             f"{self._name}_gCa": 1.1e-3,  # S/cm^2
         }
         self.channel_states = {
-            f"{self._name}_m": 0.436,  # Initial value for m gating variable
+            f"{self._name}_m": 0.290203,  # Initial value for m gating variable
             f"{self._name}_h": 0.5,  # Initial value for h gating variable
             "eCa": 40.0,  # mV, dependent on CaNernstReversal
         }
@@ -321,7 +324,7 @@ class Ca(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         v += 1e-6
-        alpha = 12_000 * (120 - v) / (save_exp(-(v - 120) / 25) - 1)
+        alpha = 12_000 * (120 - v) / (save_exp((120 - v) / 25) - 1)
         beta = 40_000 / (save_exp((v + 68) / 25) + 1)
         return alpha, beta
 
@@ -329,140 +332,134 @@ class Ca(Channel):
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         v += 1e-6
-        h = save_exp(-(v - 50) / 11) / (save_exp(-(v - 50) / 11) + 1)
+        h = save_exp((50 - v) / 11) / (save_exp((50 - v) / 11) + 1)
         return h
 
 
-# class CaPump(Channel):
-#     def __init__(
-#         self,
-#         name: Optional[str] = None,
-#     ):
-#         super().__init__(name)
-#         name = self._name
-#         self.channel_params = {
-#             f"{name}_F": 9.648e4,  # Faraday's constant in C/mol
-#             f"{name}_Vs": 1.692e-13,  # Compartment volume 1 (volume of the submembrance area) in dm^3
-#             f"{name}_Vd": 7.356e-13,  # Compartment volume 2 (volume of the deep intracellular area) in dm^3
-#             f"{name}_D_Ca": 6e-8,  # Ca Diffusion coefficient in dm^2/s
-#             f"{name}_d_sd": 5.8e-5,  # Membrane thickness in dm (distance between submembrance area and the deep intracellular area)
-#             f"{name}_S_sd": 4e-8,  # Surface area in dm^2 (surface area of the submembrance and the deep intracellular area shpreical boundary)
-#             f"{name}_alpha_bl": 0.4,  # Binding rate constant 1 in s^-1μM^-1 (on rate constant to low-affinity buffer)
-#             f"{name}_beta_bl": 0.2,  # Binding rate constant 2 in s^-1 (off rate constant to low-affinity buffer)
-#             f"{name}_alpha_bh": 100,  # Unbinding rate constant 1 in s^-1μM^-1 (on rate constant to high-affinity buffer)
-#             f"{name}_beta_bh": 90,  # Unbinding rate constant 2 in s^-1 (off rate constant to high-affinity buffer)
-#             f"{name}_Cab_l_max": 400,  # total low-affinity buffer concentration in μM
-#             f"{name}_Cab_h_max": 300,  # total high-affinity buffer concentration in μM
-#             f"{name}_Jex": 150.0,  # External current (maximum Na-Ca exchanger current) in pA
-#             f"{name}_Jex2": 150.0,  # External current (maximum Ca-ATPase exchanger current) in pA
-#             f"{name}_Kex": 2.3,  # External calcium concentration factor in μM
-#             f"{name}_Kex2": 0.5,  # External calcium concentration factor 2 in μM
-#             f"{name}_Cae": 0.05,  # External calcium concentration in μM
-#         }
-#         self.channel_states = {
-#             f"Cai": 0.0966,  # Initial internal calcium concentration in μM
-#             f"{name}_Cad": 0.0966,  # Free intracellular calcium concentration in μM
-#             f"{name}_Cab_ls": 80.929,  # Bound buffer f concentration in μM
-#             f"{name}_Cab_hs": 29.068,  # Bound buffer f concentration in μM
-#             f"{name}_Cab_ld": 80.929,  # Bound buffer h concentration in μM
-#             f"{name}_Cab_hd": 29.068,  # Bound buffer h concentration in μM
-#         }
-#         self.current_name = f"iCa"
-#         self.META = META
+class CaPump(Channel):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+    ):
+        super().__init__(name)
+        name = self._name
+        self.channel_params = {
+            f"{name}_F": 9.648e4,  # Faraday's constant in C/mol
+            f"{name}_Vs": 1.692e-13,  # Compartment volume 1 (volume of the submembrance area) in dm^3
+            f"{name}_Vd": 7.356e-13,  # Compartment volume 2 (volume of the deep intracellular area) in dm^3
+            f"{name}_D_Ca": 6e-8,  # Ca Diffusion coefficient in dm^2/s
+            f"{name}_d_sd": 5.8e-5,  # Membrane thickness in dm (distance between submembrance area and the deep intracellular area)
+            f"{name}_S_sd": 4e-8,  # Surface area in dm^2 (surface area of the submembrance and the deep intracellular area shpreical boundary)
+            f"{name}_alpha_bl": 0.4,  # Binding rate constant 1 in s^-1μM^-1 (on rate constant to low-affinity buffer)
+            f"{name}_beta_bl": 0.2,  # Binding rate constant 2 in s^-1 (off rate constant to low-affinity buffer)
+            f"{name}_alpha_bh": 100,  # Unbinding rate constant 1 in s^-1μM^-1 (on rate constant to high-affinity buffer)
+            f"{name}_beta_bh": 90,  # Unbinding rate constant 2 in s^-1 (off rate constant to high-affinity buffer)
+            f"{name}_Cab_l_max": 400,  # total low-affinity buffer concentration in μM
+            f"{name}_Cab_h_max": 300,  # total high-affinity buffer concentration in μM
+            f"{name}_Jex": 360.0,  # External current (maximum Na-Ca exchanger current) in pA
+            f"{name}_Jex2": 380.0,  # External current (maximum Ca-ATPase exchanger current) in pA
+            f"{name}_Kex": 2.3,  # External calcium concentration factor in μM
+            f"{name}_Kex2": 0.5,  # External calcium concentration factor 2 in μM
+            f"{name}_Cae": 0.01,  # External calcium concentration in μM
+        }
+        self.channel_states = {
+            f"Cas": 0.01156,  # Initial internal calcium concentration in μM
+            f"{name}_Cad": 0.01156,  # Free intracellular calcium concentration in μM
+            f"{name}_Cab_ls": 6.78037,  # Bound buffer f concentration in μM
+            f"{name}_Cab_hs": 1.26836,  # Bound buffer f concentration in μM
+            f"{name}_Cab_ld": 11.30257,  # Bound buffer h concentration in μM
+            f"{name}_Cab_hd": 3.80563,  # Bound buffer h concentration in μM
+        }
+        self.current_name = f"iCa"
+        self.META = META
 
-#     def update_states(self, states, dt, v, params):
-#         """Update the states based on differential equations."""
-#         prefix = self._name
-#         v += 1e-6  # jitter to avoid division by zero
-#         dt /= 1000  # convert to seconds
-#         F, Vs, Vd, D_Ca, d_sd, S_sd = (
-#             params[f"{prefix}_F"],
-#             params[f"{prefix}_Vs"],
-#             params[f"{prefix}_Vd"],
-#             params[f"{prefix}_D_Ca"],
-#             params[f"{prefix}_d_sd"],
-#             params[f"{prefix}_S_sd"],
-#         )
-#         alpha_bl, beta_bl, alpha_bh, beta_bh, Cab_l_max, Cab_h_max = (
-#             params[f"{prefix}_alpha_bl"],
-#             params[f"{prefix}_beta_bl"],
-#             params[f"{prefix}_alpha_bh"],
-#             params[f"{prefix}_beta_bh"],
-#             params[f"{prefix}_Cab_l_max"],
-#             params[f"{prefix}_Cab_h_max"],
-#         )
-#         Jex, Kex, Jex2, Kex2, Cae = (
-#             params[f"{prefix}_Jex"],
-#             params[f"{prefix}_Kex"],
-#             params[f"{prefix}_Jex2"],
-#             params[f"{prefix}_Kex2"],
-#             params[f"{prefix}_Cae"],
-#         )
+    def update_states(self, states, dt, v, params):
+        """Update the states based on differential equations."""
+        prefix = self._name
+        v += 1e-6  # jitter to avoid division by zero
+        dt /= 1000  # convert to seconds
+        F, Vs, Vd, D_Ca, d_sd, S_sd = (
+            params[f"{prefix}_F"],
+            params[f"{prefix}_Vs"],
+            params[f"{prefix}_Vd"],
+            params[f"{prefix}_D_Ca"],
+            params[f"{prefix}_d_sd"],
+            params[f"{prefix}_S_sd"],
+        )
+        alpha_bl, beta_bl, alpha_bh, beta_bh, Cab_l_max, Cab_h_max = (
+            params[f"{prefix}_alpha_bl"],
+            params[f"{prefix}_beta_bl"],
+            params[f"{prefix}_alpha_bh"],
+            params[f"{prefix}_beta_bh"],
+            params[f"{prefix}_Cab_l_max"],
+            params[f"{prefix}_Cab_h_max"],
+        )
+        Jex, Kex, Jex2, Kex2, Cae = (
+            params[f"{prefix}_Jex"],
+            params[f"{prefix}_Kex"],
+            params[f"{prefix}_Jex2"],
+            params[f"{prefix}_Kex2"],
+            params[f"{prefix}_Cae"],
+        )
 
-#         Cai = states[f"Cai"]
-#         Cad = states[f"{prefix}_Cad"]
-#         Cab_ls = states[f"{prefix}_Cab_ls"]
-#         Cab_hs = states[f"{prefix}_Cab_hs"]
-#         Cab_ld = states[f"{prefix}_Cab_ld"]
-#         Cab_hd = states[f"{prefix}_Cab_hd"]
+        Cas = states[f"Cas"]
+        Cad = states[f"{prefix}_Cad"]
+        Cab_ls = states[f"{prefix}_Cab_ls"]
+        Cab_hs = states[f"{prefix}_Cab_hs"]
+        Cab_ld = states[f"{prefix}_Cab_ld"]
+        Cab_hd = states[f"{prefix}_Cab_hd"]
 
-#         iCa = states["iCa"]
-#         iEx = Jex * (Cai - Cae) / (Cai - Cae + Kex) * save_exp(-(v + 14) / 70)
-#         iEx2 = Jex2 * (Cai - Cae) / (Cai - Cae + Kex2)
+        iCa = states["iCa"]
+        iEx = Jex * (Cas - Cae) / (Cas - Cae + Kex) * save_exp(-(v + 14) / 70)
+        iEx2 = Jex2 * (Cas - Cae) / (Cas - Cae + Kex2)
 
-#         # Free intracellular calcium concentration dynamics
-#         dCai_dt = (
-#             -10e-6 * (iCa + iEx + iEx2) / (2 * F * Vs)
-#             - D_Ca * S_sd * (Cai - Cad) / (d_sd * Vs)
-#             + beta_bl * Cab_ls
-#             - alpha_bl * Cai * (Cab_l_max - Cab_ls)
-#             + beta_bh * Cab_hs
-#             - alpha_bh * Cai * (Cab_h_max - Cab_hs)
-#         )
+        # Free intracellular calcium concentration dynamics
+        dCas_dt = (
+            -1e-6 * (iCa + iEx + iEx2) / (2 * F * Vs)
+            - D_Ca * S_sd * (Cas - Cad) / (d_sd * Vs)
+            + beta_bl * Cab_ls
+            - alpha_bl * Cas * (Cab_l_max - Cab_ls)
+            + beta_bh * Cab_hs
+            - alpha_bh * Cas * (Cab_h_max - Cab_hs)
+        )
 
-#         # Bound intracellular calcium concentration dynamics
-#         dCad_dt = (
-#             D_Ca * S_sd * (Cai - Cad) / (d_sd * Vd)
-#             + beta_bl * Cab_ld
-#             - alpha_bl * Cad * (Cab_l_max - Cab_ld)
-#             + beta_bh * Cab_hd
-#             - alpha_bh * Cad * (Cab_h_max - Cab_hd)
-#         )
+        # Bound intracellular calcium concentration dynamics
+        dCad_dt = (
+            D_Ca * S_sd * (Cas - Cad) / (d_sd * Vd)
+            + beta_bl * Cab_ld
+            - alpha_bl * Cad * (Cab_l_max - Cab_ld)
+            + beta_bh * Cab_hd
+            - alpha_bh * Cad * (Cab_h_max - Cab_hd)
+        )
 
-#         dCab_ls_dt = alpha_bl * Cai * (Cab_l_max - Cab_ls) - beta_bl * Cab_ls
-#         dCab_hs_dt = alpha_bh * Cai * (Cab_h_max - Cab_hs) - beta_bh * Cab_hs
-#         dCab_ld_dt = alpha_bl * Cad * (Cab_l_max - Cab_ld) - beta_bl * Cab_ld
-#         dCab_hd_dt = alpha_bh * Cad * (Cab_h_max - Cab_hd) - beta_bh * Cab_hd
+        dCab_ls_dt = alpha_bl * Cas * (Cab_l_max - Cab_ls) - beta_bl * Cab_ls
+        dCab_hs_dt = alpha_bh * Cas * (Cab_h_max - Cab_hs) - beta_bh * Cab_hs
+        dCab_ld_dt = alpha_bl * Cad * (Cab_l_max - Cab_ld) - beta_bl * Cab_ld
+        dCab_hd_dt = alpha_bh * Cad * (Cab_h_max - Cab_hd) - beta_bh * Cab_hd
 
-#         Cai = Cai + dCai_dt * dt
-#         Cad = Cad + dCad_dt * dt
-#         Cab_ls = Cab_ls + dCab_ls_dt * dt
-#         Cab_hs = Cab_hs + dCab_hs_dt * dt
-#         Cab_ld = Cab_ld + dCab_ld_dt * dt
-#         Cab_hd = Cab_hd + dCab_hd_dt * dt
+        Cas = Cas + dCas_dt * dt
+        Cad = Cad + dCad_dt * dt
+        Cab_ls = Cab_ls + dCab_ls_dt * dt
+        Cab_hs = Cab_hs + dCab_hs_dt * dt
+        Cab_ld = Cab_ld + dCab_ld_dt * dt
+        Cab_hd = Cab_hd + dCab_hd_dt * dt
 
-#         return {
-#             f"Cai": Cai,
-#             f"{prefix}_Cad": Cad,
-#             f"{prefix}_Cab_ls": Cab_ls,
-#             f"{prefix}_Cab_hs": Cab_hs,
-#             f"{prefix}_Cab_ld": Cab_ld,
-#             f"{prefix}_Cab_hd": Cab_hd,
-#         }
+        return {
+            f"Cas": Cas,
+            f"{prefix}_Cad": Cad,
+            f"{prefix}_Cab_ls": Cab_ls,
+            f"{prefix}_Cab_hs": Cab_hs,
+            f"{prefix}_Cab_ld": Cab_ld,
+            f"{prefix}_Cab_hd": Cab_hd,
+        }
 
-#     def compute_current(self, states, v, params):
-#         """This dynamics model does not directly contribute to the membrane current."""
-#         return 0
+    def compute_current(self, states, v, params):
+        """This dynamics model does not directly contribute to the membrane current."""
+        return 0
 
-#     def init_state(self, v, params):
-#         """Initialize the state at fixed point of gate dynamics."""
-#         return {
-#             f"Cai": 0.0966,  # Initial internal calcium concentration in μM
-#             f"{self._name}_Cad": 0.0966,
-#             f"{self._name}_Cab_ls": 80.929,
-#             f"{self._name}_Cab_hs": 29.068,
-#             f"{self._name}_Cab_lf": 80.929,
-#         }
+    def init_state(self, v, params):
+        """Initialize the state at fixed point of gate dynamics."""
+        return self.channel_states
 
 
 class CaNernstReversal(Channel):
@@ -473,19 +470,19 @@ class CaNernstReversal(Channel):
         name: Optional[str] = None,
     ):
         super().__init__(name)
-        self.channel_params = {"Cao": 2.5}  # mM
+        self.channel_params = {"Cao": 2500}  # μM
         self.channel_states = {
             "eCa": 40.0,  # mV
-            "Cai": 0.0001,  # mM
+            "Cas": 0.0001,  # mM
         }
         self.current_name = f"iCa"
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
         Cao = params["Cao"]
-        Cai = states["Cai"]
-        eCa = 12.9 * jnp.log(Cao / Cai)
-        return {"eCa": eCa, "Cai": Cai}
+        Cas = states["Cas"]
+        eCa = 12.9 * jnp.log(Cao / Cas)
+        return {"eCa": eCa, "Cas": Cas}
 
     def compute_current(self, states, v, params):
         """This dynamics model does not directly contribute to the membrane current."""
@@ -493,7 +490,7 @@ class CaNernstReversal(Channel):
 
     def init_state(self, v, params):
         """Initialize the state at fixed point of gate dynamics."""
-        return {"Cai": 0.0001}
+        return {"Cas": 0.0001}
 
 
 class KCa(Channel):
@@ -510,7 +507,7 @@ class KCa(Channel):
         self.channel_states = {
             f"{self._name}_m": 0.642,  # Initial value for m gating variable
             f"{self._name}_n": 0.1,  # Initial value for n gating variable
-            "Cai": 0.0106,  # Initial internal calcium concentration in μM
+            "Cas": 0.0106,  # Initial internal calcium concentration in μM
         }
         self.current_name = f"iKCa"
         self.META = META
@@ -523,7 +520,7 @@ class KCa(Channel):
         m = states[f"{prefix}_m"]
         dt /= 1000  # convert to seconds
         m_new = solve_gate_exponential(m, dt, *self.m_gate(v))
-        n_new = self.n_gate(states["Cai"], params[f"{prefix}_Khalf"])
+        n_new = self.n_gate(states["Cas"], params[f"{prefix}_Khalf"])
         return {f"{prefix}_m": m_new, f"{prefix}_n": n_new}
 
     def compute_current(
@@ -545,7 +542,7 @@ class KCa(Channel):
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_n": n,
-            "Cai": 0.0001,
+            "Cas": 0.0001,
         }
 
     @staticmethod
@@ -556,6 +553,6 @@ class KCa(Channel):
         return alpha, beta
 
     @staticmethod
-    def n_gate(Cai, Khalf):
+    def n_gate(Cas, Khalf):
         """Calcium-dependent n gating variable."""
-        return Cai / (Cai + Khalf)
+        return Cas / (Cas + Khalf)
