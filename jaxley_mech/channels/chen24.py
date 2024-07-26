@@ -15,26 +15,26 @@ class Phototransduction(Channel):
     def __init__(self, name: Optional[str] = None):
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {  # Table 1 / Fgirue 8
-            f"{prefix}_sigma": 22,  # σ, /s, Opsin decay rate constant
-            f"{prefix}_gamma": 10,  # γ, unitless, Opsin gain
-            f"{prefix}_phi": 22,  # φ, /s, PDE decay rate constant
-            f"{prefix}_eta": 2000,  # η, /s, PDE dark activate rate
-            f"{prefix}_G_dark": 20,  # μM, Dark GMP concentration
+        self.channel_params = {  # Table 1 / Figure 8
+            f"{prefix}_sigma": 22.0,  # σ, /s, Opsin decay rate constant
+            f"{prefix}_gamma": 10.0,  # γ, unitless, Opsin gain
+            f"{prefix}_phi": 22.0,  # φ, /s, PDE decay rate constant
+            f"{prefix}_eta": 2000.0,  # η, /s, PDE dark activate rate
+            f"{prefix}_G_dark": 20.0,  # μM, Dark GMP concentration
             f"{prefix}_k": 0.01,  # pA^2μM^-3, cGMP-to_current constant
-            f"{prefix}_h": 4,  # unitless, Ca2+ GC cooperativity
-            f"{prefix}_C_dark": 1,  # μM, Dark Ca2+ concentration
-            f"{prefix}_beta": 9,  # β, /s, Ca2+ extrusion rate constant
-            f"{prefix}_n": 3,  # unitless, cGMP channel cooperativity
+            f"{prefix}_h": 4.0,  # unitless, Ca2+ GC cooperativity
+            f"{prefix}_C_dark": 1.0,  # μM, Dark Ca2+ concentration
+            f"{prefix}_beta": 9.0,  # β, /s, Ca2+ extrusion rate constant
+            f"{prefix}_n": 3.0,  # unitless, cGMP channel cooperativity
             f"{prefix}_K_GC": 0.5,  # μM, Ca2+ GC affinity
-            f"{prefix}_m": 4,  # unitless, Ca2+ GC cooperativity
+            f"{prefix}_m": 4.0,  # unitless, Ca2+ GC cooperativity
             f"{prefix}_I_dark": 20**3 * 0.01,  # pA, Dark current
         }
         self.channel_states = {
             f"{prefix}_R": 0.0,
             f"{prefix}_P": 90.0,
-            f"{prefix}_G": 1,
-            f"{prefix}_S": 1,
+            f"{prefix}_G": 1.0,
+            f"{prefix}_S": 1.0,
             f"{prefix}_C": 0.336,
             f"{prefix}_Stim": 0.0,
         }
