@@ -114,7 +114,11 @@ class Phototransduction(Channel):
         C0 = params[f"{prefix}_C0"]
         eT = params[f"{prefix}_eT"]
 
-        J_Ca = -states[self.current_name]
+        # J_Ca = -states[self.current_name] # voltage-dependent current
+        J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
+        J_Ca = (
+            J_max * cGMP**3 / (cGMP**3 + K**3)
+        )  # eq(12) # voltage-independent current
 
         # Update Rhodopsin concentrations
         dRh_dt = Jhv - alpha1 * Rh + alpha2 * Rhi  # eq(8.1) of Torre et al. (1990)
@@ -516,7 +520,7 @@ class CaPump(Channel):
 
         # Free intracellular calcium concentration dynamics
         dCas_dt = (
-            -10e-6 * (iCa + iEx + iEx2) / (2 * F * V1)
+            -1e-6 * (iCa + iEx + iEx2) / (2 * F * V1)
             - D_Ca * S1 * (Cas - Caf) / (delta * V1)
             - Lb1 * Cas * (Bl - Cab_ls)
             + Lb2 * Cab_ls
