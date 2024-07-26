@@ -17,7 +17,7 @@ class Ribbon_mGluR6(Synapse):
 
         self.synapse_params = {
             f"{name}_V_half": -30.0,  # Voltage stimulating half-max release (mV)
-            f"{name}_k": 0.1, # Slope of the release probability (mV^-1)
+            f"{name}_k": 0.1,  # Slope of the release probability (mV^-1)
             f"{name}_lam": 0.4,  # Vesicle replenishment rate at the ribbon
             f"{name}_p_r": 0.1,  # Probability of a vesicle at the ribbon moving to the dock
             f"{name}_D_max": 8,  # Maximum number of docked vesicles
@@ -39,7 +39,10 @@ class Ribbon_mGluR6(Synapse):
         """Return updated synapse state."""
         name = self.name
         # Presynaptic voltage to calcium to release probability (switch to Cas dependence?)
-        p_d_t = 1 / (1 + save_exp(-params[f"{name}_k"] * (pre_voltage - params[f"{name}_V_half"])))
+        p_d_t = 1 / (
+            1
+            + save_exp(-params[f"{name}_k"] * (pre_voltage - params[f"{name}_V_half"]))
+        )
 
         # Vesicle release (NOTE: p_d_t is the mean of the beta distribution)
         new_released = p_d_t * u[f"{name}_docked"]
@@ -63,7 +66,7 @@ class Ribbon_mGluR6(Synapse):
         # Start with the receptor model
         Glu_norm = new_Glu**2 / (new_Glu**2 + params[f"{name}_KGlu"] ** 2)
         alpha = 40.0 * 10**-3 * (1 - Glu_norm)
-        beta = 40.0 * 10**-3 *  Glu_norm
+        beta = 40.0 * 10**-3 * Glu_norm
 
         dmTRPM1 = alpha * (1 - u[f"{name}_mTRPM1"]) - beta * u[f"{name}_mTRPM1"]
         new_mTRPM1 = u[f"{name}_mTRPM1"] + dmTRPM1 * delta_t
@@ -72,8 +75,8 @@ class Ribbon_mGluR6(Synapse):
             f"{name}_released": new_released,
             f"{name}_docked": new_docked,
             f"{name}_ribboned": new_ribboned,
-            f"{name}_Glu": new_Glu,  # Neurotransmitter concentration
-            f"{name}_mTRPM1": new_mTRPM1,  # Channel activation
+            f"{name}_Glu": new_Glu, 
+            f"{name}_mTRPM1": new_mTRPM1,
         }
 
     def init_state(self, v, params):
@@ -83,8 +86,8 @@ class Ribbon_mGluR6(Synapse):
             f"{name}_released": 0,
             f"{name}_docked": 4,
             f"{name}_ribboned": 25,
-            f"{name}_Glu": 25.0,  # Neurotransmitter concentration
-            f"{name}_mTRPM1": 0.0,  # Channel activation
+            f"{name}_Glu": 25.0,
+            f"{name}_mTRPM1": 0.0,
         }
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
@@ -92,5 +95,5 @@ class Ribbon_mGluR6(Synapse):
         name = self.name
         g_syn = (
             params[f"{name}_gTRPM1"] * u[f"{name}_mTRPM1"]
-        )  # multiply with 1000 to convert Siemens to milli Siemens.
+        ) 
         return g_syn * (post_voltage - params[f"{name}_eTRPM1"])
