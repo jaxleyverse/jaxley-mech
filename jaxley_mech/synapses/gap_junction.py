@@ -1,13 +1,12 @@
 from typing import Dict, Tuple
 
 import jax.numpy as jnp
-
 from jaxley.synapses.synapse import Synapse
 
 
 class GapJunction(Synapse):
     """
-    Compute the synaptic current for a gap junction. Note that gap junctions are not 
+    Compute the synaptic current for a gap junction. Note that gap junctions are not
     solved with implicit Euler.
 
     This synapse can also be found in the book:
