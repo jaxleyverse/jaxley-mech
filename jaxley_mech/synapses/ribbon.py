@@ -6,7 +6,7 @@ from jaxley.synapses.synapse import Synapse
 
 META = {
     "reference": [
-        "Schroeder, C., Oesterle, J., Berens, P., Zoshimatsu, T., Baden, T. (2021). Distinct synaptic transfer functions in same-type photoreceptors. eLife."
+        "Schroeder, C., Oesterle, J., Berens, P., Yoshimatsu, T., & Baden, T. (2021). eLife."
     ]
 }
 
