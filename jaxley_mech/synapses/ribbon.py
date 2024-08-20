@@ -6,8 +6,7 @@ from jaxley.synapses.synapse import Synapse
 
 META = {
     "reference": [
-        "Schroeder, C., Klindt, D., Strauss, S., Franke, K., Bethge, M., Euler, T., Berens, P. (2020). System identification with biophysical constraints: a circuit model of the inner retina. NeurIPS 2020.",
-        "Dayan, P., & Abbott, L. F. (2001). Theoretical neuroscience: computational and mathematical modeling of neural systems. MIT press.",
+        "Schroeder, C., Oesterle, J., Berens, P., Zoshimatsu, T., Baden, T. (2021). Distinct synaptic transfer functions in same-type photoreceptors. eLife."
     ]
 }
 
@@ -17,62 +16,77 @@ class RibbonSynapse(Synapse):
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
-            f"{name}_gS": 0.1e-4,  # Maximal synaptic conductance (uS)
-            f"{name}_tau": 0.5,  # Decay time constant of postsynaptic conductance (s)
-            f"{name}_e_syn": 0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
-            f"{name}_lam": 0.4,  # Vesicle replenishment rate at the ribbon
-            f"{name}_p_r": 0.1,  # Probability of a vesicle at the ribbon moving to the dock
-            f"{name}_D_max": 8,  # Maximum number of docked vesicles
-            f"{name}_R_max": 50,  # Maximum number of vesicles at the ribbon
+            f"{name}_gS": 1e-6,  # Maximal synaptic conductance (uS)
+            f"{name}_e_syn": 0.0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
+            f"{name}_e_max": 1.5,  # Maximum glutamate release
+            f"{name}_r_max": 2.0,  # Rate of RP --> IP, movement to the ribbon
+            f"{name}_i_max": 4.0,  # Rate of IP --> RRP, movement to the dock
+            f"{name}_d_max": 0.1,  # Rate of RP refilling
+            f"{name}_RRP_max": 3.0,  # Maximum number of docked vesicles
+            f"{name}_IP_max": 10.0,  # Maximum number of vesicles at the ribbon
+            f"{name}_RP_max": 25.0,  # Maximum number of vesicles in the reserve pool
+            f"{name}_k": 1.0,  # Slope of calcium conversion nonlinearity
+            f"{name}_V_half": -35.0,  # Half the voltage that gives maximum glutamate release
         }
         self.synapse_states = {
-            f"{name}_released": 0,  # Number of vesicles released
-            f"{name}_docked": 4,  # Number of vesicles at the dock
-            f"{name}_ribboned": 25,  # Number of vesicles at the ribbon
-            f"{name}_P_rel": 0,  # Normalized vesicle release
-            f"{name}_P_s": 0,  # Kernel of postsynaptic conductance
+            f"{name}_exo": 0.75,  # Number of vesicles released
+            f"{name}_RRP": 1.5,  # Number of vesicles at the dock
+            f"{name}_IP": 5.0,  # Number of vesicles at the ribbon
+            f"{name}_RP": 12.5,  # Number of vesicles in the reserve pool
         }
         self.META = META
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
         name = self.name
-        k = 1.0
-        V_half = -35
 
         # Presynaptic voltage to calcium to release probability
-        p_d_t = 1 / (1 + save_exp(-k * (pre_voltage - V_half)))
-
-        # Vesicle release (NOTE: p_d_t is the mean of the beta distribution)
-        new_released = p_d_t * u[f"{name}_docked"]
-
-        # Movement to the dock
-        new_docked = (
-            u[f"{name}_docked"]
-            + params[f"{name}_p_r"] * u[f"{name}_ribboned"]
-            - new_released
+        p_d_t = 1.0 / (
+            1.0
+            + save_exp(
+                -1 * params[f"{name}_k"] * (pre_voltage - params[f"{name}_V_half"])
+            )
         )
-        new_docked = jnp.clip(new_docked, 0, params[f"{name}_D_max"])
 
-        # Movement to the ribbon
-        dock_moved = jnp.maximum(0, new_docked - u[f"{name}_docked"])
-        new_ribboned = u[f"{name}_ribboned"] + params[f"{name}_lam"] - dock_moved
-        new_ribboned = jnp.clip(new_ribboned, 0, params[f"{name}_R_max"])
+        # Glutamate release
+        e_t = (
+            params[f"{name}_e_max"]
+            * p_d_t
+            * u[f"{name}_RRP"]
+            / params[f"{name}_RRP_max"]
+        )
+        # Rate of RP --> IP, movement to the ribbon
+        r_t = (
+            params[f"{name}_r_max"]
+            * (1 - u[f"{name}_IP"] / params[f"{name}_IP_max"])
+            * u[f"{name}_RP"]
+            / params[f"{name}_RP_max"]
+        )
+        # Rate of IP --> RRP, movement to the dock
+        i_t = (
+            params[f"{name}_i_max"]
+            * (1 - u[f"{name}_RRP"] / params[f"{name}_RRP_max"])
+            * u[f"{name}_IP"]
+            / params[f"{name}_IP_max"]
+        )
+        # Rate of RP refilling
+        d_t = params[f"{name}_d_max"] * u[f"{name}_exo"]
 
-        # Single exponential decay to model postsynaptic conductance (Dayan & Abbott)
-        P_rel = new_released / params[f"{name}_D_max"]
-        P_s = save_exp(-delta_t / params[f"{name}_tau"])
+        # Calculate the new vesicle numbers
+        new_RP = u[f"{name}_RP"] + (d_t - e_t) * delta_t
+        new_IP = u[f"{name}_IP"] + (r_t - i_t) * delta_t
+        new_RRP = u[f"{name}_RRP"] + (i_t - e_t) * delta_t
+        new_exo = u[f"{name}_exo"] + (e_t - d_t) * delta_t
 
         return {
-            f"{name}_released": new_released,
-            f"{name}_docked": new_docked,
-            f"{name}_ribboned": new_ribboned,
-            f"{name}_P_rel": P_rel,
-            f"{name}_P_s": P_s,
+            f"{name}_exo": new_exo,
+            f"{name}_RRP": new_RRP,
+            f"{name}_IP": new_IP,
+            f"{name}_RP": new_RP,
         }
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Return updated current."""
         name = self.name
-        g_syn = params[f"{name}_gS"] * u[f"{name}_P_rel"] * u[f"{name}_P_s"]
+        g_syn = params[f"{name}_gS"] * u[f"{name}_exo"]
         return g_syn * (post_voltage - params[f"{name}_e_syn"])
