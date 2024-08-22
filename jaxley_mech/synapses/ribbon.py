@@ -37,7 +37,11 @@ class RibbonSynapse(Synapse):
         self.META = META
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
-        """Return updated synapse state."""
+        """
+        Return updated synapse state.
+        
+        Caution: Synaptic states currently solved with explicit Euler!
+        """
         name = self.name
 
         # Presynaptic voltage to calcium to release probability
