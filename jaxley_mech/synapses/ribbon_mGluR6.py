@@ -5,6 +5,8 @@ from jax.lax import select
 from jaxley.solver_gate import save_exp
 from jaxley.synapses import Synapse
 
+from jaxley_mech.solvers import explicit_euler, newton, rk45
+
 META = {
     "reference_1": "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119.",
     "reference_2": "Schroeder, C., Oesterle, J., Berens, P., Yoshimatsu, T., & Baden, T. (2021). eLife.",
@@ -12,7 +14,8 @@ META = {
 
 
 class Ribbon_mGluR6(Synapse):
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, solver: Optional[str] = "newton"):
+        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
@@ -38,60 +41,77 @@ class Ribbon_mGluR6(Synapse):
         }
         self.META = META
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
-        """
-        Return updated synapse state.
-        
-        Caution: Synaptic states currently solved with explicit Euler!
-        """
-        name = self.name
+    def derivatives(self, states, params, pre_voltage):
+        """Calculate the derivatives for the Ribbon_mGluR6 synapse system."""
+        exo, RRP, IP, RP, mTRPM1 = states
+        e_max, r_max, i_max, d_max, RRP_max, IP_max, RP_max, k, V_half, KGlu = params
 
-        # Presynaptic voltage to calcium to release probability (switch to Cas dependence?)
-        p_d_t = 1.0 / (
-            1.0
-            + save_exp(
-                -1 * params[f"{name}_k"] * (pre_voltage - params[f"{name}_V_half"])
-            )
-        )
+        # Presynaptic voltage to calcium to release probability
+        p_d_t = 1.0 / (1.0 + save_exp(-1 * k * (pre_voltage - V_half)))
 
         # Glutamate release
-        e_t = (
-            params[f"{name}_e_max"]
-            * p_d_t
-            * u[f"{name}_RRP"]
-            / params[f"{name}_RRP_max"]
-        )
+        e_t = e_max * p_d_t * RRP / RRP_max
         # Rate of RP --> IP, movement to the ribbon
-        r_t = (
-            params[f"{name}_r_max"]
-            * (1 - u[f"{name}_IP"] / params[f"{name}_IP_max"])
-            * u[f"{name}_RP"]
-            / params[f"{name}_RP_max"]
-        )
+        r_t = r_max * (1 - IP / IP_max) * RP / RP_max
         # Rate of IP --> RRP, movement to the dock
-        i_t = (
-            params[f"{name}_i_max"]
-            * (1 - u[f"{name}_RRP"] / params[f"{name}_RRP_max"])
-            * u[f"{name}_IP"]
-            / params[f"{name}_IP_max"]
-        )
+        i_t = i_max * (1 - RRP / RRP_max) * IP / IP_max
         # Rate of RP refilling
-        d_t = params[f"{name}_d_max"] * u[f"{name}_exo"]
+        d_t = d_max * exo
 
-        # Calculate the new vesicle numbers
-        new_RP = u[f"{name}_RP"] + (d_t - e_t) * delta_t
-        new_IP = u[f"{name}_IP"] + (r_t - i_t) * delta_t
-        new_RRP = u[f"{name}_RRP"] + (i_t - e_t) * delta_t
-        new_exo = u[f"{name}_exo"] + (e_t - d_t) * delta_t
+        dRP_dt = d_t - r_t
+        dIP_dt = r_t - i_t
+        dRRP_dt = i_t - e_t
+        dExo_dt = e_t - d_t
 
-        # Start with the receptor model
-        Glu_norm = new_exo**2 / (new_exo**2 + params[f"{name}_KGlu"] ** 2)
+        # Receptor model
+        Glu_norm = exo**2 / (exo**2 + KGlu**2)
         alpha = 40.0 * 10**-3 * (1 - Glu_norm)
         beta = 40.0 * 10**-3 * Glu_norm
+        dmTRPM1_dt = alpha * (1 - mTRPM1) - beta * mTRPM1
 
-        dmTRPM1 = alpha * (1 - u[f"{name}_mTRPM1"]) - beta * u[f"{name}_mTRPM1"]
-        new_mTRPM1 = u[f"{name}_mTRPM1"] + dmTRPM1 * delta_t
+        return jnp.array([dExo_dt, dRRP_dt, dIP_dt, dRP_dt, dmTRPM1_dt])
 
+    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+        """Return updated synapse state using the chosen solver."""
+        name = self._name
+
+        # Parameters
+        param_tuple = (
+            params[f"{name}_e_max"],
+            params[f"{name}_r_max"],
+            params[f"{name}_i_max"],
+            params[f"{name}_d_max"],
+            params[f"{name}_RRP_max"],
+            params[f"{name}_IP_max"],
+            params[f"{name}_RP_max"],
+            params[f"{name}_k"],
+            params[f"{name}_V_half"],
+            params[f"{name}_KGlu"],
+        )
+
+        # States
+        exo, RRP, IP, RP, mTRPM1 = (
+            u[f"{name}_exo"],
+            u[f"{name}_RRP"],
+            u[f"{name}_IP"],
+            u[f"{name}_RP"],
+            u[f"{name}_mTRPM1"],
+        )
+        y0 = jnp.array([exo, RRP, IP, RP, mTRPM1])
+
+        # Choose the solver
+        if self.solver == "newton":
+            y_new = newton(y0, delta_t, self.derivatives, param_tuple, pre_voltage)
+
+        elif self.solver == "rk45":
+            y_new = rk45(y0, delta_t, self.derivatives, param_tuple, pre_voltage)
+
+        else:  # Default to explicit Euler
+            y_new = explicit_euler(
+                y0, delta_t, self.derivatives, param_tuple, pre_voltage
+            )
+
+        new_exo, new_RRP, new_IP, new_RP, new_mTRPM1 = y_new
         return {
             f"{name}_exo": new_exo,
             f"{name}_RRP": new_RRP,
@@ -114,7 +134,5 @@ class Ribbon_mGluR6(Synapse):
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Compute and return synaptic current."""
         name = self.name
-        g_syn = (
-            params[f"{name}_gTRPM1"] * u[f"{name}_mTRPM1"]
-        ) 
+        g_syn = params[f"{name}_gTRPM1"] * u[f"{name}_mTRPM1"]
         return g_syn * (post_voltage - params[f"{name}_eTRPM1"])
