@@ -4,6 +4,9 @@ import jax.numpy as jnp
 from jax import lax
 from jax.scipy.linalg import solve
 
+from diffrax import ODETerm, diffeqsolve, ImplicitEuler
+import optimistix as optx
+
 
 def explicit_euler(y0, dt, derivatives_func, *args):
     """Explicit Euler method."""
@@ -59,3 +62,13 @@ def rk45(y0, dt, derivatives_func, *args):
     y_new = y0 + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k5)
 
     return y_new
+
+
+def diffrax_implicit(y0, dt, derivatives_func, args):
+        """Implicit Euler method from diffrax using the Newton root-finder."""
+        term = ODETerm(derivatives_func)
+        root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
+        solver = ImplicitEuler(root_finder=root_finder)
+        y_new = diffeqsolve(term, solver, args=args, t0=0, t1=dt, dt0=dt, y0=y0)
+        y_new = jnp.squeeze(y_new.ys, axis=0)
+        return y_new

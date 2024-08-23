@@ -1,18 +1,18 @@
 from typing import Optional
 
-import jax.debug
 import jax.numpy as jnp
 from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
-from jaxley_mech.solvers import explicit_euler, newton, rk45
+from jaxley_mech.solvers import explicit_euler, newton, rk45, diffrax_implicit
+
+
 
 META = {
     "reference": [
         "Schroeder, C., Oesterle, J., Berens, P., Yoshimatsu, T., & Baden, T. (2021). eLife."
     ]
 }
-
 
 class RibbonSynapse(Synapse):
     def __init__(self, name: Optional[str] = None, solver: Optional[str] = "newton"):
@@ -78,6 +78,7 @@ class RibbonSynapse(Synapse):
             params[f"{name}_RP_max"],
             params[f"{name}_k"],
             params[f"{name}_V_half"],
+            pre_voltage,
         )
 
         # States
@@ -91,17 +92,23 @@ class RibbonSynapse(Synapse):
 
         # Choose the solver
         if self.solver == "newton":
-            y_new = newton(y0, delta_t, self.derivatives, param_tuple, pre_voltage)
+            y_new = newton(y0, delta_t, self.derivatives, param_tuple[:-1], pre_voltage)
+
+        elif self.solver == "diffrax_implicit":
+            y_new = diffrax_implicit(y0, delta_t, self.derivatives, param_tuple)
 
         elif self.solver == "rk45":
-            y_new = rk45(y0, delta_t, self.derivatives, param_tuple, pre_voltage)
+            y_new = rk45(y0, delta_t, self.derivatives, param_tuple[:-1], pre_voltage)
 
         else:  # Default to explicit Euler
             y_new = explicit_euler(
-                y0, delta_t, self.derivatives, param_tuple, pre_voltage
+                y0, delta_t, self.derivatives, param_tuple[:-1], pre_voltage
             )
 
-        new_exo, new_RRP, new_IP, new_RP = y_new
+        new_exo = y_new[0]
+        new_RRP = y_new[1]
+        new_IP = y_new[2]
+        new_RP = y_new[3]
         return {
             f"{name}_exo": new_exo,
             f"{name}_RRP": new_RRP,
@@ -114,3 +121,31 @@ class RibbonSynapse(Synapse):
         name = self.name
         g_syn = params[f"{name}_gS"] * u[f"{name}_exo"]
         return g_syn * (post_voltage - params[f"{name}_e_syn"])
+    
+
+def derivatives_fn(t, y, args):
+    """Diffrax form for ODETerm"""
+    exo = y[0]
+    RRP = y[1]
+    IP = y[2]
+    RP = y[3]
+    e_max, r_max, i_max, d_max, RRP_max, IP_max, RP_max, k, V_half, pre_voltage = args
+
+    # Presynaptic voltage to calcium to release probability
+    p_d_t = 1.0 / (1.0 + save_exp(-1 * k * (pre_voltage - V_half)))
+
+    # Glutamate release
+    e_t = e_max * p_d_t * RRP / RRP_max
+    # Rate of RP --> IP, movement to the ribbon
+    r_t = r_max * (1 - IP / IP_max) * RP / RP_max
+    # Rate of IP --> RRP, movement to the dock
+    i_t = i_max * (1 - RRP / RRP_max) * IP / IP_max
+    # Rate of RP refilling
+    d_t = d_max * exo
+
+    dRP_dt = d_t - r_t
+    dIP_dt = r_t - i_t
+    dRRP_dt = i_t - e_t
+    dExo_dt = e_t - d_t
+
+    return jnp.array([dExo_dt, dRRP_dt, dIP_dt, dRP_dt])
