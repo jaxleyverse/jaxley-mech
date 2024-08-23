@@ -95,7 +95,7 @@ class RibbonSynapse(Synapse):
             y_new = newton(y0, delta_t, self.derivatives, param_tuple[:-1], pre_voltage)
 
         elif self.solver == "diffrax_implicit":
-            y_new = diffrax_implicit(y0, delta_t, self.derivatives, param_tuple)
+            y_new = diffrax_implicit(y0, delta_t, derivatives_fn, param_tuple)
 
         elif self.solver == "rk45":
             y_new = rk45(y0, delta_t, self.derivatives, param_tuple[:-1], pre_voltage)
