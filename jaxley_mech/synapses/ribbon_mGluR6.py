@@ -41,10 +41,22 @@ class Ribbon_mGluR6(Synapse):
         }
         self.META = META
 
-    def derivatives(self, states, params, pre_voltage):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the Ribbon_mGluR6 synapse system."""
         exo, RRP, IP, RP, mTRPM1 = states
-        e_max, r_max, i_max, d_max, RRP_max, IP_max, RP_max, k, V_half, KGlu = params
+        (
+            e_max,
+            r_max,
+            i_max,
+            d_max,
+            RRP_max,
+            IP_max,
+            RP_max,
+            k,
+            V_half,
+            KGlu,
+            pre_voltage,
+        ) = args
 
         # Presynaptic voltage to calcium to release probability
         p_d_t = 1.0 / (1.0 + save_exp(-1 * k * (pre_voltage - V_half)))
@@ -76,7 +88,7 @@ class Ribbon_mGluR6(Synapse):
         name = self._name
 
         # Parameters
-        param_tuple = (
+        args_tuple = (
             params[f"{name}_e_max"],
             params[f"{name}_r_max"],
             params[f"{name}_i_max"],
@@ -87,6 +99,7 @@ class Ribbon_mGluR6(Synapse):
             params[f"{name}_k"],
             params[f"{name}_V_half"],
             params[f"{name}_KGlu"],
+            pre_voltage,
         )
 
         # States
@@ -101,15 +114,11 @@ class Ribbon_mGluR6(Synapse):
 
         # Choose the solver
         if self.solver == "newton":
-            y_new = newton(y0, delta_t, self.derivatives, param_tuple, pre_voltage)
-
+            y_new = newton(y0, delta_t, self.derivatives, args_tuple)
         elif self.solver == "rk45":
-            y_new = rk45(y0, delta_t, self.derivatives, param_tuple, pre_voltage)
-
+            y_new = rk45(y0, delta_t, self.derivatives, args_tuple)
         else:  # Default to explicit Euler
-            y_new = explicit_euler(
-                y0, delta_t, self.derivatives, param_tuple, pre_voltage
-            )
+            y_new = explicit_euler(y0, delta_t, self.derivatives, args_tuple)
 
         new_exo, new_RRP, new_IP, new_RP, new_mTRPM1 = y_new
         return {

@@ -484,7 +484,7 @@ class CaPump(Channel):
             "mechanism": "Calcium dynamics",
         }
 
-    def derivatives(self, states, params, v):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the calcium pump system."""
         Cas, Caf, Cab_ls, Cab_hs, Cab_lf, Cab_hf = states
         (
@@ -506,7 +506,8 @@ class CaPump(Channel):
             Kex2,
             Cae,
             iCa,
-        ) = params
+            v,
+        ) = args
 
         v += 1e-6  # jitter to avoid division by zero
         iEx = Jex * save_exp(-(v + 14) / 70) * (Cas - Cae) / (Cas - Cae + Kex)
@@ -563,7 +564,7 @@ class CaPump(Channel):
         y0 = jnp.array([Cas, Caf, Cab_ls, Cab_hs, Cab_lf, Cab_hf])
 
         # Parameters
-        param_tuple = (
+        args_tuple = (
             params[f"{prefix}_F"],
             params[f"{prefix}_V1"],
             params[f"{prefix}_V2"],
@@ -582,15 +583,16 @@ class CaPump(Channel):
             params[f"{prefix}_Kex2"],
             params[f"{prefix}_Cae"],
             states["iCa"],
+            v,
         )
 
         # Choose the solver
         if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, param_tuple, v)
+            y_new = newton(y0, dt, self.derivatives, args_tuple)
         elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, param_tuple, v)
+            y_new = rk45(y0, dt, self.derivatives, args_tuple)
         else:  # Default to explicit Euler
-            y_new = explicit_euler(y0, dt, self.derivatives, param_tuple, v)
+            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
 
         # Unpack the new states
         Cas_new, Caf_new, Cab_ls_new, Cab_hs_new, Cab_lf_new, Cab_hf_new = y_new

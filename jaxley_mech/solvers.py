@@ -35,7 +35,7 @@ def newton(y0, dt, derivatives_func, *args, tol=1e-8, max_iter=4096):
         return i + 1, y, delta, converged
 
     def _f(y, y_prev):
-        return y - y_prev - dt * derivatives_func(y, *args)
+        return y - y_prev - dt * derivatives_func(None, y, *args)
 
     i0 = jnp.array(0)
     delta0 = jnp.zeros_like(y0)

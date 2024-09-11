@@ -53,10 +53,10 @@ class Phototransduction(Channel):
             ],
         }
 
-    def derivatives(self, states, params, stim):
+    def derivatives(self, t, states, params):
         """Calculate the derivatives for the phototransduction system."""
         R, P, G, C = states
-        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S = params
+        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = params
 
         I = k * G**n  # Current through phototransduction channel
         q = beta * C_dark / I_dark
@@ -106,7 +106,7 @@ class Phototransduction(Channel):
             states[f"{prefix}_C"],
         )
         y0 = jnp.array([R, P, G, C])
-        param_tuple = (
+        args_tuple = (
             gamma,
             sigma,
             phi,
@@ -117,15 +117,16 @@ class Phototransduction(Channel):
             C_dark,
             I_dark,
             S,
+            Stim,
         )
 
         # Choose the solver
         if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, param_tuple, Stim)
+            y_new = newton(y0, dt, self.derivatives, args_tuple)
         elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, param_tuple, Stim)
+            y_new = rk45(y0, dt, self.derivatives, args_tuple)
         else:  # Default to explicit Euler
-            y_new = explicit_euler(y0, dt, self.derivatives, param_tuple, Stim)
+            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
 
         # Unpack the new states
         R_new, P_new, G_new, C_new = y_new
