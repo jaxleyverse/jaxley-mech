@@ -9,7 +9,7 @@ from jax.scipy.linalg import solve
 
 def explicit_euler(y0, dt, derivatives_func, *args):
     """Explicit Euler method."""
-    dydt = derivatives_func(y0, *args)
+    dydt = derivatives_func(None, y0, *args)
     return y0 + dydt * dt
 
 
@@ -51,7 +51,7 @@ def rk45(y0, dt, derivatives_func, *args):
     """Runge-Kutta 4(5) method."""
 
     def f(t, y):
-        return derivatives_func(y, *args)
+        return derivatives_func(None, y, *args)
 
     k1 = f(0, y0)
     k2 = f(dt / 4, y0 + k1 * dt / 4)
