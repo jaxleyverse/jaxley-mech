@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import (
+    exponential_euler,
     save_exp,
     solve_gate_exponential,
     solve_inf_gate_exponential,
@@ -394,6 +395,7 @@ class CaPumpNS(Channel):
         # )  # volume of the cell, assuming spherical
         fi = params["fi"]
         tau_store = params["tau_store"]
+        tau_eff = tau_store / fi  # Effective time constant
         Cai = states["Cai"]  # C in eq(6)
         Ceq = params["Ceq"]
 
@@ -407,8 +409,11 @@ class CaPumpNS(Channel):
         driving_channel = select(
             driving_channel <= 0.0, jnp.zeros_like(driving_channel), driving_channel
         )
-        dCa_dt = driving_channel - (Cai - Ceq) / tau_store - j_pump
-        new_Cai = Cai + fi * dCa_dt * dt
+        # Compute the modified equilibrium concentration (Cai_inf)
+        Cai_inf = Ceq + tau_store * (driving_channel - j_pump)
+
+        # Update Cai using the exponential_euler solver
+        new_Cai = exponential_euler(Cai, dt, Cai_inf, tau_eff)
 
         return {"Cai": new_Cai}
 

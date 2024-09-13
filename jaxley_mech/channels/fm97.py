@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import save_exp, solve_gate_exponential
+from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 from ..utils import efun
 
@@ -359,10 +359,9 @@ class CaPump(Channel):
             drive_channel <= 0, jnp.zeros_like(drive_channel), drive_channel
         )
 
-        dCai_dt = drive_channel + (cainf - Cai) / taur
-
-        # Update internal calcium concentration with contributions from channel, pump, and decay to equilibrium
-        new_Cai = Cai + dt * dCai_dt
+        # Update internal calcium concentration with exponential euler
+        Cai_inf_prime = cainf + drive_channel * taur
+        new_Cai = exponential_euler(Cai, dt, Cai_inf_prime, taur)
 
         return {f"Cai": new_Cai}
 
