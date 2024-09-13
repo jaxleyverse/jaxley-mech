@@ -1,6 +1,5 @@
 from typing import Dict, Optional, Union
 
-import jax.debug
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.channels import Channel
@@ -269,7 +268,7 @@ class CaPump(Channel):
     ):
         super().__init__(name)
         self.channel_params = {
-            f"{self._name}_depth": 10.0,
+            f"{self._name}_depth": 0.1,
             f"{self._name}_taur": 20,  # Rate of removal of calcium in ms
             f"{self._name}_cainf": 5e-5,  # mM
         }
@@ -298,9 +297,12 @@ class CaPump(Channel):
         drive_channel = select(
             drive_channel <= 0, jnp.zeros_like(drive_channel), drive_channel
         )
-        dCai_dt = drive_channel / 2 + (Cai_inf - Cai) / Cai_tau
-        Cai += dCai_dt * dt
-        return {"Cai": Cai}
+
+        # Update calcium concentration using exponential_euler
+        Cai_inf = Cai_inf + drive_channel / 2 * Cai_tau
+        new_Cai = exponential_euler(Cai, dt, Cai_inf, Cai_tau)
+
+        return {"Cai": new_Cai}
 
     def compute_current(self, states, v, params):
         """This dynamics model does not directly contribute to the membrane current."""

@@ -6,6 +6,8 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
+from jaxley_mech.solvers import explicit_euler, newton, rk45
+
 META = {
     "cell_type": "rod (inner segment)",
     "species": "Larval tiger salamanders (Ambystoma tigrinum)",
@@ -439,38 +441,42 @@ class Ca(Channel):
 
 
 class CaPump(Channel):
+    """Calcium Pump Channel"""
+
     def __init__(
         self,
         name: Optional[str] = None,
+        solver: Optional[str] = "newton",
     ):
         super().__init__(name)
-        name = self._name
+        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
+        prefix = self._name
         self.channel_params = {
-            f"{name}_F": 9.648e4,  # Faraday's constant in C/mol
-            f"{name}_V1": 3.812e-13,  # Compartment volume 1 in dm^3
-            f"{name}_V2": 5.236e-13,  # Compartment volume 2 in dm^3
-            f"{name}_D_Ca": 6e-8,  # Diffusion coefficient in dm^2/s
-            f"{name}_delta": 3e-5,  # Membrane thickness in dm
-            f"{name}_S1": 3.142e-8,  # Surface area in dm^2
-            f"{name}_Lb1": 0.4,  # Binding rate constant 1 in s^-1μM^-1
-            f"{name}_Lb2": 0.2,  # Binding rate constant 2 in s^-1
-            f"{name}_Hb1": 100,  # Unbinding rate constant 1 in s^-1μM^-1
-            f"{name}_Hb2": 90,  # Unbinding rate constant 2 in s^-1
-            f"{name}_Bl": 500,  # Buffer low concentration in μM
-            f"{name}_Bh": 300,  # Buffer high concentration in μM
-            f"{name}_Jex": 20,  # External current in pA
-            f"{name}_Jex2": 20,  # External current 2 in pA
-            f"{name}_Kex": 2.3,  # External calcium concentration factor in μM
-            f"{name}_Kex2": 0.5,  # External calcium concentration factor 2 in μM
-            f"{name}_Cae": 0.01,  # External calcium concentration in μM
+            f"{prefix}_F": 9.648e4,  # Faraday's constant in C/mol
+            f"{prefix}_V1": 3.812e-13,  # Compartment volume 1 in dm^3
+            f"{prefix}_V2": 5.236e-13,  # Compartment volume 2 in dm^3
+            f"{prefix}_D_Ca": 6e-8,  # Diffusion coefficient in dm^2/s
+            f"{prefix}_delta": 3e-5,  # Membrane thickness in dm
+            f"{prefix}_S1": 3.142e-8,  # Surface area in dm^2
+            f"{prefix}_Lb1": 0.4,  # Binding rate constant 1 in s^-1μM^-1
+            f"{prefix}_Lb2": 0.2,  # Binding rate constant 2 in s^-1
+            f"{prefix}_Hb1": 100,  # Unbinding rate constant 1 in s^-1μM^-1
+            f"{prefix}_Hb2": 90,  # Unbinding rate constant 2 in s^-1
+            f"{prefix}_Bl": 500,  # Buffer low concentration in μM
+            f"{prefix}_Bh": 300,  # Buffer high concentration in μM
+            f"{prefix}_Jex": 20,  # External current in pA
+            f"{prefix}_Jex2": 20,  # External current 2 in pA
+            f"{prefix}_Kex": 2.3,  # External calcium concentration factor in μM
+            f"{prefix}_Kex2": 0.5,  # External calcium concentration factor 2 in μM
+            f"{prefix}_Cae": 0.01,  # External calcium concentration in μM
         }
         self.channel_states = {
             f"Cas": 0.0966,  # Initial internal calcium concentration in mM
-            f"{name}_Caf": 0.0966,  # Free intracellular calcium concentration in μM
-            f"{name}_Cab_ls": 80.929,  # Bound buffer f concentration in μM
-            f"{name}_Cab_hs": 29.068,  # Bound buffer h concentration in μM
-            f"{name}_Cab_lf": 80.929,  # Bound buffer h concentration in μM
-            f"{name}_Cab_hf": 29.068,  # Bound buffer h concentration in μM
+            f"{prefix}_Caf": 0.0966,  # Free intracellular calcium concentration in μM
+            f"{prefix}_Cab_ls": 80.929,  # Bound buffer f concentration in μM
+            f"{prefix}_Cab_hs": 29.068,  # Bound buffer h concentration in μM
+            f"{prefix}_Cab_lf": 80.929,  # Bound buffer h concentration in μM
+            f"{prefix}_Cab_hf": 29.068,  # Bound buffer h concentration in μM
         }
         self.current_name = f"iCa"
         self.META = {
@@ -478,43 +484,32 @@ class CaPump(Channel):
             "mechanism": "Calcium dynamics",
         }
 
-    def update_states(self, states, dt, v, params):
-        """Update the states based on differential equations."""
-        prefix = self._name
+    def derivatives(self, t, states, args):
+        """Calculate the derivatives for the calcium pump system."""
+        Cas, Caf, Cab_ls, Cab_hs, Cab_lf, Cab_hf = states
+        (
+            F,
+            V1,
+            V2,
+            D_Ca,
+            delta,
+            S1,
+            Lb1,
+            Lb2,
+            Hb1,
+            Hb2,
+            Bl,
+            Bh,
+            Jex,
+            Kex,
+            Jex2,
+            Kex2,
+            Cae,
+            iCa,
+            v,
+        ) = args
+
         v += 1e-6  # jitter to avoid division by zero
-        dt /= 1000  # convert to seconds
-        F, V1, V2, D_Ca, delta, S1 = (
-            params[f"{prefix}_F"],
-            params[f"{prefix}_V1"],
-            params[f"{prefix}_V2"],
-            params[f"{prefix}_D_Ca"],
-            params[f"{prefix}_delta"],
-            params[f"{prefix}_S1"],
-        )
-        Lb1, Lb2, Hb1, Hb2, Bl, Bh = (
-            params[f"{prefix}_Lb1"],
-            params[f"{prefix}_Lb2"],
-            params[f"{prefix}_Hb1"],
-            params[f"{prefix}_Hb2"],
-            params[f"{prefix}_Bl"],
-            params[f"{prefix}_Bh"],
-        )
-        Jex, Kex, Jex2, Kex2, Cae = (
-            params[f"{prefix}_Jex"],
-            params[f"{prefix}_Kex"],
-            params[f"{prefix}_Jex2"],
-            params[f"{prefix}_Kex2"],
-            params[f"{prefix}_Cae"],
-        )
-
-        Cas = states[f"Cas"]
-        Caf = states[f"{prefix}_Caf"]
-        Cab_ls = states[f"{prefix}_Cab_ls"]
-        Cab_hs = states[f"{prefix}_Cab_hs"]
-        Cab_lf = states[f"{prefix}_Cab_lf"]
-        Cab_hf = states[f"{prefix}_Cab_hf"]
-
-        iCa = states["iCa"]
         iEx = Jex * save_exp(-(v + 14) / 70) * (Cas - Cae) / (Cas - Cae + Kex)
         iEx2 = Jex2 * (Cas - Cae) / (Cas - Cae + Kex2)
 
@@ -542,27 +537,73 @@ class CaPump(Channel):
         dCab_lf_dt = Lb1 * Caf * (Bl - Cab_lf) - Lb2 * Cab_lf
         dCab_hf_dt = Hb1 * Caf * (Bh - Cab_hf) - Hb2 * Cab_hf
 
-        Cas = Cas + dCas_dt * dt
-        Caf = Caf + dCaf_dt * dt
-        Cab_ls = Cab_ls + dCab_ls_dt * dt
-        Cab_hs = Cab_hs + dCab_hs_dt * dt
-        Cab_lf = Cab_lf + dCab_lf_dt * dt
-        Cab_hf = Cab_hf + dCab_hf_dt * dt
+        return jnp.array(
+            [dCas_dt, dCaf_dt, dCab_ls_dt, dCab_hs_dt, dCab_lf_dt, dCab_hf_dt]
+        )
 
-        # Cas = jnp.maximum(Cas + dCas_dt * dt, 0)
-        # Caf = jnp.maximum(Caf + dCaf_dt * dt, 0)
-        # Cab_ls = jnp.maximum(Cab_ls + dCab_ls_dt * dt, 0)
-        # Cab_hs = jnp.maximum(Cab_hs + dCab_hs_dt * dt, 0)
-        # Cab_lf = jnp.maximum(Cab_lf + dCab_lf_dt * dt, 0)
-        # Cab_hf = jnp.maximum(Cab_hf + dCab_hf_dt * dt, 0)
+    def update_states(
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
+        **kwargs,
+    ):
+        """Update the state of calcium pump variables."""
+        prefix = self._name
+        dt /= 1000  # convert to seconds
+
+        # States
+        Cas = states[f"Cas"]
+        Caf = states[f"{prefix}_Caf"]
+        Cab_ls = states[f"{prefix}_Cab_ls"]
+        Cab_hs = states[f"{prefix}_Cab_hs"]
+        Cab_lf = states[f"{prefix}_Cab_lf"]
+        Cab_hf = states[f"{prefix}_Cab_hf"]
+        iCa = states["iCa"]
+        y0 = jnp.array([Cas, Caf, Cab_ls, Cab_hs, Cab_lf, Cab_hf])
+
+        # Parameters
+        args_tuple = (
+            params[f"{prefix}_F"],
+            params[f"{prefix}_V1"],
+            params[f"{prefix}_V2"],
+            params[f"{prefix}_D_Ca"],
+            params[f"{prefix}_delta"],
+            params[f"{prefix}_S1"],
+            params[f"{prefix}_Lb1"],
+            params[f"{prefix}_Lb2"],
+            params[f"{prefix}_Hb1"],
+            params[f"{prefix}_Hb2"],
+            params[f"{prefix}_Bl"],
+            params[f"{prefix}_Bh"],
+            params[f"{prefix}_Jex"],
+            params[f"{prefix}_Kex"],
+            params[f"{prefix}_Jex2"],
+            params[f"{prefix}_Kex2"],
+            params[f"{prefix}_Cae"],
+            states["iCa"],
+            v,
+        )
+
+        # Choose the solver
+        if self.solver == "newton":
+            y_new = newton(y0, dt, self.derivatives, args_tuple)
+        elif self.solver == "rk45":
+            y_new = rk45(y0, dt, self.derivatives, args_tuple)
+        else:  # Default to explicit Euler
+            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
+
+        # Unpack the new states
+        Cas_new, Caf_new, Cab_ls_new, Cab_hs_new, Cab_lf_new, Cab_hf_new = y_new
 
         return {
-            f"Cas": Cas,
-            f"{prefix}_Caf": Caf,
-            f"{prefix}_Cab_ls": Cab_ls,
-            f"{prefix}_Cab_hs": Cab_hs,
-            f"{prefix}_Cab_lf": Cab_lf,
-            f"{prefix}_Cab_hf": Cab_hf,
+            f"Cas": Cas_new,
+            f"{prefix}_Caf": Caf_new,
+            f"{prefix}_Cab_ls": Cab_ls_new,
+            f"{prefix}_Cab_hs": Cab_hs_new,
+            f"{prefix}_Cab_lf": Cab_lf_new,
+            f"{prefix}_Cab_hf": Cab_hf_new,
         }
 
     def compute_current(self, states, v, params):
@@ -571,12 +612,14 @@ class CaPump(Channel):
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
+        prefix = self._name
         return {
             f"Cas": 0.0966,  # Initial internal calcium concentration in mM
-            f"{self._name}_Caf": 0.0966,
-            f"{self._name}_Cab_ls": 80.929,
-            f"{self._name}_Cab_hs": 29.068,
-            f"{self._name}_Cab_lf": 80.929,
+            f"{prefix}_Caf": 0.0966,
+            f"{prefix}_Cab_ls": 80.929,
+            f"{prefix}_Cab_hs": 29.068,
+            f"{prefix}_Cab_lf": 80.929,
+            f"{prefix}_Cab_hf": 29.068,
         }
 
 

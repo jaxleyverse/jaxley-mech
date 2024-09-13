@@ -4,6 +4,8 @@ import jax.numpy as jnp
 from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
+from jaxley_mech.solvers import diffrax_implicit, explicit_euler, newton, rk45
+
 META = {
     "reference": [
         "Schroeder, C., Oesterle, J., Berens, P., Yoshimatsu, T., & Baden, T. (2021). eLife."
@@ -12,9 +14,9 @@ META = {
 
 
 class RibbonSynapse(Synapse):
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, solver: Optional[str] = "newton"):
         self._name = name = name if name else self.__class__.__name__
-
+        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
         self.synapse_params = {
             f"{name}_gS": 1e-6,  # Maximal synaptic conductance (uS)
             f"{name}_e_syn": 0.0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
@@ -36,52 +38,76 @@ class RibbonSynapse(Synapse):
         }
         self.META = META
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
-        """
-        Return updated synapse state.
-
-        Caution: Synaptic states currently solved with explicit Euler!
-        """
-        name = self.name
+    def derivatives(self, t, states, params):
+        """Calculate the derivatives for the Ribbon Synapse system."""
+        exo, RRP, IP, RP = states
+        e_max, r_max, i_max, d_max, RRP_max, IP_max, RP_max, k, V_half, pre_voltage = (
+            params
+        )
 
         # Presynaptic voltage to calcium to release probability
-        p_d_t = 1.0 / (
-            1.0
-            + save_exp(
-                -1 * params[f"{name}_k"] * (pre_voltage - params[f"{name}_V_half"])
-            )
-        )
+        p_d_t = 1.0 / (1.0 + save_exp(-1 * k * (pre_voltage - V_half)))
 
         # Glutamate release
-        e_t = (
-            params[f"{name}_e_max"]
-            * p_d_t
-            * u[f"{name}_RRP"]
-            / params[f"{name}_RRP_max"]
-        )
+        e_t = e_max * p_d_t * RRP / RRP_max
         # Rate of RP --> IP, movement to the ribbon
-        r_t = (
-            params[f"{name}_r_max"]
-            * (1 - u[f"{name}_IP"] / params[f"{name}_IP_max"])
-            * u[f"{name}_RP"]
-            / params[f"{name}_RP_max"]
-        )
+        r_t = r_max * (1 - IP / IP_max) * RP / RP_max
         # Rate of IP --> RRP, movement to the dock
-        i_t = (
-            params[f"{name}_i_max"]
-            * (1 - u[f"{name}_RRP"] / params[f"{name}_RRP_max"])
-            * u[f"{name}_IP"]
-            / params[f"{name}_IP_max"]
-        )
+        i_t = i_max * (1 - RRP / RRP_max) * IP / IP_max
         # Rate of RP refilling
-        d_t = params[f"{name}_d_max"] * u[f"{name}_exo"]
+        d_t = d_max * exo
 
-        # Calculate the new vesicle numbers
-        new_RP = u[f"{name}_RP"] + (d_t - e_t) * delta_t
-        new_IP = u[f"{name}_IP"] + (r_t - i_t) * delta_t
-        new_RRP = u[f"{name}_RRP"] + (i_t - e_t) * delta_t
-        new_exo = u[f"{name}_exo"] + (e_t - d_t) * delta_t
+        dRP_dt = d_t - r_t
+        dIP_dt = r_t - i_t
+        dRRP_dt = i_t - e_t
+        dExo_dt = e_t - d_t
 
+        return jnp.array([dExo_dt, dRRP_dt, dIP_dt, dRP_dt])
+
+    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+        """Return updated synapse state using the chosen solver."""
+        name = self._name
+
+        # Parameters
+        args_tuple = (
+            params[f"{name}_e_max"],
+            params[f"{name}_r_max"],
+            params[f"{name}_i_max"],
+            params[f"{name}_d_max"],
+            params[f"{name}_RRP_max"],
+            params[f"{name}_IP_max"],
+            params[f"{name}_RP_max"],
+            params[f"{name}_k"],
+            params[f"{name}_V_half"],
+            pre_voltage,
+        )
+
+        # States
+        exo, RRP, IP, RP = (
+            u[f"{name}_exo"],
+            u[f"{name}_RRP"],
+            u[f"{name}_IP"],
+            u[f"{name}_RP"],
+        )
+        y0 = jnp.array([exo, RRP, IP, RP])
+
+        # Choose the solver
+        if self.solver == "newton":
+            y_new = newton(y0, delta_t, self.derivatives, args_tuple)
+
+        elif self.solver == "diffrax_implicit":
+            y_new = diffrax_implicit(y0, delta_t, self.derivatives, args_tuple)
+
+        elif self.solver == "rk45":
+            y_new = rk45(y0, delta_t, self.derivatives, args_tuple)
+
+        else:  # Default to explicit Euler
+            y_new = explicit_euler(y0, delta_t, self.derivatives, args_tuple)
+
+        new_exo = y_new[0]
+        new_RRP = y_new[1]
+        new_IP = y_new[2]
+        new_RP = y_new[3]
         return {
             f"{name}_exo": new_exo,
             f"{name}_RRP": new_RRP,

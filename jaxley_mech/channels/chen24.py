@@ -6,14 +6,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import save_exp, solve_gate_exponential
+
+from jaxley_mech.solvers import explicit_euler, newton, rk45
 
 
 class Phototransduction(Channel):
     """Phototransduction channel"""
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: Optional[str] = "newton",
+    ):
         super().__init__(name)
+        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
         prefix = self._name
         self.channel_params = {  # Table 1 / Figure 8
             f"{prefix}_sigma": 22.0,  # σ, /s, Opsin decay rate constant
@@ -47,6 +53,21 @@ class Phototransduction(Channel):
             ],
         }
 
+    def derivatives(self, t, states, params):
+        """Calculate the derivatives for the phototransduction system."""
+        R, P, G, C = states
+        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = params
+
+        I = k * G**n  # Current through phototransduction channel
+        q = beta * C_dark / I_dark
+
+        dR_dt = gamma * stim - sigma * R  # eq(1)
+        dP_dt = R - phi * P + eta  # eq(2)
+        dC_dt = q * I - beta * C  # eq(5)
+        dG_dt = S - P * G  # eq(3)
+
+        return jnp.array([dR_dt, dP_dt, dG_dt, dC_dt])
+
     def update_states(
         self,
         states: Dict[str, jnp.ndarray],
@@ -59,7 +80,7 @@ class Phototransduction(Channel):
         prefix = self._name
         dt /= 1000
 
-        # parameters
+        # Parameters
         gamma, sigma, phi, eta, beta, K_GC = (
             params[f"{prefix}_gamma"],
             params[f"{prefix}_sigma"],
@@ -74,10 +95,8 @@ class Phototransduction(Channel):
             params[f"{prefix}_G_dark"],
         )
         I_dark = G_dark**n * k
-        q = beta * C_dark / I_dark
-        S_max = eta / phi * G_dark * (1 + (C_dark / K_GC) ** m)
 
-        # states
+        # States
         Stim = states[f"{prefix}_Stim"]
         P, R, G, S, C = (
             states[f"{prefix}_P"],
@@ -86,26 +105,34 @@ class Phototransduction(Channel):
             states[f"{prefix}_S"],
             states[f"{prefix}_C"],
         )
-        I = -states[self.current_name]
+        y0 = jnp.array([R, P, G, C])
+        args_tuple = (
+            gamma,
+            sigma,
+            phi,
+            eta,
+            beta,
+            k,
+            n,
+            C_dark,
+            I_dark,
+            S,
+            Stim,
+        )
 
-        # stimulus activates opsin molecules
-        dR_dt = gamma * Stim - sigma * R  # eq(1)
+        # Choose the solver
+        if self.solver == "newton":
+            y_new = newton(y0, dt, self.derivatives, args_tuple)
+        elif self.solver == "rk45":
+            y_new = rk45(y0, dt, self.derivatives, args_tuple)
+        else:  # Default to explicit Euler
+            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
 
-        # active opsin molecules activate phosphodiesterase (PDE) molecules through transducin
-        dP_dt = R - phi * P + eta  # eq(2)
+        # Unpack the new states
+        R_new, P_new, G_new, C_new = y_new
 
-        # ca2+
-        dC_dt = q * I - beta * C  # eq(5)
-
-        # concentration of cGMP in the outer segment depends on the activity of PDE
-        dG_dt = S - P * G  # eq(3)
-
-        # Update states
-        S_new = S_max / (1 + (C / K_GC) ** m)
-        R_new = R + dR_dt * dt
-        P_new = P + dP_dt * dt
-        G_new = G + dG_dt * dt
-        C_new = C + dC_dt * dt
+        S_max = eta / phi * G_dark * (1 + (C_dark / K_GC) ** m)
+        S_new = S_max / (1 + (C / K_GC) ** m)  # New state of S, not its derivative
 
         return {
             f"{prefix}_R": R_new,
