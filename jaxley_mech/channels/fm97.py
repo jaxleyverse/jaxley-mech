@@ -46,7 +46,7 @@ class Leak(Channel):
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gLeak * (v - params[f"{prefix}_eLeak"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}
 
@@ -91,7 +91,7 @@ class Na(Channel):
 
         return gNa * (v - params[f"{prefix}_eNa"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = Na.m_gate(v)
@@ -149,7 +149,7 @@ class K(Channel):
 
         return gK * (v - params[f"eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_n, beta_n = K.n_gate(v)
@@ -201,7 +201,7 @@ class KA(Channel):
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gKA * (v - params[f"eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_a, beta_a = KA.A_gate(v)
@@ -262,7 +262,7 @@ class Ca(Channel):
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gCa * (v - states[f"eCa"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_c, beta_c = Ca.c_gate(v)
@@ -309,7 +309,7 @@ class CaNernstReversal(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -370,7 +370,7 @@ class CaPump(Channel):
         """The pump does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -413,6 +413,6 @@ class KCa(Channel):
         )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
         return gKCa * (v - params["eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}

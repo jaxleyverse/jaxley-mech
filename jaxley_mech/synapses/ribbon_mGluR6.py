@@ -41,7 +41,7 @@ class Ribbon_mGluR6(Synapse):
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """
         Return updated synapse state.
-        
+
         Caution: Synaptic states currently solved with explicit Euler!
         """
         name = self.name
@@ -114,7 +114,5 @@ class Ribbon_mGluR6(Synapse):
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Compute and return synaptic current."""
         name = self.name
-        g_syn = (
-            params[f"{name}_gTRPM1"] * u[f"{name}_mTRPM1"]
-        ) 
+        g_syn = params[f"{name}_gTRPM1"] * u[f"{name}_mTRPM1"]
         return g_syn * (post_voltage - params[f"{name}_eTRPM1"])

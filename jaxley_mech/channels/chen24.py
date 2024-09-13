@@ -129,7 +129,7 @@ class Phototransduction(Channel):
         I = -k * G**n  # eq(4)
         return I
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         eta, phi, G_dark, C_dark = (
