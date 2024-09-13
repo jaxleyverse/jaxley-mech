@@ -7,6 +7,7 @@ import optimistix as optx
 from diffrax import ImplicitEuler, ODETerm, diffeqsolve
 from jax import lax
 from jax.scipy.linalg import solve
+from jaxley.solver_gate import save_exp
 
 
 def explicit_euler(
@@ -144,3 +145,15 @@ def diffrax_implicit(
     )
     y_new = jnp.squeeze(y_new.ys, axis=0)
     return y_new
+
+
+def exponential_euler_ca(
+    x: jnp.ndarray,
+    dt: float,
+    x_inf: jnp.ndarray,
+    x_tau: jnp.ndarray,
+    drive_channel: jnp.ndarray,
+):
+    """Solve the ODE with an additional drive_channel term."""
+    exp_term = save_exp(-dt / x_tau)
+    return x * exp_term + x_inf * (1.0 - exp_term) + drive_channel * dt

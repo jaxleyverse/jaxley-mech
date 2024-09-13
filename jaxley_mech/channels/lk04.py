@@ -6,6 +6,8 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
+from jaxley_mech.solvers import exponential_euler_ca
+
 META = {
     "cell_type": "rod",
     "species": "Larval tiger salamanders (Ambystoma tigrinum)",
@@ -269,7 +271,7 @@ class CaPump(Channel):
     ):
         super().__init__(name)
         self.channel_params = {
-            f"{self._name}_depth": 10.0,
+            f"{self._name}_depth": 0.1,
             f"{self._name}_taur": 20,  # Rate of removal of calcium in ms
             f"{self._name}_cainf": 5e-5,  # mM
         }
@@ -298,9 +300,11 @@ class CaPump(Channel):
         drive_channel = select(
             drive_channel <= 0, jnp.zeros_like(drive_channel), drive_channel
         )
-        dCai_dt = drive_channel / 2 + (Cai_inf - Cai) / Cai_tau
-        Cai += dCai_dt * dt
-        return {"Cai": Cai}
+
+        # Update calcium concentration using exponential_euler
+        new_Cai = exponential_euler_ca(Cai, dt, Cai_inf, Cai_tau, drive_channel / 2)
+
+        return {"Cai": new_Cai}
 
     def compute_current(self, states, v, params):
         """This dynamics model does not directly contribute to the membrane current."""
