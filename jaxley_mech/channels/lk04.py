@@ -1,12 +1,9 @@
 from typing import Dict, Optional, Union
 
-import jax.debug
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
-
-from jaxley_mech.solvers import exponential_euler_ca
 
 META = {
     "cell_type": "rod",
@@ -302,7 +299,8 @@ class CaPump(Channel):
         )
 
         # Update calcium concentration using exponential_euler
-        new_Cai = exponential_euler_ca(Cai, dt, Cai_inf, Cai_tau, drive_channel / 2)
+        Cai_inf = Cai_inf + drive_channel / 2 * Cai_tau
+        new_Cai = exponential_euler(Cai, dt, Cai_inf, Cai_tau)
 
         return {"Cai": new_Cai}
 
