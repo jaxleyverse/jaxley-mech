@@ -280,12 +280,11 @@ class Na8States(Na):
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state."""
-        return {}
-        # states = self.channel_states
-        # params = self.channel_params
-        # for i in range(int(120 / dt)):
-        #     states = self.update_states(states, dt, v, params)
-        # return states
+        states = self.channel_states
+        params = self.channel_params
+        for i in range(int(120 / delta_t)):
+            states = self.update_states(states, delta_t, v, params)
+        return states
 
 
 class K5States(K):
