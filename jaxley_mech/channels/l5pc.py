@@ -79,7 +79,7 @@ class NaTaT(Channel):
         current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -157,7 +157,7 @@ class NaTs2T(Channel):
         current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -236,7 +236,7 @@ class NapEt2(Channel):
         current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -319,7 +319,7 @@ class KPst(Channel):
         current = k_cond * (voltages - params["eK"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -404,7 +404,7 @@ class KTst(Channel):
         current = k_cond * (voltages - params["eK"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -477,7 +477,7 @@ class SKE2(Channel):
         current = k_cond * (voltages - params["eK"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         cai = 5e-05  # Initial value for intracellular calcium concentration
@@ -539,7 +539,7 @@ class SKv3_1(Channel):
         current = k_cond * (voltages - params["eK"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -596,7 +596,7 @@ class M(Channel):
         current = k_cond * (voltages - params["eK"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -662,7 +662,7 @@ class CaHVA(Channel):
         current = ca_cond * (voltages - u["eCa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(voltages)
@@ -730,7 +730,7 @@ class CaLVA(Channel):
         current = ca_cond * (voltages - u["eCa"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)
@@ -807,7 +807,7 @@ class CaPump(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -846,7 +846,7 @@ class CaNernstReversal(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -899,7 +899,7 @@ class H(Channel):
         current = h_cond * (voltages - params["eH"])
         return current
 
-    def init_state(self, voltages, params):
+    def init_state(self, states, voltages, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         m_inf, _ = self.m_gate(voltages)

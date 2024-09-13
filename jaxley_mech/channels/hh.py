@@ -40,7 +40,7 @@ class Leak(Channel):
         leak_conds = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
         return leak_conds * (v - params[f"{prefix}_eLeak"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}
 
@@ -84,7 +84,7 @@ class Na(Channel):
         current = gNa * (v - params[f"{prefix}_eNa"])
         return current
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v)
@@ -141,7 +141,7 @@ class K(Channel):
         gK = params[f"{prefix}_gK"] * (n**4) * 1000  # mS/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_n, beta_n = self.n_gate(v)
@@ -278,13 +278,14 @@ class Na8States(Na):
         gNa = params[f"{prefix}_gNa"] * O * 1000  # mS/cm^2
         return gNa * (v - params[f"{prefix}_eNa"])
 
-    def init_state(self, dt, v, params):
-        """Initialize the state with 2 minutes of voltage clamp."""
-        states = self.channel_states
-        params = self.channel_params
-        for i in range(int(120 / dt)):
-            states = self.update_states(states, dt, v, params)
-        return states
+    def init_state(self, states, v, params, delta_t):
+        """Initialize the state."""
+        return {}
+        # states = self.channel_states
+        # params = self.channel_params
+        # for i in range(int(120 / dt)):
+        #     states = self.update_states(states, dt, v, params)
+        # return states
 
 
 class K5States(K):
@@ -358,10 +359,10 @@ class K5States(K):
         gK = params[f"{prefix}_gK"] * O * 1000  # mS/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
-    def init_state(self, dt, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state with 2 minutes of voltage clamp."""
         states = self.channel_states
         params = self.channel_params
-        for i in range(int(120 / dt)):
-            states = self.update_states(states, dt, v, params)
+        for i in range(int(120 / delta_t)):
+            states = self.update_states(states, delta_t, v, params)
         return states
