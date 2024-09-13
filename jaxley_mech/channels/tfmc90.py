@@ -165,7 +165,7 @@ class Phototransduction(Channel):
         current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)  # from Kamiyama et al. (2009)
         return current
 
-    def init_state(self, states, voltages, params, delta_t):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         return {
