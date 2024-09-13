@@ -38,12 +38,22 @@ class RibbonSynapse(Synapse):
         }
         self.META = META
 
+<<<<<<< HEAD
     def derivatives(self, t, states, params):
         """Calculate the derivatives for the Ribbon Synapse system."""
         exo, RRP, IP, RP = states
         e_max, r_max, i_max, d_max, RRP_max, IP_max, RP_max, k, V_half, pre_voltage = (
             params
         )
+=======
+    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+        """
+        Return updated synapse state.
+
+        Caution: Synaptic states currently solved with explicit Euler!
+        """
+        name = self.name
+>>>>>>> main
 
         # Presynaptic voltage to calcium to release probability
         p_d_t = 1.0 / (1.0 + save_exp(-1 * k * (pre_voltage - V_half)))

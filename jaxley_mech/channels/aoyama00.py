@@ -48,7 +48,7 @@ class Leak(Channel):
         gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
         return gLeak * (v - params[f"{prefix}_eLeak"])  # mS/cm^2 * mV = uA/cm^2
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}
 
@@ -94,7 +94,7 @@ class Na(Channel):
 
         return gNa * (v - params[f"{prefix}_eNa"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v)
@@ -156,7 +156,7 @@ class Kdr(Channel):
         k_cond = params[f"{prefix}_gKdr"] * m**4 * h * 1000
         return k_cond * (v - params["eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v)
@@ -219,7 +219,7 @@ class Kto(Channel):
         k_cond = params[f"{prefix}_gKto"] * m**3 * h * 1000
         return k_cond * (v - params["eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v)
@@ -278,7 +278,7 @@ class Kar(Channel):
         k_cond = params[f"{prefix}_gKar"] * m**5 * 1000
         return k_cond * (v - params["eK"])
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
         m = self.m_gate(v)
@@ -333,7 +333,7 @@ class Ca(Channel):
         current = ca_cond * (v - params["eCa"])
         return current
 
-    def init_state(self, v, params):
+    def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
 
