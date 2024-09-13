@@ -41,7 +41,6 @@ class Ribbon_mGluR6(Synapse):
         }
         self.META = META
 
-<<<<<<< HEAD
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the Ribbon_mGluR6 synapse system."""
         exo, RRP, IP, RP, mTRPM1 = states
@@ -58,15 +57,6 @@ class Ribbon_mGluR6(Synapse):
             KGlu,
             pre_voltage,
         ) = args
-=======
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
-        """
-        Return updated synapse state.
-
-        Caution: Synaptic states currently solved with explicit Euler!
-        """
-        name = self.name
->>>>>>> main
 
         # Presynaptic voltage to calcium to release probability
         p_d_t = 1.0 / (1.0 + save_exp(-1 * k * (pre_voltage - V_half)))
