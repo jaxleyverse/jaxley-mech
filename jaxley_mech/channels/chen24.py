@@ -53,10 +53,10 @@ class Phototransduction(Channel):
             ],
         }
 
-    def derivatives(self, t, states, params):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the phototransduction system."""
         R, P, G, C = states
-        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = params
+        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = args
 
         I = k * G**n  # Current through phototransduction channel
         q = beta * C_dark / I_dark

@@ -64,7 +64,7 @@ class Phototransduction(Channel):
             "note": "The model is from Torre et al. (1990) but variable naming convention and default parameters are from Kamiyama et al. (2009).",
         }
 
-    def derivatives(self, t, states, params):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the phototransduction system."""
         Rh, Rhi, Tr, PDE, Ca, Cab, cGMP = states
         (
@@ -90,7 +90,7 @@ class Phototransduction(Channel):
             C0,
             eT,
             Jhv,
-        ) = params
+        ) = args
 
         J_Ca = (
             J_max * cGMP**3 / (cGMP**3 + K**3)

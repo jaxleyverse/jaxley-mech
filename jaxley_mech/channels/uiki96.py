@@ -417,7 +417,7 @@ class CaPump(Channel):
         self.current_name = f"iCa"
         self.META = META
 
-    def derivatives(self, t, states, params):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the calcium pump system."""
         Cas, Cad, Cab_ls, Cab_hs, Cab_ld, Cab_hd = states
         (
@@ -440,7 +440,7 @@ class CaPump(Channel):
             Cae,
             iCa,
             v,
-        ) = params
+        ) = args
 
         # Current terms
         iEx = Jex * (Cas - Cae) / (Cas - Cae + Kex) * save_exp(-(v + 14) / 70)
