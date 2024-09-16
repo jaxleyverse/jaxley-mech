@@ -5,7 +5,7 @@ from jax.lax import select
 from jaxley.solver_gate import save_exp
 from jaxley.synapses import Synapse
 
-from jaxley_mech.solvers import explicit_euler, newton, rk45
+from jaxley_mech.solvers import diffrax_implicit, explicit_euler, newton, rk45
 
 META = {
     "reference_1": "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119.",
@@ -117,8 +117,12 @@ class Ribbon_mGluR6(Synapse):
             y_new = newton(y0, delta_t, self.derivatives, args_tuple)
         elif self.solver == "rk45":
             y_new = rk45(y0, delta_t, self.derivatives, args_tuple)
-        else:  # Default to explicit Euler
+        elif self.solver == "explicit":
             y_new = explicit_euler(y0, delta_t, self.derivatives, args_tuple)
+        elif self.solver == "diffrax_implicit":
+            y_new = diffrax_implicit(y0, delta_t, self.derivatives, args_tuple)
+        else:
+            raise ValueError(f"Solver {self.solver} not recognized")
 
         new_exo, new_RRP, new_IP, new_RP, new_mTRPM1 = y_new
         return {
