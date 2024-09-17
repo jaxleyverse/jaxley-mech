@@ -301,12 +301,34 @@ class Na8States(Na):
         return gNa * (v - params[f"{prefix}_eNa"])
 
     def init_state(self, states, v, params, delta_t):
-        """Initialize the state."""
-        states = self.channel_states
-        params = self.channel_params
-        for i in range(int(120 / delta_t)):
-            states = self.update_states(states, delta_t, v, params)
-        return states
+        """Initialize the state to steady-state values."""
+        prefix = self._name
+        alpha_m, beta_m = self.m_gate(v)
+        alpha_h, beta_h = self.h_gate(v)
+        
+        m_inf = alpha_m / (alpha_m + beta_m)
+        h_inf = alpha_h / (alpha_h + beta_h)
+        
+        # Calculate steady-state probabilities
+        C3 = (1 - m_inf)**3 * h_inf
+        C2 = 3 * m_inf * (1 - m_inf)**2 * h_inf
+        C1 = 3 * m_inf**2 * (1 - m_inf) * h_inf
+        O = m_inf**3 * h_inf
+        I3 = (1 - m_inf)**3 * (1 - h_inf)
+        I2 = 3 * m_inf * (1 - m_inf)**2 * (1 - h_inf)
+        I1 = 3 * m_inf**2 * (1 - m_inf) * (1 - h_inf)
+        I = m_inf**3 * (1 - h_inf)
+        
+        return {
+            f"{prefix}_C3": C3,
+            f"{prefix}_C2": C2,
+            f"{prefix}_C1": C1,
+            f"{prefix}_O": O,
+            f"{prefix}_I3": I3,
+            f"{prefix}_I2": I2,
+            f"{prefix}_I1": I1,
+            f"{prefix}_I": I,
+        }
 
 
 class K5States(K):
@@ -420,9 +442,23 @@ class K5States(K):
         return gK * (v - params[f"{prefix}_eK"])
 
     def init_state(self, states, v, params, delta_t):
-        """Initialize the state with 2 minutes of voltage clamp."""
-        states = self.channel_states
-        params = self.channel_params
-        for i in range(int(120 / delta_t)):
-            states = self.update_states(states, delta_t, v, params)
-        return states
+        """Initialize the state to steady-state values."""
+        prefix = self._name
+        alpha_n, beta_n = self.n_gate(v)
+        
+        n_inf = alpha_n / (alpha_n + beta_n)
+        
+        # Calculate steady-state probabilities
+        C4 = (1 - n_inf)**4
+        C3 = 4 * n_inf * (1 - n_inf)**3
+        C2 = 6 * n_inf**2 * (1 - n_inf)**2
+        C1 = 4 * n_inf**3 * (1 - n_inf)
+        O = n_inf**4
+        
+        return {
+            f"{prefix}_C4": C4,
+            f"{prefix}_C3": C3,
+            f"{prefix}_C2": C2,
+            f"{prefix}_C1": C1,
+            f"{prefix}_O": O,
+        }
