@@ -4,13 +4,7 @@ import jax.numpy as jnp
 from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
-from jaxley_mech.solvers import (
-    SolverExtension,
-    diffrax_implicit,
-    explicit_euler,
-    newton,
-    rk45,
-)
+from jaxley_mech.solvers import SolverExtension
 
 META = {
     "reference": [

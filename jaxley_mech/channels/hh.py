@@ -4,13 +4,7 @@ import jax.numpy as jnp
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import (
-    SolverExtension,
-    diffrax_implicit,
-    explicit_euler,
-    newton,
-    rk45,
-)
+from jaxley_mech.solvers import SolverExtension
 
 META = {
     "reference": "Hodgkin, A. L., & Huxley, A. F. (1952). A quantitative description of membrane current and its application to conduction and excitation in nerve. The Journal of Physiology, 117(4), 500–544. https://doi.org/10.1113/jphysiol.1952.sp004764",
@@ -338,7 +332,9 @@ class Na8States(Na, SolverExtension):
 class K5States(K, SolverExtension):
     """Potassium channel in the formulation of Markov model with 5 states"""
 
-    def __init__(self, name: Optional[str] = None, 
+    def __init__(
+        self,
+        name: Optional[str] = None,
         solver: str = "newton",
         rtol: float = 1e-8,
         atol: float = 1e-8,

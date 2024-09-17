@@ -5,13 +5,7 @@ from jax.lax import select
 from jaxley.solver_gate import save_exp
 from jaxley.synapses import Synapse
 
-from jaxley_mech.solvers import (
-    SolverExtension,
-    diffrax_implicit,
-    explicit_euler,
-    newton,
-    rk45,
-)
+from jaxley_mech.solvers import SolverExtension
 
 META = {
     "reference_1": "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119.",
@@ -54,17 +48,6 @@ class Ribbon_mGluR6(Synapse, SolverExtension):
             f"{name}_mTRPM1": 0.5,  # Channel activation
         }
         self.META = META
-
-    def _get_solver_func(self, solver):
-        solvers = {
-            "newton": newton,
-            "rk45": rk45,
-            "explicit": explicit_euler,
-            "diffrax_implicit": diffrax_implicit,
-        }
-        if solver not in solvers:
-            raise ValueError(f"Solver {solver} not recognized")
-        return solvers[solver]
 
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the Ribbon_mGluR6 synapse system."""

@@ -7,7 +7,7 @@ import numpy as np
 from jax.lax import select
 from jaxley.channels import Channel
 
-from jaxley_mech.solvers import SolverExtension, explicit_euler, newton, rk45
+from jaxley_mech.solvers import SolverExtension
 
 
 class Phototransduction(Channel, SolverExtension):

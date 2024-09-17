@@ -6,13 +6,7 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import (
-    SolverExtension,
-    diffrax_implicit,
-    explicit_euler,
-    newton,
-    rk45,
-)
+from jaxley_mech.solvers import SolverExtension
 
 META = {
     "cell_type": "rod (inner segment)",
