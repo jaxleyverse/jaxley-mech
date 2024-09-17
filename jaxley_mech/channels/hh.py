@@ -4,7 +4,13 @@ import jax.numpy as jnp
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import diffrax_implicit, explicit_euler, newton, rk45
+from jaxley_mech.solvers import (
+    SolverExtension,
+    diffrax_implicit,
+    explicit_euler,
+    newton,
+    rk45,
+)
 
 META = {
     "reference": "Hodgkin, A. L., & Huxley, A. F. (1952). A quantitative description of membrane current and its application to conduction and excitation in nerve. The Journal of Physiology, 117(4), 500–544. https://doi.org/10.1113/jphysiol.1952.sp004764",
@@ -159,11 +165,19 @@ class K(Channel):
         return alpha, beta
 
 
-class Na8States(Na):
+class Na8States(Na, SolverExtension):
     """Sodium channel in the formulation of Markov model with 8 states"""
 
-    def __init__(self, name: Optional[str] = None, solver: str = "newton"):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: str = "newton",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 4096,
+    ):
         super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
         prefix = self._name
         self.solver = solver
         self.channel_params = {
@@ -265,17 +279,7 @@ class Na8States(Na):
         # Parameters for dynamics
         args_tuple = (v,)
 
-        # Choose solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "explicit":
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "diffrax_implicit":
-            y_new = diffrax_implicit(y0, dt, self.derivatives, args_tuple)
-        else:
-            raise ValueError(f"Solver {self.solver} not recognized.")
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
 
         # Unpack new states
         C3_new, C2_new, C1_new, O_new, I3_new, I2_new, I1_new, I_new = y_new
@@ -305,20 +309,20 @@ class Na8States(Na):
         prefix = self._name
         alpha_m, beta_m = self.m_gate(v)
         alpha_h, beta_h = self.h_gate(v)
-        
+
         m_inf = alpha_m / (alpha_m + beta_m)
         h_inf = alpha_h / (alpha_h + beta_h)
-        
+
         # Calculate steady-state probabilities
-        C3 = (1 - m_inf)**3 * h_inf
-        C2 = 3 * m_inf * (1 - m_inf)**2 * h_inf
+        C3 = (1 - m_inf) ** 3 * h_inf
+        C2 = 3 * m_inf * (1 - m_inf) ** 2 * h_inf
         C1 = 3 * m_inf**2 * (1 - m_inf) * h_inf
         O = m_inf**3 * h_inf
-        I3 = (1 - m_inf)**3 * (1 - h_inf)
-        I2 = 3 * m_inf * (1 - m_inf)**2 * (1 - h_inf)
+        I3 = (1 - m_inf) ** 3 * (1 - h_inf)
+        I2 = 3 * m_inf * (1 - m_inf) ** 2 * (1 - h_inf)
         I1 = 3 * m_inf**2 * (1 - m_inf) * (1 - h_inf)
         I = m_inf**3 * (1 - h_inf)
-        
+
         return {
             f"{prefix}_C3": C3,
             f"{prefix}_C2": C2,
@@ -331,11 +335,17 @@ class Na8States(Na):
         }
 
 
-class K5States(K):
+class K5States(K, SolverExtension):
     """Potassium channel in the formulation of Markov model with 5 states"""
 
-    def __init__(self, name: Optional[str] = None, solver: str = "newton"):
+    def __init__(self, name: Optional[str] = None, 
+        solver: str = "newton",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 4096,
+    ):
         super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
         prefix = self._name
         self.solver = solver
         self.channel_params = {
@@ -409,17 +419,7 @@ class K5States(K):
         # Parameters for dynamics
         args_tuple = (v,)
 
-        # Choose solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "explicit":
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "diffrax_implicit":
-            y_new = diffrax_implicit(y0, dt, self.derivatives, args_tuple)
-        else:
-            raise ValueError(f"Solver {self.solver} not recognized.")
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
 
         # Unpack new states
         C4_new, C3_new, C2_new, C1_new, O_new = y_new
@@ -445,16 +445,16 @@ class K5States(K):
         """Initialize the state to steady-state values."""
         prefix = self._name
         alpha_n, beta_n = self.n_gate(v)
-        
+
         n_inf = alpha_n / (alpha_n + beta_n)
-        
+
         # Calculate steady-state probabilities
-        C4 = (1 - n_inf)**4
-        C3 = 4 * n_inf * (1 - n_inf)**3
-        C2 = 6 * n_inf**2 * (1 - n_inf)**2
+        C4 = (1 - n_inf) ** 4
+        C3 = 4 * n_inf * (1 - n_inf) ** 3
+        C2 = 6 * n_inf**2 * (1 - n_inf) ** 2
         C1 = 4 * n_inf**3 * (1 - n_inf)
         O = n_inf**4
-        
+
         return {
             f"{prefix}_C4": C4,
             f"{prefix}_C3": C3,

@@ -7,17 +7,29 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import diffrax_implicit, explicit_euler, newton, rk45
+from jaxley_mech.solvers import (
+    SolverExtension,
+    diffrax_implicit,
+    explicit_euler,
+    newton,
+    rk45,
+)
 
 
-class Phototransduction(Channel):
+class Phototransduction(Channel, SolverExtension):
     """Phototransduction channel"""
 
-    def __init__(self, name: Optional[str] = None, solver: Optional[str] = "newton"):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: str = "newton",
+        rtol: float = 1e-6,
+        atol: float = 1e-6,
+        max_iter: int = 4096,
+    ):
         super().__init__(name)
-        self.solver = (
-            solver  # Choose between 'explicit', 'newton', 'diffrax_implicit' and 'rk45'
-        )
+        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
+
         prefix = self._name
         self.channel_params = {
             f"{prefix}_alpha1": 20.0,  # /s, rate constant of Rh* inactivation
@@ -164,17 +176,7 @@ class Phototransduction(Channel):
             states[f"{prefix}_Jhv"],
         )
 
-        # Choose solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "explicit":
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "diffrax_implicit":
-            y_new = diffrax_implicit(y0, dt, self.derivatives, args_tuple)
-        else:
-            raise ValueError(f"Solver {self.solver} not recognized.")
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
 
         # Unpack new states
         Rh_new, Rhi_new, Tr_new, PDE_new, Ca_new, Cab_new, cGMP_new = y_new

@@ -6,7 +6,13 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import diffrax_implicit, explicit_euler, newton, rk45
+from jaxley_mech.solvers import (
+    SolverExtension,
+    diffrax_implicit,
+    explicit_euler,
+    newton,
+    rk45,
+)
 
 META = {
     "cell_type": "Bipolar cell",
@@ -184,15 +190,21 @@ class KA(Channel):
         return alpha, beta
 
 
-class Hyper(Channel):
+class Hyper(Channel, SolverExtension):
     """Hyperpolarization-activated channel in the formulation of Markov model with 5 states"""
 
-    def __init__(self, name: Optional[str] = None, solver: Optional[str] = "newton"):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: str = "newton",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 4096,
+    ):
         super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
+
         prefix = self._name
-        self.solver = (
-            solver  # Choose between 'explicit', 'newton', 'diffrax_implicit' and 'rk45'
-        )
         self.channel_params = {
             f"{prefix}_gHyper": 0.975e-3,  # S/cm^2
             f"{prefix}_eHyper": -17.7,  # mV
@@ -262,17 +274,7 @@ class Hyper(Channel):
         # Parameters for dynamics
         args_tuple = (v,)
 
-        # Choose solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "explicit":
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "diffrax_implicit":
-            y_new = diffrax_implicit(y0, dt, self.derivatives, args_tuple)
-        else:
-            raise ValueError(f"Solver {self.solver} not recognized.")
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
 
         # Unpack new states
         C1_new, C2_new, O1_new, O2_new, O3_new = y_new
@@ -376,16 +378,18 @@ class Ca(Channel):
         return h
 
 
-class CaPump(Channel):
+class CaPump(Channel, SolverExtension):
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: Optional[str] = "newton",
+        solver: str = "newton",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 4096,
     ):
         super().__init__(name)
-        self.solver = (
-            solver  # Choose between 'explicit', 'newton', 'diffrax_implicit' and 'rk45'
-        )
+        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
+
         name = self._name
         self.channel_params = {
             f"{name}_F": 9.648e4,  # Faraday's constant in C/mol
@@ -513,17 +517,7 @@ class CaPump(Channel):
             v,
         )
 
-        # Choose solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "explicit":
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "diffrax_implicit":
-            y_new = diffrax_implicit(y0, dt, self.derivatives, args_tuple)
-        else:
-            raise ValueError(f"Solver {self.solver} not recognized.")
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
 
         # Unpack new states
         Cas_new, Cad_new, Cab_ls_new, Cab_hs_new, Cab_ld_new, Cab_hd_new = y_new
