@@ -12,14 +12,16 @@ from jaxley.solver_gate import save_exp
 
 ### Solver extensions
 class SolverExtension:
-    def __init__(self, solver: str = "newton", rtol: float = 1e-8, atol: float = 1e-8, max_iter: int = 4096):
+    def __init__(
+        self,
+        solver: str = "newton",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 4096,
+    ):
         self.solver_name = solver
-        self.solver_args = {
-            "rtol": rtol,
-            "atol": atol,
-            "max_iter": max_iter
-        }
-        
+        self.solver_args = {"rtol": rtol, "atol": atol, "max_iter": max_iter}
+
         if solver == "diffrax_implicit":
             self.term = ODETerm(self.derivatives)
             root_finder = optx.Newton(rtol=rtol, atol=atol)
@@ -32,26 +34,39 @@ class SolverExtension:
             "newton": self._newton_wrapper,
             "rk45": rk45,
             "explicit": explicit_euler,
-            "diffrax_implicit": self._diffrax_implicit_wrapper
+            "diffrax_implicit": self._diffrax_implicit_wrapper,
         }
         if solver not in solvers:
-            raise ValueError(f"Solver {solver} not recognized")
+            raise ValueError(
+                f"Solver {solver} not recognized. Currently supported solvers are: {list(solvers.keys())}"
+            )
         return solvers[solver]
 
     def _newton_wrapper(self, y0, dt, derivatives_func, args):
-        return newton(y0, dt, derivatives_func, args, 
-                      rtol=self.solver_args["rtol"], 
-                      atol=self.solver_args["atol"],
-                      max_iter=self.solver_args["max_iter"])
-
+        return newton(
+            y0,
+            dt,
+            derivatives_func,
+            args,
+            rtol=self.solver_args["rtol"],
+            atol=self.solver_args["atol"],
+            max_iter=self.solver_args["max_iter"],
+        )
 
     def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
-        return diffrax_implicit(y0, dt, derivatives_func, args, 
-                                self.term, self.diffrax_solver, 
-                                self.solver_args["max_iter"])
+        return diffrax_implicit(
+            y0,
+            dt,
+            derivatives_func,
+            args,
+            self.term,
+            self.diffrax_solver,
+            self.solver_args["max_iter"],
+        )
 
 
 ### Solvers
+
 
 def explicit_euler(
     y0: jnp.ndarray, dt: float, derivatives_func: Callable[..., jnp.ndarray], *args: Any
@@ -125,9 +140,9 @@ def newton(
     converged0 = jnp.array(False)
     loop_vars = (i0, y0, delta0, converged0)
 
-    _, y_final, _, _ = lax.while_loop(cond_fun, body_fun, loop_vars)
+    _, y_new, _, _ = lax.while_loop(cond_fun, body_fun, loop_vars)
 
-    return y_final
+    return y_new
 
 
 def rk45(
