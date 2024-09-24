@@ -29,6 +29,19 @@ class SolverExtension:
 
         self.solver_func = self._get_solver_func(solver)
 
+    def __getstate__(self):
+        # Return the state without the solver function reference
+        state = self.__dict__.copy()
+        state["solver_func"] = (
+            self.solver_name
+        )  # Store the solver name instead of function reference
+        return state
+
+    def __setstate__(self, state):
+        # Restore the state and reinitialize the solver function
+        self.__dict__.update(state)
+        self.solver_func = self._get_solver_func(state["solver_func"])
+
     def _get_solver_func(self, solver):
         solvers = {
             "newton": self._newton_wrapper,
