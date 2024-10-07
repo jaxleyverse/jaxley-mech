@@ -538,7 +538,7 @@ class KCa(Channel):
         prefix = self._name
         Khalf = params[f"{prefix}_Khalf"]
         alpha_m, beta_m = self.m_gate(v)
-        n = self.n_gate(v, Khalf)
+        n = self.n_gate(states["Cas"], Khalf)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_n": n,
