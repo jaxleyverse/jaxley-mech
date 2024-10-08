@@ -55,14 +55,30 @@ def test_rk45():
 
 def test_diffrax_implicit():
     """Test the implicit Euler method from diffrax."""
+
+    import optimistix as optx
+    from diffrax import ImplicitEuler, ODETerm, diffeqsolve
+
     y0 = jnp.array([1.0])
     dt = 0.01
     expected_solution = y0 * jnp.exp(-dt)
 
     args = ()  # No extra arguments needed for this simple test
 
+    term = ODETerm(simple_derivatives)
+    root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
+    diffrax_solver = ImplicitEuler(root_finder=root_finder)
+
     # Use the implicit Euler method from diffrax
-    y_new = diffrax_implicit(y0, dt, simple_derivatives, args)
+    y_new = diffrax_implicit(
+        y0,
+        dt,
+        simple_derivatives,
+        args,
+        term=term,
+        solver=diffrax_solver,
+        max_steps=300,
+    )
 
     assert jnp.allclose(
         y_new, expected_solution, atol=1e-3
