@@ -15,9 +15,9 @@ class SolverExtension:
     def __init__(
         self,
         solver: str = "newton",
-        rtol: float = 1e-8,
-        atol: float = 1e-8,
-        max_iter: int = 4096,
+        rtol: float = 1e-5,
+        atol: float = 1e-6,
+        max_iter: int = 100,
     ):
         self.solver_name = solver
         self.solver_args = {"rtol": rtol, "atol": atol, "max_iter": max_iter}
@@ -107,7 +107,7 @@ def newton(
     *args: Any,
     rtol: float = 1e-8,  # Relative tolerance
     atol: float = 1e-8,  # Absolute tolerance
-    max_iter: int = 4096,
+    max_iter: int = 100,
 ) -> jnp.ndarray:
     """
     Newton's method with damping for solving implicit equations.
@@ -116,44 +116,52 @@ def newton(
     - y0 (jnp.ndarray): Initial state vector.
     - dt (float): Time step size.
     - derivatives_func (Callable): Function that calculates derivatives of the system.
-    - rtol (float): Relative tolerance for convergence. Default is 1e-8.
-    - atol (float): Absolute tolerance for convergence. Default is 1e-8.
-    - max_iter (int): Maximum number of iterations. Default is 4096.
+    - rtol (float): Relative tolerance for convergence. Default is 1e-5.
+    - atol (float): Absolute tolerance for convergence. Default is 1e-6.
+    - max_iter (int): Maximum number of iterations. Default is 100.
     - *args: Additional arguments for the derivatives function.
 
     Returns:
     - jnp.ndarray: Updated state vector after solving the implicit system.
     """
 
-    def cond_fun(loop_vars: Tuple[int, jnp.ndarray, jnp.ndarray, bool]) -> bool:
-        i, _, _, converged = loop_vars
-        return (i < max_iter) & ~converged
-
-    def body_fun(
-        loop_vars: Tuple[int, jnp.ndarray, jnp.ndarray, bool]
-    ) -> Tuple[int, jnp.ndarray, jnp.ndarray, bool]:
-        i, y, delta, converged = loop_vars
-        F = _f(y, y0)
-        J = jax.jacobian(_f)(y, y0)
-
-        # Ensure J and F have compatible dimensions
-        J = J.reshape((y.size, y.size))
-        F = F.flatten()
-
-        delta = solve(J, -F).reshape(y.shape)
-        y = y + delta
-        converged = jnp.linalg.norm(delta) < (atol + rtol * jnp.linalg.norm(y))
-        return i + 1, y, delta, converged
-
     def _f(y: jnp.ndarray, y_prev: jnp.ndarray) -> jnp.ndarray:
         return y - y_prev - dt * derivatives_func(None, y, *args)
 
-    i0 = jnp.array(0)
-    delta0 = jnp.zeros_like(y0)
-    converged0 = jnp.array(False)
-    loop_vars = (i0, y0, delta0, converged0)
+    def body_fun(
+        carry: Tuple[jnp.ndarray, jnp.ndarray, bool], i: int
+    ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray, bool], None]:
+        y, y_prev, converged = carry
 
-    _, y_new, _, _ = lax.while_loop(cond_fun, body_fun, loop_vars)
+        def update_state(carry):
+            y, _ = carry
+            F = _f(y, y0)
+            J = jax.jacobian(_f)(y, y0)
+
+            # Ensure J and F have compatible dimensions
+            J = J.reshape((y.size, y.size))
+            F = F.flatten()
+
+            delta = solve(J, -F).reshape(y.shape)
+            y = y + delta
+            converged = jnp.linalg.norm(delta) < (atol + rtol * jnp.linalg.norm(y))
+            return y, converged
+
+        # Only update if not already converged
+        y, converged = lax.cond(
+            converged,
+            lambda _: (y, True),
+            lambda _: update_state((y, y_prev)),
+            operand=None,
+        )
+
+        return (y, y_prev, converged), None
+
+    # Initial state for scan
+    init_carry = (y0, y0, False)
+
+    # Use lax.scan to iterate
+    (y_new, _, _), _ = lax.scan(body_fun, init_carry, jnp.arange(max_iter))
 
     return y_new
 
