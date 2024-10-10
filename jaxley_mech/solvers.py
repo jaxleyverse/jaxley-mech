@@ -10,6 +10,77 @@ from jax.scipy.linalg import solve
 from jaxley.solver_gate import save_exp
 
 
+### Solver extensions
+class SolverExtension:
+    def __init__(
+        self,
+        solver: str = "newton",
+        rtol: float = 1e-5,
+        atol: float = 1e-6,
+        max_iter: int = 100,
+    ):
+        self.solver_name = solver
+        self.solver_args = {"rtol": rtol, "atol": atol, "max_iter": max_iter}
+
+        if solver == "diffrax_implicit":
+            self.term = ODETerm(self.derivatives)
+            root_finder = optx.Newton(rtol=rtol, atol=atol)
+            self.diffrax_solver = ImplicitEuler(root_finder=root_finder)
+
+        self.solver_func = self._get_solver_func(solver)
+
+    def __getstate__(self):
+        # Return the state without the solver function reference
+        state = self.__dict__.copy()
+        state["solver_func"] = (
+            self.solver_name
+        )  # Store the solver name instead of function reference
+        return state
+
+    def __setstate__(self, state):
+        # Restore the state and reinitialize the solver function
+        self.__dict__.update(state)
+        self.solver_func = self._get_solver_func(state["solver_func"])
+
+    def _get_solver_func(self, solver):
+        solvers = {
+            "newton": self._newton_wrapper,
+            "rk45": rk45,
+            "explicit": explicit_euler,
+            "diffrax_implicit": self._diffrax_implicit_wrapper,
+        }
+        if solver not in solvers:
+            raise ValueError(
+                f"Solver {solver} not recognized. Currently supported solvers are: {list(solvers.keys())}"
+            )
+        return solvers[solver]
+
+    def _newton_wrapper(self, y0, dt, derivatives_func, args):
+        return newton(
+            y0,
+            dt,
+            derivatives_func,
+            args,
+            rtol=self.solver_args["rtol"],
+            atol=self.solver_args["atol"],
+            max_iter=self.solver_args["max_iter"],
+        )
+
+    def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
+        return diffrax_implicit(
+            y0,
+            dt,
+            derivatives_func,
+            args,
+            self.term,
+            self.diffrax_solver,
+            self.solver_args["max_iter"],
+        )
+
+
+### Solvers
+
+
 def explicit_euler(
     y0: jnp.ndarray, dt: float, derivatives_func: Callable[..., jnp.ndarray], *args: Any
 ) -> jnp.ndarray:
@@ -34,9 +105,9 @@ def newton(
     dt: float,
     derivatives_func: Callable[..., jnp.ndarray],
     *args: Any,
-    rtol: float = 1e-8,  # Relative tolerance
-    atol: float = 1e-8,  # Absolute tolerance
-    max_iter: int = 4096,
+    rtol: float = 1e-5,  # Relative tolerance
+    atol: float = 1e-6,  # Absolute tolerance
+    max_iter: int = 100,
 ) -> jnp.ndarray:
     """
     Newton's method with damping for solving implicit equations.
@@ -45,46 +116,54 @@ def newton(
     - y0 (jnp.ndarray): Initial state vector.
     - dt (float): Time step size.
     - derivatives_func (Callable): Function that calculates derivatives of the system.
-    - rtol (float): Relative tolerance for convergence. Default is 1e-8.
-    - atol (float): Absolute tolerance for convergence. Default is 1e-8.
-    - max_iter (int): Maximum number of iterations. Default is 4096.
+    - rtol (float): Relative tolerance for convergence. Default is 1e-5.
+    - atol (float): Absolute tolerance for convergence. Default is 1e-6.
+    - max_iter (int): Maximum number of iterations. Default is 100.
     - *args: Additional arguments for the derivatives function.
 
     Returns:
     - jnp.ndarray: Updated state vector after solving the implicit system.
     """
 
-    def cond_fun(loop_vars: Tuple[int, jnp.ndarray, jnp.ndarray, bool]) -> bool:
-        i, _, _, converged = loop_vars
-        return (i < max_iter) & ~converged
-
-    def body_fun(
-        loop_vars: Tuple[int, jnp.ndarray, jnp.ndarray, bool]
-    ) -> Tuple[int, jnp.ndarray, jnp.ndarray, bool]:
-        i, y, delta, converged = loop_vars
-        F = _f(y, y0)
-        J = jax.jacobian(_f)(y, y0)
-
-        # Ensure J and F have compatible dimensions
-        J = J.reshape((y.size, y.size))
-        F = F.flatten()
-
-        delta = solve(J, -F).reshape(y.shape)
-        y = y + delta
-        converged = jnp.linalg.norm(delta) < (atol + rtol * jnp.linalg.norm(y))
-        return i + 1, y, delta, converged
-
     def _f(y: jnp.ndarray, y_prev: jnp.ndarray) -> jnp.ndarray:
         return y - y_prev - dt * derivatives_func(None, y, *args)
 
-    i0 = jnp.array(0)
-    delta0 = jnp.zeros_like(y0)
-    converged0 = jnp.array(False)
-    loop_vars = (i0, y0, delta0, converged0)
+    def body_fun(
+        carry: Tuple[jnp.ndarray, jnp.ndarray, bool], i: int
+    ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray, bool], None]:
+        y, y_prev, converged = carry
 
-    _, y_final, _, _ = lax.while_loop(cond_fun, body_fun, loop_vars)
+        def update_state(carry):
+            y, _ = carry
+            F = _f(y, y0)
+            J = jax.jacobian(_f)(y, y0)
 
-    return y_final
+            # Ensure J and F have compatible dimensions
+            J = J.reshape((y.size, y.size))
+            F = F.flatten()
+
+            delta = solve(J, -F).reshape(y.shape)
+            y = y + delta
+            converged = jnp.linalg.norm(delta) < (atol + rtol * jnp.linalg.norm(y))
+            return y, converged
+
+        # Only update if not already converged
+        y, converged = lax.cond(
+            converged,
+            lambda _: (y, True),
+            lambda _: update_state((y, y_prev)),
+            operand=None,
+        )
+
+        return (y, y_prev, converged), None
+
+    # Initial state for scan
+    init_carry = (y0, y0, False)
+
+    # Use lax.scan to iterate
+    (y_new, _, _), _ = lax.scan(body_fun, init_carry, jnp.arange(max_iter))
+
+    return y_new
 
 
 def rk45(
@@ -121,9 +200,9 @@ def diffrax_implicit(
     dt: float,
     derivatives_func: Callable[..., jnp.ndarray],
     args: Tuple,
-    rtol: float = 1e-8,
-    atol: float = 1e-8,
-    max_iter: int = 4096,
+    term: ODETerm,
+    solver: ImplicitEuler,
+    max_steps: int,
 ) -> jnp.ndarray:
     """
     Implicit Euler method using diffrax's Newton root-finder for solving ODEs.
@@ -133,15 +212,14 @@ def diffrax_implicit(
     - dt (float): Time step size.
     - derivatives_func (Callable): Function that calculates derivatives of the system.
     - args (Tuple): Additional arguments for the derivatives function.
+    - term (ODETerm): Pre-initialized ODETerm object.
+    - solver (ImplicitEuler): Pre-initialized ImplicitEuler solver.
+    - max_steps (int): Maximum number of steps.
 
     Returns:
     - jnp.ndarray: Updated state vector after one time step using the Implicit Euler method.
     """
-    term = ODETerm(derivatives_func)
-    root_finder = optx.Newton(rtol=rtol, atol=atol)
-    solver = ImplicitEuler(root_finder=root_finder)
     y_new = diffeqsolve(
-        term, solver, args=args, t0=0, t1=dt, dt0=dt, y0=y0, max_steps=max_iter
+        term, solver, args=args, t0=0, t1=dt, dt0=dt, y0=y0, max_steps=max_steps
     )
-    y_new = jnp.squeeze(y_new.ys, axis=0)
-    return y_new
+    return jnp.squeeze(y_new.ys, axis=0)

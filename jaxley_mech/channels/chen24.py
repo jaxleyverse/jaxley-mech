@@ -7,19 +7,22 @@ import numpy as np
 from jax.lax import select
 from jaxley.channels import Channel
 
-from jaxley_mech.solvers import explicit_euler, newton, rk45
+from jaxley_mech.solvers import SolverExtension
 
 
-class Phototransduction(Channel):
+class Phototransduction(Channel, SolverExtension):
     """Phototransduction channel"""
 
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: Optional[str] = "newton",
+        solver: str = "newton",
+        rtol: float = 1e-5,
+        atol: float = 1e-6,
+        max_iter: int = 100,
     ):
         super().__init__(name)
-        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
+        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
         prefix = self._name
         self.channel_params = {  # Table 1 / Figure 8
             f"{prefix}_sigma": 22.0,  # σ, /s, Opsin decay rate constant
@@ -53,10 +56,10 @@ class Phototransduction(Channel):
             ],
         }
 
-    def derivatives(self, t, states, params):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the phototransduction system."""
         R, P, G, C = states
-        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = params
+        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = args
 
         I = k * G**n  # Current through phototransduction channel
         q = beta * C_dark / I_dark
@@ -120,14 +123,7 @@ class Phototransduction(Channel):
             Stim,
         )
 
-        # Choose the solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        else:  # Default to explicit Euler
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
-
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
         # Unpack the new states
         R_new, P_new, G_new, C_new = y_new
 
