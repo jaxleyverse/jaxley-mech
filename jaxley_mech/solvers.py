@@ -105,8 +105,8 @@ def newton(
     dt: float,
     derivatives_func: Callable[..., jnp.ndarray],
     *args: Any,
-    rtol: float = 1e-8,  # Relative tolerance
-    atol: float = 1e-8,  # Absolute tolerance
+    rtol: float = 1e-5,  # Relative tolerance
+    atol: float = 1e-6,  # Absolute tolerance
     max_iter: int = 100,
 ) -> jnp.ndarray:
     """

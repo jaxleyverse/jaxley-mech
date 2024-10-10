@@ -323,9 +323,9 @@ class Hyper(Channel, SolverExtension):
         self,
         name: Optional[str] = None,
         solver: str = "newton",
-        rtol=1e-8,
-        atol=1e-8,
-        max_iter=4096,
+        rtol=1e-5,
+        atol=1e-6,
+        max_iter=100,
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_iter)
