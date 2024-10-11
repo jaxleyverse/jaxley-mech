@@ -22,9 +22,9 @@ class Phototransduction(Channel, SolverExtension):
         self,
         name: Optional[str] = None,
         solver: str = "newton",
-        rtol: float = 1e-5,
-        atol: float = 1e-6,
-        max_iter: int = 100,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 5,
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_iter)
@@ -323,9 +323,9 @@ class Hyper(Channel, SolverExtension):
         self,
         name: Optional[str] = None,
         solver: str = "newton",
-        rtol=1e-5,
-        atol=1e-6,
-        max_iter=100,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 5,
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_iter)
@@ -510,9 +510,9 @@ class CaPump(Channel, SolverExtension):
         self,
         name: Optional[str] = None,
         solver: str = "newton",
-        rtol: float = 1e-5,
-        atol: float = 1e-6,
-        max_iter: int = 100,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 5,
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_iter)

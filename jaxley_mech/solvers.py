@@ -15,9 +15,10 @@ class SolverExtension:
     def __init__(
         self,
         solver: str = "newton",
-        rtol: float = 1e-5,
-        atol: float = 1e-6,
-        max_iter: int = 100,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_iter: int = 5,
+        verbose=False,
     ):
         self.solver_name = solver
         self.solver_args = {"rtol": rtol, "atol": atol, "max_iter": max_iter}
@@ -105,21 +106,20 @@ def newton(
     dt: float,
     derivatives_func: Callable[..., jnp.ndarray],
     *args: Any,
-    rtol: float = 1e-5,  # Relative tolerance
-    atol: float = 1e-6,  # Absolute tolerance
-    max_iter: int = 100,
+    rtol: float = 1e-8,  # Relative tolerance
+    atol: float = 1e-8,  # Absolute tolerance
+    max_iter: int = 5,
 ) -> jnp.ndarray:
     """
-    Newton's method with damping for solving implicit equations.
+    Newton's method for solving implicit equations with early stopping.
 
     Parameters:
     - y0 (jnp.ndarray): Initial state vector.
     - dt (float): Time step size.
     - derivatives_func (Callable): Function that calculates derivatives of the system.
-    - rtol (float): Relative tolerance for convergence. Default is 1e-5.
-    - atol (float): Absolute tolerance for convergence. Default is 1e-6.
-    - max_iter (int): Maximum number of iterations. Default is 100.
-    - *args: Additional arguments for the derivatives function.
+    - rtol (float): Relative tolerance for convergence.
+    - atol (float): Absolute tolerance for convergence.
+    - max_iter (int): Maximum number of iterations.
 
     Returns:
     - jnp.ndarray: Updated state vector after solving the implicit system.
@@ -147,18 +147,22 @@ def newton(
             converged = jnp.linalg.norm(delta) < (atol + rtol * jnp.linalg.norm(y))
             return y, converged
 
+        # lax.scan() has no early stop, but we can save some compute by skipping updates
         # Only update if not already converged
         y, converged = lax.cond(
             converged,
-            lambda _: (y, True),
-            lambda _: update_state((y, y_prev)),
+            lambda _: (y, True),  # If converged is True, skip the update
+            lambda _: update_state((y, y_prev)),  # Update if not converged
             operand=None,
         )
+
+        # Debugging print (can uncomment for debugging):
+        # jax.debug.print("Iteration {}: Converged = {}", i, converged)
 
         return (y, y_prev, converged), None
 
     # Initial state for scan
-    init_carry = (y0, y0, False)
+    init_carry = (y0, y0, False)  # Removed `stop_flag`
 
     # Use lax.scan to iterate
     (y_new, _, _), _ = lax.scan(body_fun, init_carry, jnp.arange(max_iter))
