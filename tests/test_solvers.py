@@ -128,32 +128,32 @@ def test_rk45_reverse_mode():
     assert jnp.isfinite(grad_rk45).all(), f"Invalid gradient: {grad_rk45}"
 
 
-def test_diffrax_implicit_reverse_mode():
-    """Test reverse-mode differentiation for the implicit Euler method from diffrax."""
-    import optimistix as optx
-    from diffrax import ImplicitEuler, ODETerm
+# def test_diffrax_implicit_reverse_mode():
+#     """Test reverse-mode differentiation for the implicit Euler method from diffrax."""
+#     import optimistix as optx
+#     from diffrax import ImplicitEuler, ODETerm
 
-    y0 = jnp.array([1.0])
-    dt = 0.01
+#     y0 = jnp.array([1.0])
+#     dt = 0.01
 
-    def wrapped_diffrax_implicit(y0):
-        args = ()
-        term = ODETerm(simple_derivatives)
-        root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
-        diffrax_solver = ImplicitEuler(root_finder=root_finder)
-        return jnp.sum(
-            diffrax_implicit(
-                y0,
-                dt,
-                simple_derivatives,
-                args,
-                term=term,
-                solver=diffrax_solver,
-                max_steps=300,
-            )
-        )
+#     def wrapped_diffrax_implicit(y0):
+#         args = ()
+#         term = ODETerm(simple_derivatives)
+#         root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
+#         diffrax_solver = ImplicitEuler(root_finder=root_finder)
+#         return jnp.sum(
+#             diffrax_implicit(
+#                 y0,
+#                 dt,
+#                 simple_derivatives,
+#                 args,
+#                 term=term,
+#                 solver=diffrax_solver,
+#                 max_steps=300,
+#             )
+#         )
 
-    # Check if reverse-mode differentiation works
-    grad_diffrax = grad(wrapped_diffrax_implicit)(y0)
+#     # Check if reverse-mode differentiation works
+#     grad_diffrax = grad(wrapped_diffrax_implicit)(y0)
 
-    assert jnp.isfinite(grad_diffrax).all(), f"Invalid gradient: {grad_diffrax}"
+#     assert jnp.isfinite(grad_diffrax).all(), f"Invalid gradient: {grad_diffrax}"

@@ -174,7 +174,7 @@ def rk45(
     y0: jnp.ndarray, dt: float, derivatives_func: Callable[..., jnp.ndarray], *args: Any
 ) -> jnp.ndarray:
     """
-    Runge-Kutta 4(5) method for solving ODEs.
+    Non-adaptive Runge-Kutta 4(5) method for solving ODEs.
 
     Parameters:
     - y0 (jnp.ndarray): Initial state vector.
@@ -186,15 +186,28 @@ def rk45(
     - jnp.ndarray: Updated state vector after one time step using the RK4(5) method.
     """
 
-    def f(t: float, y: jnp.ndarray) -> jnp.ndarray:
+    def f(y: jnp.ndarray) -> jnp.ndarray:
         return derivatives_func(None, y, *args)
 
-    k1 = f(0, y0)
-    k2 = f(dt / 4, y0 + k1 * dt / 4)
-    k3 = f(dt / 4, y0 + k2 * dt / 4)
-    k4 = f(dt / 2, y0 + k3 * dt / 2)
-    k5 = f(dt, y0 + k4 * dt)
-    y_new = y0 + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k5)
+    # Coefficients for the RK45 method
+    a2 = 1 / 4
+    a3 = [3 / 32, 9 / 32]
+    a4 = [1932 / 2197, -7200 / 2197, 7296 / 2197]
+    a5 = [439 / 216, -8, 3680 / 513, -845 / 4104]
+    a6 = [-8 / 27, 2, -3544 / 2565, 1859 / 4104, -11 / 40]
+
+    b4 = [25 / 216, 0, 1408 / 2565, 2197 / 4104, -1 / 5]  # 4th-order
+    b5 = [16 / 135, 0, 6656 / 12825, 28561 / 56430, -9 / 50, 2 / 55]  # 5th-order
+
+    # Compute the RK45 stages
+    k1 = f(y0)
+    k2 = f(y0 + a2 * dt * k1)
+    k3 = f(y0 + dt * (a3[0] * k1 + a3[1] * k2))
+    k4 = f(y0 + dt * (a4[0] * k1 + a4[1] * k2 + a4[2] * k3))
+    k5 = f(y0 + dt * (a5[0] * k1 + a5[1] * k2 + a5[2] * k3 + a5[3] * k4))
+    k6 = f(y0 + dt * (a6[0] * k1 + a6[1] * k2 + a6[2] * k3 + a6[3] * k4 + a6[4] * k5))
+
+    y_new = y0 + dt * (b5[0] * k1 + b5[2] * k3 + b5[3] * k4 + b5[4] * k5 + b5[5] * k6)
 
     return y_new
 
