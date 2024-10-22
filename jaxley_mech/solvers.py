@@ -1,5 +1,6 @@
 from typing import Any, Callable, Tuple
 
+import equinox as eqx
 import jax
 import jax.debug
 import jax.numpy as jnp
@@ -17,7 +18,7 @@ class SolverExtension:
         solver: str = "newton",
         rtol: float = 1e-8,
         atol: float = 1e-8,
-        max_iter: int = 5,
+        max_iter: int = 300,
         verbose=False,
     ):
         self.solver_name = solver
@@ -69,13 +70,13 @@ class SolverExtension:
 
     def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
         return diffrax_implicit(
-            y0,
-            dt,
-            derivatives_func,
-            args,
-            self.term,
-            self.diffrax_solver,
-            self.solver_args["max_iter"],
+            y0=y0,
+            dt=dt,
+            derivatives_func=derivatives_func,
+            args=args,
+            term=self.term,
+            solver=self.diffrax_solver,
+            max_steps=self.solver_args["max_iter"],
         )
 
 
@@ -108,10 +109,10 @@ def newton(
     *args: Any,
     rtol: float = 1e-8,  # Relative tolerance
     atol: float = 1e-8,  # Absolute tolerance
-    max_iter: int = 5,
+    max_iter: int = 300,
 ) -> jnp.ndarray:
     """
-    Newton's method for solving implicit equations with early stopping.
+    Newton's method for solving implicit equations with early stopping using equinox's while_loop.
 
     Parameters:
     - y0 (jnp.ndarray): Initial state vector.
@@ -129,44 +130,48 @@ def newton(
         return y - y_prev - dt * derivatives_func(None, y, *args)
 
     def body_fun(
-        carry: Tuple[jnp.ndarray, jnp.ndarray, bool], i: int
-    ) -> Tuple[Tuple[jnp.ndarray, jnp.ndarray, bool], None]:
-        y, y_prev, converged = carry
+        carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool]
+    ) -> Tuple[jnp.ndarray, jnp.ndarray, int, bool]:
+        y, y_prev, i, _ = carry
 
-        def update_state(carry):
-            y, _ = carry
-            F = _f(y, y0)
-            J = jax.jacobian(_f)(y, y0)
+        F = _f(y, y0)
+        J = jax.jacobian(_f)(y, y0)
 
-            # Ensure J and F have compatible dimensions
-            J = J.reshape((y.size, y.size))
-            F = F.flatten()
+        # Ensure J and F have compatible dimensions
+        J = J.reshape((y.size, y.size))
+        F = F.flatten()
 
-            delta = solve(J, -F).reshape(y.shape)
-            y = y + delta
-            converged = jnp.linalg.norm(delta) < (atol + rtol * jnp.linalg.norm(y))
-            return y, converged
+        delta = solve(J, -F).reshape(y.shape)
+        y = y + delta
 
-        # lax.scan() has no early stop, but we can save some compute by skipping updates
-        # Only update if not already converged
-        y, converged = lax.cond(
-            converged,
-            lambda _: (y, True),  # If converged is True, skip the update
-            lambda _: update_state((y, y_prev)),  # Update if not converged
-            operand=None,
-        )
+        # Check for convergence
+        converged = jnp.linalg.norm(delta) < (atol + rtol * jnp.linalg.norm(y))
 
-        # Debugging print (can uncomment for debugging):
+        # Increment iteration count
+        i += 1
+
+        # Debugging
         # jax.debug.print("Iteration {}: Converged = {}", i, converged)
 
-        return (y, y_prev, converged), None
+        return y, y_prev, i, converged
 
-    # Initial state for scan
-    init_carry = (y0, y0, False)  # Removed `stop_flag`
+    def cond_fun(carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool]) -> bool:
+        _, _, i, converged = carry
+        return (i < max_iter) & ~converged
 
-    # Use lax.scan to iterate
-    (y_new, _, _), _ = lax.scan(body_fun, init_carry, jnp.arange(max_iter))
+    # Initial carry
+    init_val = (y0, y0, 0, False)
 
+    # Run the equinox while_loop with early stopping, setting kind to 'checkpointed' to allow reverse-mode differentiation
+    final_carry = eqx.internal.while_loop(
+        cond_fun=cond_fun,
+        body_fun=body_fun,
+        init_val=init_val,
+        max_steps=max_iter,
+        kind="checkpointed",
+    )
+
+    y_new, _, _, _ = final_carry
     return y_new
 
 
@@ -237,6 +242,6 @@ def diffrax_implicit(
     - jnp.ndarray: Updated state vector after one time step using the Implicit Euler method.
     """
     y_new = diffeqsolve(
-        term, solver, args=args, t0=0, t1=dt, dt0=dt, y0=y0, max_steps=max_steps
+        term, solver, args=args, t0=0.0, t1=dt, dt0=dt, y0=y0, max_steps=max_steps
     )
     return jnp.squeeze(y_new.ys, axis=0)

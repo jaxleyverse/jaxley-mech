@@ -132,9 +132,10 @@ def test_rk45_reverse_mode():
 #     """Test reverse-mode differentiation for the implicit Euler method from diffrax."""
 #     import optimistix as optx
 #     from diffrax import ImplicitEuler, ODETerm
+#     from jax import grad
 
-#     y0 = jnp.array([1.0])
-#     dt = 0.01
+#     y0 = jnp.array([1.0], dtype=jnp.float32)  # Explicitly cast y0 to float32
+#     dt = jnp.float32(0.01)  # Ensure dt is also float32
 
 #     def wrapped_diffrax_implicit(y0):
 #         args = ()
@@ -153,7 +154,7 @@ def test_rk45_reverse_mode():
 #             )
 #         )
 
-#     # Check if reverse-mode differentiation works
+#     # Compute the gradient using reverse-mode differentiation
 #     grad_diffrax = grad(wrapped_diffrax_implicit)(y0)
 
 #     assert jnp.isfinite(grad_diffrax).all(), f"Invalid gradient: {grad_diffrax}"

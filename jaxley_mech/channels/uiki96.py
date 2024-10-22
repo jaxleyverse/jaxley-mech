@@ -193,7 +193,7 @@ class Hyper(Channel, SolverExtension):
         solver: str = "newton",
         rtol: float = 1e-8,
         atol: float = 1e-8,
-        max_iter: int = 5,
+        max_iter: int = 300,
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_iter)
@@ -379,7 +379,7 @@ class CaPump(Channel, SolverExtension):
         solver: str = "newton",
         rtol: float = 1e-8,
         atol: float = 1e-8,
-        max_iter: int = 5,
+        max_iter: int = 300,
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_iter)
