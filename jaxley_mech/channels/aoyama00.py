@@ -25,6 +25,7 @@ class Leak(Channel):
     """Leakage current"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -46,8 +47,8 @@ class Leak(Channel):
     ):
         """Given channel states and voltage, return the current through the channel."""
         prefix = self._name
-        gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
-        return gLeak * (v - params[f"{prefix}_eLeak"])  # mS/cm^2 * mV = uA/cm^2
+        gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
+        return gLeak * (v - params[f"{prefix}_eLeak"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -58,6 +59,7 @@ class Na(Channel):
     """Sodium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -89,11 +91,9 @@ class Na(Channel):
         """Given channel states and voltage, return the current through the channel."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gNa = (
-            params[f"{prefix}_gNa"] * (m**3) * h * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
+        gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
 
-        return gNa * (v - params[f"{prefix}_eNa"])
+        return gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -124,6 +124,7 @@ class Kdr(Channel):
     """Delayed Rectifying Potassium Channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gKdr": 4.5e-3,  # S/cm^2
@@ -154,8 +155,8 @@ class Kdr(Channel):
         prefix = self._name
         m = states[f"{prefix}_m"]
         h = states[f"{prefix}_h"]
-        k_cond = params[f"{prefix}_gKdr"] * m**4 * h * 1000
-        return k_cond * (v - params["eK"])
+        k_cond = params[f"{prefix}_gKdr"] * m**4 * h  # S/cm^2
+        return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -187,6 +188,7 @@ class Kto(Channel):
     """Transient Outward Potassium Channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gKto": 15e-3,  # S/cm^2
@@ -217,8 +219,8 @@ class Kto(Channel):
         prefix = self._name
         m = states[f"{prefix}_m"]
         h = states[f"{prefix}_h"]
-        k_cond = params[f"{prefix}_gKto"] * m**3 * h * 1000
-        return k_cond * (v - params["eK"])
+        k_cond = params[f"{prefix}_gKto"] * m**3 * h  # S/cm^2
+        return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -250,6 +252,7 @@ class Kar(Channel):
     """Anomalous rectifying Potassium Channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gKar": 4.5e-3,  # S/cm^2
@@ -276,8 +279,8 @@ class Kar(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        k_cond = params[f"{prefix}_gKar"] * m**5 * 1000
-        return k_cond * (v - params["eK"])
+        k_cond = params[f"{prefix}_gKar"] * m**5  # S/cm^2
+        return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -299,6 +302,7 @@ class Ca(Channel):
     """L-type calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCa": 9e-3,  # S/cm^2
@@ -330,8 +334,8 @@ class Ca(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        ca_cond = params[f"{prefix}_gCa"] * m**4 * 1000
-        current = ca_cond * (v - params["eCa"])
+        ca_cond = params[f"{prefix}_gCa"] * m**4  # S/cm^2
+        current = ca_cond * (v - params["eCa"])  # S/cm^2 * mV = mA/cm^2
         return current
 
     def init_state(self, states, v, params, delta_t):

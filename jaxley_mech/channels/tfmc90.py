@@ -21,6 +21,7 @@ class Phototransduction(Channel, SolverExtension):
         atol: float = 1e-8,
         max_steps: int = 10,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
 
@@ -48,6 +49,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K": 10,  # # μM, half-saturation constant for cGMP hydrolysis
             f"{prefix}_K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
             f"{prefix}_J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
+            f"{prefix}_surface_area": 100,  # um^2,
         }
         self.channel_states = {
             f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
@@ -194,7 +196,11 @@ class Phototransduction(Channel, SolverExtension):
         J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
         J = J_max * cGMP**3 / (cGMP**3 + K**3)  # eq(12)
         current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)  # from Kamiyama et al. (2009)
-        return current
+
+        current *= 1e-9
+        area = params[f"{prefix}_surface_area"] * 1e-8
+        current_density = current / area
+        return current_density
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""

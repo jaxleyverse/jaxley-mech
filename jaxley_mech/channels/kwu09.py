@@ -26,6 +26,7 @@ class Phototransduction(Channel, SolverExtension):
         atol: float = 1e-8,
         max_steps: int = 10,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
@@ -51,6 +52,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K": 10,  # # μM, half-saturation constant for cGMP hydrolysis
             f"{prefix}_K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
             f"{prefix}_J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
+            f"{prefix}_surface_area": 100,  # μm^2, surface area of the outer segment
         }
         self.channel_states = {
             f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
@@ -203,7 +205,10 @@ class Phototransduction(Channel, SolverExtension):
         J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
         J = J_max * cGMP**3 / (cGMP**3 + K**3)  # eq(12)
         current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)  # from Kamiyama et al. (2009)
-        return current
+        current *= 1e-9  # pA to mA
+        area = params[f"{prefix}_surface_area"] * 1e-8  # um^2 to cm^2
+        current_density = current / area  # mA/cm^2
+        return current_density
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
@@ -224,6 +229,7 @@ class Leak(Channel):
     """Leakage current"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -245,7 +251,7 @@ class Leak(Channel):
     ):
         """Given channel states and voltage, return the current through the channel."""
         prefix = self._name
-        gLeak = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
+        gLeak = params[f"{prefix}_gLeak"]
         return gLeak * (v - params[f"{prefix}_eLeak"])  # mS/cm^2 * mV = uA/cm^2
 
     def init_state(self, states, v, params, delta_t):
@@ -257,6 +263,7 @@ class Kv(Channel):
     """Delayed Rectifying Potassium Channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gKv": 2e-3,  # S/cm^2
@@ -287,7 +294,7 @@ class Kv(Channel):
         prefix = self._name
         m = states[f"{prefix}_m"]
         h = states[f"{prefix}_h"]
-        k_cond = params[f"{prefix}_gKv"] * m**3 * h * 1000
+        k_cond = params[f"{prefix}_gKv"] * m**3 * h
         return k_cond * (v - params["eK"])
 
     def init_state(self, states, v, params, delta_t):
@@ -327,6 +334,7 @@ class Hyper(Channel, SolverExtension):
         atol: float = 1e-8,
         max_steps: int = 10,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
@@ -420,7 +428,7 @@ class Hyper(Channel, SolverExtension):
         O1 = states[f"{prefix}_O1"]
         O2 = states[f"{prefix}_O2"]
         O3 = states[f"{prefix}_O3"]
-        gHyper = params[f"{prefix}_gHyper"] * (O1 + O2 + O3) * 1000
+        gHyper = params[f"{prefix}_gHyper"] * (O1 + O2 + O3)
         return gHyper * (v - params[f"{prefix}_eHyper"])
 
     @staticmethod
@@ -438,6 +446,7 @@ class Ca(Channel):
     """L-type calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCa": 0.7e-3,  # S/cm^2
@@ -471,7 +480,7 @@ class Ca(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        ca_cond = params[f"{prefix}_gCa"] * m**4 * h * 1000
+        ca_cond = params[f"{prefix}_gCa"] * m**4 * h
         current = ca_cond * (v - states["eCa"])
         return current
 
@@ -514,6 +523,7 @@ class CaPump(Channel, SolverExtension):
         atol: float = 1e-8,
         max_steps: int = 10,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
@@ -626,7 +636,7 @@ class CaPump(Channel, SolverExtension):
         Cab_hs = states[f"{prefix}_Cab_hs"]
         Cab_lf = states[f"{prefix}_Cab_lf"]
         Cab_hf = states[f"{prefix}_Cab_hf"]
-        iCa = states["iCa"]
+        iCa = states["iCa"] * 1000  # convert to pA
         y0 = jnp.array([Cas, Caf, Cab_ls, Cab_hs, Cab_lf, Cab_hf])
 
         # Parameters
@@ -690,6 +700,7 @@ class CaNernstReversal(Channel):
         self,
         name: Optional[str] = None,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {"Cao": 1600}  # μM
         self.channel_states = {
@@ -718,6 +729,7 @@ class KCa(Channel):
     """Calcium-dependent potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gKCa": 5e-3,  # S/cm^2
@@ -751,7 +763,7 @@ class KCa(Channel):
         prefix = self._name
         m = states[f"{prefix}_m"]
         n = states[f"{prefix}_n"]
-        k_cond = params[f"{prefix}_gKCa"] * m**2 * n * 1000
+        k_cond = params[f"{prefix}_gKCa"] * m**2 * n
         return k_cond * (v - params["eK"])
 
     def init_state(self, states, v, params, delta_t):
@@ -783,6 +795,7 @@ class ClCa(Channel):
     """Calcium-dependent Chloride channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gClCa": 2e-3,  # S/cm^2
@@ -810,7 +823,7 @@ class ClCa(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        k_cond = params[f"{prefix}_gClCa"] * m * 1000
+        k_cond = params[f"{prefix}_gClCa"] * m
         return k_cond * (v - params[f"{prefix}_eClCa"])
 
     def init_state(self, states, v, params, delta_t):

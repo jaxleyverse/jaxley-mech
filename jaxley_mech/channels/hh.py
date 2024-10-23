@@ -17,6 +17,7 @@ class Leak(Channel):
     """Leakage current"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -39,7 +40,7 @@ class Leak(Channel):
         """Return current."""
         # Multiply with 1000 to convert Siemens to milli Siemens.
         prefix = self._name
-        leak_conds = params[f"{prefix}_gLeak"] * 1000  # mS/cm^2
+        leak_conds = params[f"{prefix}_gLeak"]  # S/cm^2
         return leak_conds * (v - params[f"{prefix}_eLeak"])
 
     def init_state(self, states, v, params, delta_t):
@@ -51,6 +52,7 @@ class Na(Channel):
     """Sodium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -82,8 +84,8 @@ class Na(Channel):
         "Return current."
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gNa = params[f"{prefix}_gNa"] * (m**3) * h * 1000  # mS/cm^2
-        current = gNa * (v - params[f"{prefix}_eNa"])
+        gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
+        current = gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
         return current
 
     def init_state(self, states, v, params, delta_t):
@@ -115,6 +117,7 @@ class K(Channel):
     """Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -140,7 +143,7 @@ class K(Channel):
         """Return current."""
         prefix = self._name
         n = states[f"{prefix}_n"]
-        gK = params[f"{prefix}_gK"] * (n**4) * 1000  # mS/cm^2
+        gK = params[f"{prefix}_gK"] * (n**4)  # S/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
     def init_state(self, states, v, params, delta_t):
@@ -170,6 +173,7 @@ class Na8States(Na, SolverExtension):
         atol: float = 1e-8,
         max_steps: int = 10,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
@@ -295,7 +299,7 @@ class Na8States(Na, SolverExtension):
         """Return current."""
         prefix = self._name
         O = states[f"{prefix}_O"]
-        gNa = params[f"{prefix}_gNa"] * O * 1000  # mS/cm^2
+        gNa = params[f"{prefix}_gNa"] * O  # S/cm^2
         return gNa * (v - params[f"{prefix}_eNa"])
 
     def init_state(self, states, v, params, delta_t):
@@ -434,7 +438,7 @@ class K5States(K, SolverExtension):
         """Return current."""
         prefix = self._name
         O = states[f"{prefix}_O"]
-        gK = params[f"{prefix}_gK"] * O * 1000  # mS/cm^2
+        gK = params[f"{prefix}_gK"] * O  # S/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
     def init_state(self, states, v, params, delta_t):
