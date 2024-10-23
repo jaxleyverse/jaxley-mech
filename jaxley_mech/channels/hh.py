@@ -165,13 +165,13 @@ class Na8States(Na, SolverExtension):
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: str = "newton",
+        solver: Optional[str] = None,
         rtol: float = 1e-8,
         atol: float = 1e-8,
-        max_iter: int = 300,
+        max_steps: int = 10,
     ):
         super().__init__(name)
-        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.solver = solver
         self.channel_params = {
@@ -335,13 +335,13 @@ class K5States(K, SolverExtension):
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: str = "newton",
+        solver: Optional[str] = None,
         rtol: float = 1e-8,
         atol: float = 1e-8,
-        max_iter: int = 300,
+        max_steps: int = 10,
     ):
         super().__init__(name)
-        SolverExtension.__init__(self, solver, rtol, atol, max_iter)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.solver = solver
         self.channel_params = {

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import equinox as eqx
 import jax
@@ -15,16 +15,20 @@ from jaxley.solver_gate import save_exp
 class SolverExtension:
     def __init__(
         self,
-        solver: str = "newton",
+        solver: Optional[str] = None,
         rtol: float = 1e-8,
         atol: float = 1e-8,
-        max_iter: int = 300,
+        max_steps: int = 10,
         verbose=False,
     ):
         self.solver_name = solver
-        self.solver_args = {"rtol": rtol, "atol": atol, "max_iter": max_iter}
+        self.solver_args = {"rtol": rtol, "atol": atol, "max_steps": max_steps}
 
-        if solver == "diffrax_implicit":
+        if solver is None:
+            raise ValueError(
+                "Solver must be specified (`newton`, `explicit`, `rk45` and `diffrax_implicit`)."
+            )
+        elif solver == "diffrax_implicit":
             self.term = ODETerm(self.derivatives)
             root_finder = optx.Newton(rtol=rtol, atol=atol)
             self.diffrax_solver = ImplicitEuler(root_finder=root_finder)
@@ -65,7 +69,7 @@ class SolverExtension:
             args,
             rtol=self.solver_args["rtol"],
             atol=self.solver_args["atol"],
-            max_iter=self.solver_args["max_iter"],
+            max_steps=self.solver_args["max_steps"],
         )
 
     def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
@@ -76,7 +80,7 @@ class SolverExtension:
             args=args,
             term=self.term,
             solver=self.diffrax_solver,
-            max_steps=self.solver_args["max_iter"],
+            max_steps=self.solver_args["max_steps"],
         )
 
 
@@ -109,7 +113,7 @@ def newton(
     *args: Any,
     rtol: float = 1e-8,  # Relative tolerance
     atol: float = 1e-8,  # Absolute tolerance
-    max_iter: int = 300,
+    max_steps: int = 10,
 ) -> jnp.ndarray:
     """
     Newton's method for solving implicit equations with early stopping using equinox's while_loop.
@@ -120,7 +124,7 @@ def newton(
     - derivatives_func (Callable): Function that calculates derivatives of the system.
     - rtol (float): Relative tolerance for convergence.
     - atol (float): Absolute tolerance for convergence.
-    - max_iter (int): Maximum number of iterations.
+    - max_steps (int): Maximum number of iterations.
 
     Returns:
     - jnp.ndarray: Updated state vector after solving the implicit system.
@@ -157,7 +161,7 @@ def newton(
 
     def cond_fun(carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool]) -> bool:
         _, _, i, converged = carry
-        return (i < max_iter) & ~converged
+        return (i < max_steps) & ~converged
 
     # Initial carry
     init_val = (y0, y0, 0, False)
@@ -167,7 +171,7 @@ def newton(
         cond_fun=cond_fun,
         body_fun=body_fun,
         init_val=init_val,
-        max_steps=max_iter,
+        max_steps=max_steps,
         kind="checkpointed",
     )
 

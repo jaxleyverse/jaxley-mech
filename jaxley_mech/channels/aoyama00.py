@@ -14,9 +14,10 @@ from jaxley.solver_gate import (
 META = {
     "cell_type": "Horizontal cell",
     "species": "Rabbit",
-    "reference": [
+    "papers": [
         "Aoyama, T., Kamiyama, Y., Usui, S., Blanco, R., Vaquero, C. F., & De La Villa, P. (2000). Ionic current model of rabbit retinal horizontal cell. Neuroscience Research, 37(2), 141–151. https://doi.org/10.1016/S0168-0102(00)00111-5",
     ],
+    "reference": "Aoyama et al. (2000)",
 }
 
 
