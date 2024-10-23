@@ -11,7 +11,9 @@ def test_init_state(channel_class):
     dt = 0.025
 
     channel = channel_class()
-    init_state = channel.init_state(voltages, channel.channel_params)
+    init_state = channel.init_state(
+        channel.channel_states, voltages, channel.channel_params, dt
+    )
 
     # Deal with adding potentially missing states (which have no init).
     updated_states = channel.channel_states

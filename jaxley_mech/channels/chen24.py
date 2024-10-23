@@ -7,19 +7,30 @@ import numpy as np
 from jax.lax import select
 from jaxley.channels import Channel
 
-from jaxley_mech.solvers import explicit_euler, newton, rk45
+from jaxley_mech.solvers import SolverExtension
+
+META = {
+    "cell_type": "rod and cones",
+    "species": "monkey and mouse",
+    "papers": [
+        "Chen, Q., Ingram, N. T., Baudin, J., Angueyra, J. M., Sinha, R., & Rieke, F. (2024). Light-adaptation clamp: A tool to predictably manipulate photoreceptor light responses. https://doi.org/10.7554/eLife.93795.1",
+    ],
+}
 
 
-class Phototransduction(Channel):
+class Phototransduction(Channel, SolverExtension):
     """Phototransduction channel"""
 
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: Optional[str] = "newton",
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
     ):
         super().__init__(name)
-        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.channel_params = {  # Table 1 / Figure 8
             f"{prefix}_sigma": 22.0,  # σ, /s, Opsin decay rate constant
@@ -45,18 +56,12 @@ class Phototransduction(Channel):
             f"{prefix}_Stim": 0.0,
         }
         self.current_name = f"iPhoto"
-        self.META = {
-            "cell_type": "rod and cones",
-            "species": "monkey and mouse",
-            "reference": [
-                "Chen, Q., Ingram, N. T., Baudin, J., Angueyra, J. M., Sinha, R., & Rieke, F. (2024). Light-adaptation clamp: A tool to predictably manipulate photoreceptor light responses. https://doi.org/10.7554/eLife.93795.1",
-            ],
-        }
+        self.META = META
 
-    def derivatives(self, t, states, params):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the phototransduction system."""
         R, P, G, C = states
-        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = params
+        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = args
 
         I = k * G**n  # Current through phototransduction channel
         q = beta * C_dark / I_dark
@@ -120,14 +125,7 @@ class Phototransduction(Channel):
             Stim,
         )
 
-        # Choose the solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        else:  # Default to explicit Euler
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
-
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
         # Unpack the new states
         R_new, P_new, G_new, C_new = y_new
 

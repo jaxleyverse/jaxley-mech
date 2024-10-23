@@ -6,6 +6,8 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
+from jaxley_mech.solvers import SolverExtension
+
 META = {
     "cell_type": "Bipolar cell",
     "species": "Goldfish; White Bass; Axolotl; Tiger Salamander; Dogfish",
@@ -182,11 +184,20 @@ class KA(Channel):
         return alpha, beta
 
 
-class Hyper(Channel):
+class Hyper(Channel, SolverExtension):
     """Hyperpolarization-activated channel in the formulation of Markov model with 5 states"""
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+    ):
         super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
+
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gHyper": 0.975e-3,  # S/cm^2
@@ -205,44 +216,69 @@ class Hyper(Channel):
             "Species": "generic",
         }
 
-    def update_states(
-        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
-    ):
-        """Update state."""
-        prefix = self._name
-        dt /= 1000
-        alpha_h, beta_h = self.h_gate(v)
+    def derivatives(self, t, states, args):
+        """Calculate the derivatives for the Markov states."""
+        C1, C2, O1, O2, O3 = states
+        v = args[0]
+        alpha_h, beta_h = self.h_gate(
+            v
+        )  # Use the voltage (t here) to calculate alpha and beta
 
         # Transition rates according to the matrix K
+        C1_to_C2 = 4 * alpha_h * C1
+        C2_to_O1 = 3 * alpha_h * C2
+        O1_to_O2 = 2 * alpha_h * O1
+        O2_to_O3 = alpha_h * O2
 
-        C1_to_C2 = 4 * alpha_h * states[f"{prefix}_C1"]
-        C2_to_O1 = 3 * alpha_h * states[f"{prefix}_C2"]
-        O1_to_O2 = 2 * alpha_h * states[f"{prefix}_O1"]
-        O2_to_O3 = alpha_h * states[f"{prefix}_O2"]
+        O3_to_O2 = 4 * beta_h * O3
+        O2_to_O1 = 3 * beta_h * O2
+        O1_to_C2 = 2 * beta_h * O1
+        C2_to_C1 = beta_h * C2
 
-        O3_to_O2 = 4 * beta_h * states[f"{prefix}_O3"]
-        O2_to_O1 = 3 * beta_h * states[f"{prefix}_O2"]
-        O1_to_C2 = 2 * beta_h * states[f"{prefix}_O1"]
-        C2_to_C1 = beta_h * states[f"{prefix}_C2"]
+        # Derivatives of each state
+        dC1_dt = C2_to_C1 - C1_to_C2
+        dC2_dt = C1_to_C2 + O1_to_C2 - C2_to_O1 - C2_to_C1
+        dO1_dt = C2_to_O1 + O2_to_O1 - O1_to_O2 - O1_to_C2
+        dO2_dt = O1_to_O2 + O3_to_O2 - O2_to_O3 - O2_to_O1
+        dO3_dt = O2_to_O3 - O3_to_O2
 
-        new_C1 = states[f"{prefix}_C1"] + dt * (C2_to_C1 - C1_to_C2)
-        new_C2 = states[f"{prefix}_C2"] + dt * (
-            C1_to_C2 + O1_to_C2 - C2_to_O1 - C2_to_C1
-        )
-        new_O1 = states[f"{prefix}_O1"] + dt * (
-            C2_to_O1 + O2_to_O1 - O1_to_O2 - O1_to_C2
-        )
-        new_O2 = states[f"{prefix}_O2"] + dt * (
-            O1_to_O2 + O3_to_O2 - O2_to_O3 - O2_to_O1
-        )
-        new_O3 = states[f"{prefix}_O3"] + dt * (O2_to_O3 - O3_to_O2)
+        return jnp.array([dC1_dt, dC2_dt, dO1_dt, dO2_dt, dO3_dt])
+
+    def update_states(
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
+        **kwargs,
+    ):
+        """Update the states using the specified solver."""
+        prefix = self._name
+        dt /= 1000  # Convert dt to seconds
+
+        # Retrieve states
+        C1 = states[f"{prefix}_C1"]
+        C2 = states[f"{prefix}_C2"]
+        O1 = states[f"{prefix}_O1"]
+        O2 = states[f"{prefix}_O2"]
+        O3 = states[f"{prefix}_O3"]
+
+        y0 = jnp.array([C1, C2, O1, O2, O3])
+
+        # Parameters for dynamics
+        args_tuple = (v,)
+
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
+
+        # Unpack new states
+        C1_new, C2_new, O1_new, O2_new, O3_new = y_new
 
         return {
-            f"{prefix}_C1": new_C1,
-            f"{prefix}_C2": new_C2,
-            f"{prefix}_O1": new_O1,
-            f"{prefix}_O2": new_O2,
-            f"{prefix}_O3": new_O3,
+            f"{prefix}_C1": C1_new,
+            f"{prefix}_C2": C2_new,
+            f"{prefix}_O1": O1_new,
+            f"{prefix}_O2": O2_new,
+            f"{prefix}_O3": O3_new,
         }
 
     def compute_current(
@@ -336,12 +372,18 @@ class Ca(Channel):
         return h
 
 
-class CaPump(Channel):
+class CaPump(Channel, SolverExtension):
     def __init__(
         self,
         name: Optional[str] = None,
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
     ):
         super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
+
         name = self._name
         self.channel_params = {
             f"{name}_F": 9.648e4,  # Faraday's constant in C/mol
@@ -373,43 +415,32 @@ class CaPump(Channel):
         self.current_name = f"iCa"
         self.META = META
 
-    def update_states(self, states, dt, v, params):
-        """Update the states based on differential equations."""
-        prefix = self._name
-        v += 1e-6  # jitter to avoid division by zero
-        dt /= 1000  # convert to seconds
-        F, Vs, Vd, D_Ca, d_sd, S_sd = (
-            params[f"{prefix}_F"],
-            params[f"{prefix}_Vs"],
-            params[f"{prefix}_Vd"],
-            params[f"{prefix}_D_Ca"],
-            params[f"{prefix}_d_sd"],
-            params[f"{prefix}_S_sd"],
-        )
-        alpha_bl, beta_bl, alpha_bh, beta_bh, Cab_l_max, Cab_h_max = (
-            params[f"{prefix}_alpha_bl"],
-            params[f"{prefix}_beta_bl"],
-            params[f"{prefix}_alpha_bh"],
-            params[f"{prefix}_beta_bh"],
-            params[f"{prefix}_Cab_l_max"],
-            params[f"{prefix}_Cab_h_max"],
-        )
-        Jex, Kex, Jex2, Kex2, Cae = (
-            params[f"{prefix}_Jex"],
-            params[f"{prefix}_Kex"],
-            params[f"{prefix}_Jex2"],
-            params[f"{prefix}_Kex2"],
-            params[f"{prefix}_Cae"],
-        )
+    def derivatives(self, t, states, args):
+        """Calculate the derivatives for the calcium pump system."""
+        Cas, Cad, Cab_ls, Cab_hs, Cab_ld, Cab_hd = states
+        (
+            F,
+            Vs,
+            Vd,
+            D_Ca,
+            d_sd,
+            S_sd,
+            alpha_bl,
+            beta_bl,
+            alpha_bh,
+            beta_bh,
+            Cab_l_max,
+            Cab_h_max,
+            Jex,
+            Kex,
+            Jex2,
+            Kex2,
+            Cae,
+            iCa,
+            v,
+        ) = args
 
-        Cas = states[f"Cas"]
-        Cad = states[f"{prefix}_Cad"]
-        Cab_ls = states[f"{prefix}_Cab_ls"]
-        Cab_hs = states[f"{prefix}_Cab_hs"]
-        Cab_ld = states[f"{prefix}_Cab_ld"]
-        Cab_hd = states[f"{prefix}_Cab_hd"]
-
-        iCa = states["iCa"]
+        # Current terms
         iEx = Jex * (Cas - Cae) / (Cas - Cae + Kex) * save_exp(-(v + 14) / 70)
         iEx2 = Jex2 * (Cas - Cae) / (Cas - Cae + Kex2)
 
@@ -423,7 +454,7 @@ class CaPump(Channel):
             - alpha_bh * Cas * (Cab_h_max - Cab_hs)
         )
 
-        # Bound intracellular calcium concentration dynamics
+        # Deep intracellular calcium concentration dynamics
         dCad_dt = (
             D_Ca * S_sd * (Cas - Cad) / (d_sd * Vd)
             + beta_bl * Cab_ld
@@ -432,25 +463,66 @@ class CaPump(Channel):
             - alpha_bh * Cad * (Cab_h_max - Cab_hd)
         )
 
+        # Bound intracellular calcium dynamics
         dCab_ls_dt = alpha_bl * Cas * (Cab_l_max - Cab_ls) - beta_bl * Cab_ls
         dCab_hs_dt = alpha_bh * Cas * (Cab_h_max - Cab_hs) - beta_bh * Cab_hs
         dCab_ld_dt = alpha_bl * Cad * (Cab_l_max - Cab_ld) - beta_bl * Cab_ld
         dCab_hd_dt = alpha_bh * Cad * (Cab_h_max - Cab_hd) - beta_bh * Cab_hd
 
-        Cas = Cas + dCas_dt * dt
-        Cad = Cad + dCad_dt * dt
-        Cab_ls = Cab_ls + dCab_ls_dt * dt
-        Cab_hs = Cab_hs + dCab_hs_dt * dt
-        Cab_ld = Cab_ld + dCab_ld_dt * dt
-        Cab_hd = Cab_hd + dCab_hd_dt * dt
+        return jnp.array(
+            [dCas_dt, dCad_dt, dCab_ls_dt, dCab_hs_dt, dCab_ld_dt, dCab_hd_dt]
+        )
+
+    def update_states(self, states, dt, v, params):
+        """Update state of calcium pump variables."""
+        prefix = self._name
+        dt /= 1000  # Convert to seconds
+
+        # Retrieve states
+        Cas = states[f"Cas"]
+        Cad = states[f"{prefix}_Cad"]
+        Cab_ls = states[f"{prefix}_Cab_ls"]
+        Cab_hs = states[f"{prefix}_Cab_hs"]
+        Cab_ld = states[f"{prefix}_Cab_ld"]
+        Cab_hd = states[f"{prefix}_Cab_hd"]
+
+        y0 = jnp.array([Cas, Cad, Cab_ls, Cab_hs, Cab_ld, Cab_hd])
+
+        # Parameters for dynamics
+        args_tuple = (
+            params[f"{prefix}_F"],
+            params[f"{prefix}_Vs"],
+            params[f"{prefix}_Vd"],
+            params[f"{prefix}_D_Ca"],
+            params[f"{prefix}_d_sd"],
+            params[f"{prefix}_S_sd"],
+            params[f"{prefix}_alpha_bl"],
+            params[f"{prefix}_beta_bl"],
+            params[f"{prefix}_alpha_bh"],
+            params[f"{prefix}_beta_bh"],
+            params[f"{prefix}_Cab_l_max"],
+            params[f"{prefix}_Cab_h_max"],
+            params[f"{prefix}_Jex"],
+            params[f"{prefix}_Kex"],
+            params[f"{prefix}_Jex2"],
+            params[f"{prefix}_Kex2"],
+            params[f"{prefix}_Cae"],
+            states[self.current_name],
+            v,
+        )
+
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
+
+        # Unpack new states
+        Cas_new, Cad_new, Cab_ls_new, Cab_hs_new, Cab_ld_new, Cab_hd_new = y_new
 
         return {
-            f"Cas": Cas,
-            f"{prefix}_Cad": Cad,
-            f"{prefix}_Cab_ls": Cab_ls,
-            f"{prefix}_Cab_hs": Cab_hs,
-            f"{prefix}_Cab_ld": Cab_ld,
-            f"{prefix}_Cab_hd": Cab_hd,
+            f"Cas": Cas_new,
+            f"{prefix}_Cad": Cad_new,
+            f"{prefix}_Cab_ls": Cab_ls_new,
+            f"{prefix}_Cab_hs": Cab_hs_new,
+            f"{prefix}_Cab_ld": Cab_ld_new,
+            f"{prefix}_Cab_hd": Cab_hd_new,
         }
 
     def compute_current(self, states, v, params):

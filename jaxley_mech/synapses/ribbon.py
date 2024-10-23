@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
-from jaxley_mech.solvers import diffrax_implicit, explicit_euler, newton, rk45
+from jaxley_mech.solvers import SolverExtension
 
 META = {
     "reference": [
@@ -13,10 +13,18 @@ META = {
 }
 
 
-class RibbonSynapse(Synapse):
-    def __init__(self, name: Optional[str] = None, solver: Optional[str] = "newton"):
+class RibbonSynapse(Synapse, SolverExtension):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+    ):
+        super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         self._name = name = name if name else self.__class__.__name__
-        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
         self.synapse_params = {
             f"{name}_gS": 1e-6,  # Maximal synaptic conductance (uS)
             f"{name}_e_syn": 0.0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
@@ -38,11 +46,11 @@ class RibbonSynapse(Synapse):
         }
         self.META = META
 
-    def derivatives(self, t, states, params):
+    def derivatives(self, t, states, args):
         """Calculate the derivatives for the Ribbon Synapse system."""
         exo, RRP, IP, RP = states
         e_max, r_max, i_max, d_max, RRP_max, IP_max, RP_max, k, V_half, pre_voltage = (
-            params
+            args
         )
 
         # Presynaptic voltage to calcium to release probability
@@ -91,18 +99,7 @@ class RibbonSynapse(Synapse):
         )
         y0 = jnp.array([exo, RRP, IP, RP])
 
-        # Choose the solver
-        if self.solver == "newton":
-            y_new = newton(y0, delta_t, self.derivatives, args_tuple)
-
-        elif self.solver == "diffrax_implicit":
-            y_new = diffrax_implicit(y0, delta_t, self.derivatives, args_tuple)
-
-        elif self.solver == "rk45":
-            y_new = rk45(y0, delta_t, self.derivatives, args_tuple)
-
-        else:  # Default to explicit Euler
-            y_new = explicit_euler(y0, delta_t, self.derivatives, args_tuple)
+        y_new = self.solver_func(y0, delta_t, self.derivatives, args_tuple)
 
         new_exo = y_new[0]
         new_RRP = y_new[1]

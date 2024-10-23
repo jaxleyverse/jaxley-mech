@@ -6,7 +6,7 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import explicit_euler, newton, rk45
+from jaxley_mech.solvers import SolverExtension
 
 META = {
     "cell_type": "rod (inner segment)",
@@ -15,11 +15,19 @@ META = {
 }
 
 
-class Phototransduction(Channel):
+class Phototransduction(Channel, SolverExtension):
     """Phototransduction channel"""
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+    ):
         super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.channel_params = {
             f"{prefix}_alpha1": 50.0,  # /s, rate constant of Rh* inactivation
@@ -65,59 +73,34 @@ class Phototransduction(Channel):
             "note": "The model is from Torre et al. (1990) but variable naming convention and default parameters are from Kamiyama et al. (2009).",
         }
 
-    def update_states(
-        self,
-        states: Dict[str, jnp.ndarray],
-        dt,
-        v,
-        params: Dict[str, jnp.ndarray],
-        **kwargs,
-    ):
-        """Update state of phototransduction variables."""
-        prefix = self._name
-        dt /= 1000  # the original implementation is in the time scale of seconds
-        # but the solver is in milliseconds
-        Jhv = states[f"{prefix}_Jhv"]
+    def derivatives(self, t, states, args):
+        """Calculate the derivatives for the phototransduction system."""
+        Rh, Rhi, Tr, PDE, Ca, Cab, cGMP = states
+        (
+            alpha1,
+            alpha2,
+            alpha3,
+            epsilon,
+            T_tot,
+            beta1,
+            tau1,
+            tau2,
+            PDE_tot,
+            gamma_Ca,
+            k1,
+            k2,
+            sigma,
+            A_max,
+            V_max,
+            K_c,
+            J_max,
+            K,
+            b,
+            C0,
+            eT,
+            Jhv,
+        ) = args
 
-        Rh, Rhi, Tr, PDE = (
-            states[f"{prefix}_Rh"],
-            states[f"{prefix}_Rhi"],
-            states[f"{prefix}_Tr"],
-            states[f"{prefix}_PDE"],
-        )
-        Ca, Cab, cGMP = (
-            states[f"{prefix}_Ca"],
-            states[f"{prefix}_Cab"],
-            states[f"{prefix}_cGMP"],
-        )
-        alpha1, alpha2, alpha3 = (
-            params[f"{prefix}_alpha1"],
-            params[f"{prefix}_alpha2"],
-            params[f"{prefix}_alpha3"],
-        )
-        beta1, tau1, tau2 = (
-            params[f"{prefix}_beta1"],
-            params[f"{prefix}_tau1"],
-            params[f"{prefix}_tau2"],
-        )
-        T_tot, PDE_tot = params[f"{prefix}_T_tot"], params[f"{prefix}_PDE_tot"]
-        gamma_Ca, k1, k2 = (
-            params[f"{prefix}_gamma_Ca"],
-            params[f"{prefix}_k1"],
-            params[f"{prefix}_k2"],
-        )
-        b, V_max, A_max, K_c = (
-            params[f"{prefix}_b"],
-            params[f"{prefix}_V_max"],
-            params[f"{prefix}_A_max"],
-            params[f"{prefix}_K_c"],
-        )
-        sigma, epsilon = params[f"{prefix}_sigma"], params[f"{prefix}_epsilon"]
-        C0 = params[f"{prefix}_C0"]
-        eT = params[f"{prefix}_eT"]
-
-        # J_Ca = -states[self.current_name] # voltage-dependent current
-        J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
         J_Ca = (
             J_max * cGMP**3 / (cGMP**3 + K**3)
         )  # eq(12) # voltage-independent current
@@ -144,14 +127,62 @@ class Phototransduction(Channel):
             V_max + sigma * PDE
         )  # eq(11)
 
-        # Update states
-        Rh_new = Rh + dRh_dt * dt
-        Rhi_new = Rhi + dRhi_dt * dt
-        Tr_new = Tr + dTr_dt * dt
-        PDE_new = PDE + dPDE_dt * dt
-        Ca_new = Ca + dCa_dt * dt
-        Cab_new = Cab + dCab_dt * dt
-        cGMP_new = cGMP + dcGMP_dt * dt
+        return jnp.array([dRh_dt, dRhi_dt, dTr_dt, dPDE_dt, dCa_dt, dCab_dt, dcGMP_dt])
+
+    def update_states(
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
+        **kwargs,
+    ):
+        """Update state of phototransduction variables."""
+        prefix = self._name
+        dt /= 1000  # Convert to seconds
+
+        # Retrieve states
+        Rh = states[f"{prefix}_Rh"]
+        Rhi = states[f"{prefix}_Rhi"]
+        Tr = states[f"{prefix}_Tr"]
+        PDE = states[f"{prefix}_PDE"]
+        Ca = states[f"{prefix}_Ca"]
+        Cab = states[f"{prefix}_Cab"]
+        cGMP = states[f"{prefix}_cGMP"]
+
+        y0 = jnp.array([Rh, Rhi, Tr, PDE, Ca, Cab, cGMP])
+
+        # Parameters for dynamics
+        args_tuple = (
+            params[f"{prefix}_alpha1"],
+            params[f"{prefix}_alpha2"],
+            params[f"{prefix}_alpha3"],
+            params[f"{prefix}_epsilon"],
+            params[f"{prefix}_T_tot"],
+            params[f"{prefix}_beta1"],
+            params[f"{prefix}_tau1"],
+            params[f"{prefix}_tau2"],
+            params[f"{prefix}_PDE_tot"],
+            params[f"{prefix}_gamma_Ca"],
+            params[f"{prefix}_k1"],
+            params[f"{prefix}_k2"],
+            params[f"{prefix}_sigma"],
+            params[f"{prefix}_A_max"],
+            params[f"{prefix}_V_max"],
+            params[f"{prefix}_K_c"],
+            params[f"{prefix}_J_max"],
+            params[f"{prefix}_K"],
+            params[f"{prefix}_b"],
+            params[f"{prefix}_C0"],
+            params[f"{prefix}_eT"],
+            states[f"{prefix}_Jhv"],
+        )
+
+        # Choose solver
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
+
+        # Unpack new states
+        Rh_new, Rhi_new, Tr_new, PDE_new, Ca_new, Cab_new, cGMP_new = y_new
 
         return {
             f"{prefix}_Rh": Rh_new,
@@ -161,7 +192,6 @@ class Phototransduction(Channel):
             f"{prefix}_Ca": Ca_new,
             f"{prefix}_Cab": Cab_new,
             f"{prefix}_cGMP": cGMP_new,
-            f"{prefix}_Jhv": Jhv,
         }
 
     def compute_current(
@@ -286,11 +316,19 @@ class Kv(Channel):
         return alpha, beta
 
 
-class Hyper(Channel):
+class Hyper(Channel, SolverExtension):
     """Hyperpolarization-activated channel in the formulation of Markov model with 5 states"""
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+    ):
         super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.channel_params = {
             f"{prefix}_gHyper": 3e-3,  # S/cm^2
@@ -309,44 +347,69 @@ class Hyper(Channel):
             "Species": "generic",
         }
 
-    def update_states(
-        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
-    ):
-        """Update state."""
-        prefix = self._name
-        dt /= 1000
-        alpha_h, beta_h = self.h_gate(v)
+    def derivatives(self, t, states, args):
+        """Calculate the derivatives for the Markov states."""
+        C1, C2, O1, O2, O3 = states
+        v = args[0]
+        alpha_h, beta_h = self.h_gate(
+            v
+        )  # Use the voltage (t here) to calculate alpha and beta
 
         # Transition rates according to the matrix K
+        C1_to_C2 = 4 * alpha_h * C1
+        C2_to_O1 = 3 * alpha_h * C2
+        O1_to_O2 = 2 * alpha_h * O1
+        O2_to_O3 = alpha_h * O2
 
-        C1_to_C2 = 4 * alpha_h * states[f"{prefix}_C1"]
-        C2_to_O1 = 3 * alpha_h * states[f"{prefix}_C2"]
-        O1_to_O2 = 2 * alpha_h * states[f"{prefix}_O1"]
-        O2_to_O3 = alpha_h * states[f"{prefix}_O2"]
+        O3_to_O2 = 4 * beta_h * O3
+        O2_to_O1 = 3 * beta_h * O2
+        O1_to_C2 = 2 * beta_h * O1
+        C2_to_C1 = beta_h * C2
 
-        O3_to_O2 = 4 * beta_h * states[f"{prefix}_O3"]
-        O2_to_O1 = 3 * beta_h * states[f"{prefix}_O2"]
-        O1_to_C2 = 2 * beta_h * states[f"{prefix}_O1"]
-        C2_to_C1 = beta_h * states[f"{prefix}_C2"]
+        # Derivatives of each state
+        dC1_dt = C2_to_C1 - C1_to_C2
+        dC2_dt = C1_to_C2 + O1_to_C2 - C2_to_O1 - C2_to_C1
+        dO1_dt = C2_to_O1 + O2_to_O1 - O1_to_O2 - O1_to_C2
+        dO2_dt = O1_to_O2 + O3_to_O2 - O2_to_O3 - O2_to_O1
+        dO3_dt = O2_to_O3 - O3_to_O2
 
-        new_C1 = states[f"{prefix}_C1"] + dt * (C2_to_C1 - C1_to_C2)
-        new_C2 = states[f"{prefix}_C2"] + dt * (
-            C1_to_C2 + O1_to_C2 - C2_to_O1 - C2_to_C1
-        )
-        new_O1 = states[f"{prefix}_O1"] + dt * (
-            C2_to_O1 + O2_to_O1 - O1_to_O2 - O1_to_C2
-        )
-        new_O2 = states[f"{prefix}_O2"] + dt * (
-            O1_to_O2 + O3_to_O2 - O2_to_O3 - O2_to_O1
-        )
-        new_O3 = states[f"{prefix}_O3"] + dt * (O2_to_O3 - O3_to_O2)
+        return jnp.array([dC1_dt, dC2_dt, dO1_dt, dO2_dt, dO3_dt])
+
+    def update_states(
+        self,
+        states: Dict[str, jnp.ndarray],
+        dt,
+        v,
+        params: Dict[str, jnp.ndarray],
+        **kwargs,
+    ):
+        """Update the states using the specified solver."""
+        prefix = self._name
+        dt /= 1000  # Convert dt to seconds
+
+        # Retrieve states
+        C1 = states[f"{prefix}_C1"]
+        C2 = states[f"{prefix}_C2"]
+        O1 = states[f"{prefix}_O1"]
+        O2 = states[f"{prefix}_O2"]
+        O3 = states[f"{prefix}_O3"]
+
+        y0 = jnp.array([C1, C2, O1, O2, O3])
+
+        # Parameters for dynamics
+        args_tuple = (v,)
+
+        # Choose solver
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
+        # Unpack new states
+        C1_new, C2_new, O1_new, O2_new, O3_new = y_new
 
         return {
-            f"{prefix}_C1": new_C1,
-            f"{prefix}_C2": new_C2,
-            f"{prefix}_O1": new_O1,
-            f"{prefix}_O2": new_O2,
-            f"{prefix}_O3": new_O3,
+            f"{prefix}_C1": C1_new,
+            f"{prefix}_C2": C2_new,
+            f"{prefix}_O1": O1_new,
+            f"{prefix}_O2": O2_new,
+            f"{prefix}_O3": O3_new,
         }
 
     def compute_current(
@@ -440,16 +503,19 @@ class Ca(Channel):
         return h
 
 
-class CaPump(Channel):
+class CaPump(Channel, SolverExtension):
     """Calcium Pump Channel"""
 
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: Optional[str] = "newton",
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
     ):
         super().__init__(name)
-        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.channel_params = {
             f"{prefix}_F": 9.648e4,  # Faraday's constant in C/mol
@@ -582,17 +648,11 @@ class CaPump(Channel):
             params[f"{prefix}_Jex2"],
             params[f"{prefix}_Kex2"],
             params[f"{prefix}_Cae"],
-            states["iCa"],
+            iCa,
             v,
         )
 
-        # Choose the solver
-        if self.solver == "newton":
-            y_new = newton(y0, dt, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, dt, self.derivatives, args_tuple)
-        else:  # Default to explicit Euler
-            y_new = explicit_euler(y0, dt, self.derivatives, args_tuple)
+        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
 
         # Unpack the new states
         Cas_new, Caf_new, Cab_ls_new, Cab_hs_new, Cab_lf_new, Cab_hf_new = y_new

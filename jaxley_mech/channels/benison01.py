@@ -16,9 +16,12 @@ from ..utils import efun
 __all__ = ["Leak", "Na", "Kdr", "KA", "CaL", "CaN", "CaPumpNS", "KCa"]
 
 META = {
-    "reference": "Benison, G., Keizer, J., Chalupa, L. M., & Robinson, D. W. (2001). Modeling Temporal Behavior of Postnatal Cat Retinal Ganglion Cells. Journal of Theoretical Biology, 210(2), 187–199. https://doi.org/10.1006/jtbi.2000.2289",
+    "papers": [
+        "Benison, G., Keizer, J., Chalupa, L. M., & Robinson, D. W. (2001). Modeling Temporal Behavior of Postnatal Cat Retinal Ganglion Cells. Journal of Theoretical Biology, 210(2), 187–199. https://doi.org/10.1006/jtbi.2000.2289"
+    ],
     "species": "Cat",
     "cell_type": "Retinal ganglion cells",
+    "reference": "Benison et al. (2001)",
 }
 
 

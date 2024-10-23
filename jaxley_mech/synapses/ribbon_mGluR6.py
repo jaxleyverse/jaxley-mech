@@ -5,7 +5,7 @@ from jax.lax import select
 from jaxley.solver_gate import save_exp
 from jaxley.synapses import Synapse
 
-from jaxley_mech.solvers import explicit_euler, newton, rk45
+from jaxley_mech.solvers import SolverExtension
 
 META = {
     "reference_1": "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119.",
@@ -13,9 +13,17 @@ META = {
 }
 
 
-class Ribbon_mGluR6(Synapse):
-    def __init__(self, name: Optional[str] = None, solver: Optional[str] = "newton"):
-        self.solver = solver  # Choose between 'explicit', 'newton', and 'rk45'
+class Ribbon_mGluR6(Synapse, SolverExtension):
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: Optional[str] = None,
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+    ):
+        super().__init__(name)
+        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         self._name = name = name if name else self.__class__.__name__
 
         self.synapse_params = {
@@ -113,12 +121,7 @@ class Ribbon_mGluR6(Synapse):
         y0 = jnp.array([exo, RRP, IP, RP, mTRPM1])
 
         # Choose the solver
-        if self.solver == "newton":
-            y_new = newton(y0, delta_t, self.derivatives, args_tuple)
-        elif self.solver == "rk45":
-            y_new = rk45(y0, delta_t, self.derivatives, args_tuple)
-        else:  # Default to explicit Euler
-            y_new = explicit_euler(y0, delta_t, self.derivatives, args_tuple)
+        y_new = self.solver_func(y0, delta_t, self.derivatives, args_tuple)
 
         new_exo, new_RRP, new_IP, new_RP, new_mTRPM1 = y_new
         return {
