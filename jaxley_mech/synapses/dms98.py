@@ -8,9 +8,10 @@ from jaxley.synapses import Synapse
 __all__ = ["AMPA", "GABAa", "GABAb", "NMDA"]
 
 META = {
-    "reference": "Destexhe, A., Mainen, Z. F., & Sejnowski, T. J. (1998). Kinetic models of synaptic transmission. Methods in neuronal modeling, 2, 1-25.",
-    "link": "https://www.csc.kth.se/utbildning/kth/kurser/DD2435/biomod12/kursbunt/f9/KochCh1Destexhe.pdf",
-    "source": "https://modeldb.science/18500?tab=2",
+    "reference": "Destexhe, et al. (1998).",
+    "doi": "https://www.csc.kth.se/utbildning/kth/kurser/DD2435/biomod12/kursbunt/f9/KochCh1Destexhe.pdf",
+    "code": "https://modeldb.science/18500?tab=2",
+    "note": "no doi for this book chapter, link to the pdf instead",
 }
 
 

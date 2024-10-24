@@ -8,8 +8,13 @@ from jaxley.synapses import Synapse
 from jaxley_mech.solvers import SolverExtension
 
 META = {
-    "reference_1": "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119.",
-    "reference_2": "Schroeder, C., Oesterle, J., Berens, P., Yoshimatsu, T., & Baden, T. (2021). eLife.",
+    "species": "Larval zebrafish, rat",
+    "cell_type": "UV cone photoreceptor, rod bipolar cell",
+    "reference": [
+        "Schroeder, et al. (2021).",
+        "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119.",
+    ],
+    "doi": ["https://doi.org/10.7554/eLife.67851", ""],
 }
 
 

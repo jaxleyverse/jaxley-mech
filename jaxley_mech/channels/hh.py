@@ -7,7 +7,8 @@ from jaxley.solver_gate import save_exp, solve_gate_exponential
 from jaxley_mech.solvers import SolverExtension
 
 META = {
-    "reference": "Hodgkin, A. L., & Huxley, A. F. (1952). A quantitative description of membrane current and its application to conduction and excitation in nerve. The Journal of Physiology, 117(4), 500–544. https://doi.org/10.1113/jphysiol.1952.sp004764",
+    "reference": "Hodgkin & Huxley (1952)",
+    "doi": "https://doi.org/10.1113/jphysiol.1952.sp004764",
     "type": "squid axon",
     "note": "Unlike the original paper, we adjusted the equations to the modern convention, that is, the resting potential is -65 mV, and signs are flipped.",
 }
@@ -195,10 +196,8 @@ class Na8States(Na, SolverExtension):
         }
         self.current_name = f"i_Na"
         self.META = {
-            "referece": [
-                "Fitzhugh, R. (1965). A kinetic model of the conductance changes in nerve membrane. Journal of Cellular and Comparative Physiology, 66(S2), 111–117. https://doi.org/10.1002/jcp.1030660518",
-                "Armstrong, C. M. (1981). Sodium channels and gating currents. Physiological Reviews, 61(3), 644–683. https://doi.org/10.1152/physrev.1981.61.3.644",
-            ],
+            "reference": "Armstrong, C. M. (1981).",
+            "doi": "https://doi.org/10.1152/physrev.1981.61.3.644", 
             "Species": "squid axon",
         }
 
@@ -361,10 +360,8 @@ class K5States(K, SolverExtension):
         }
         self.current_name = f"i_K"
         self.META = {
-            "referece": [
-                "Fitzhugh, R. (1965). A kinetic model of the conductance changes in nerve membrane. Journal of Cellular and Comparative Physiology, 66(S2), 111–117. https://doi.org/10.1002/jcp.1030660518",
-                "Armstrong, C. M. (1969). Inactivation of the Potassium Conductance and Related Phenomena Caused by Quaternary Ammonium Ion Injection in Squid Axons. The Journal of General Physiology, 54(5), 553–575. https://doi.org/10.1085/jgp.54.5.553",
-            ],
+            "referece": "Armstrong, (1969)",
+            "doi": "https://doi.org/10.1085/jgp.54.5.553",
             "Species": "squid axon",
         }
 

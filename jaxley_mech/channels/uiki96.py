@@ -11,10 +11,8 @@ from jaxley_mech.solvers import SolverExtension
 META = {
     "cell_type": "Bipolar cell",
     "species": "Goldfish; White Bass; Axolotl; Tiger Salamander; Dogfish",
-    "reference": [
-        "Usui, S., Ishihaiza, A., Kamiyama, Y., & Ishii, H. (1996). Ionic current model of bipolar cells in the lower vertebrate retina. Vision Research, 36(24), 4069–4076. https://doi.org/10.1016/S0042-6989(96)00179-4",
-        "Kamiyama, Y., Ishihara, A., Aoyama, T., & Usui, S. (2005). Simulation Analyses of Retinal Cell Responses. In Modeling in the neurosciences.",
-    ],
+    "reference": "Usui, et al. (1996)",
+    "doi": "https://doi.org/10.1016/S0042-6989(96)00179-4",
     "notes": "There were various errors in equations in the original paper. All errors are corrected by the 2005 Book chapter from the same authors.",
 }
 

@@ -11,7 +11,8 @@ from jaxley_mech.solvers import SolverExtension
 META = {
     "cell_type": "rod (inner segment)",
     "species": "Larval tiger salamanders (Ambystoma tigrinum)",
-    "reference": "Kamiyama, Y., Wu, S. M., & Usui, S. (2009). Simulation analysis of bandpass filtering properties of a rod photoreceptor network. Vision Research, 49(9), 970–978. https://doi.org/10.1016/j.visres.2009.03.003",
+    "reference": "Kamiyama, et al. (2009).",
+    "doi": "https://doi.org/10.1016/j.visres.2009.03.003", 
 }
 
 

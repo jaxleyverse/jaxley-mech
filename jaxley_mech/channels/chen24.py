@@ -12,9 +12,8 @@ from jaxley_mech.solvers import SolverExtension
 META = {
     "cell_type": "rod and cones",
     "species": "monkey and mouse",
-    "papers": [
-        "Chen, Q., Ingram, N. T., Baudin, J., Angueyra, J. M., Sinha, R., & Rieke, F. (2024). Light-adaptation clamp: A tool to predictably manipulate photoreceptor light responses. https://doi.org/10.7554/eLife.93795.1",
-    ],
+    "reference": "Chen, et al. (2024)",
+    "doi": "https://doi.org/10.7554/eLife.93795.2",
     "code": "https://github.com/chrischen2/photoreceptorLinearization",
 }
 
