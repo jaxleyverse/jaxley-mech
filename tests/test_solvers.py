@@ -137,8 +137,8 @@ def test_diffrax_implicit_reverse_mode():
     from diffrax import ImplicitEuler, ODETerm
     from jax import grad
 
-    y0 = jnp.array([1.0], dtype=jnp.float32)  # Explicitly cast y0 to float32
-    dt = jnp.float32(0.01)  # Ensure dt is also float32
+    y0 = jnp.array([1.0])  # Explicitly cast y0 to float32
+    dt = 0.01  # Ensure dt is also float32
 
     def wrapped_diffrax_implicit(y0):
         args = ()
@@ -161,39 +161,3 @@ def test_diffrax_implicit_reverse_mode():
     grad_diffrax = grad(wrapped_diffrax_implicit)(y0)
 
     assert jnp.isfinite(grad_diffrax).all(), f"Invalid gradient: {grad_diffrax}"
-
-
-# def test_diffrax_implicit():
-#     """Test the diffrax Implicit Euler method on a simple system."""
-#     y0 = jnp.array([1.0])  # Initial condition
-#     dt = 0.01  # Time step
-#     expected_solution = y0 * jnp.exp(-dt)  # Analytical solution: y(t) = y0 * exp(-t)
-
-#     term = ODETerm(simple_derivatives)
-#     root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
-#     solver = ImplicitEuler(root_finder=root_finder)
-#     y_new = diffrax_implicit(y0, dt, simple_derivatives, (), term, solver, max_steps=10)
-
-#     assert jnp.allclose(
-#         y_new, expected_solution, atol=1e-3
-#     ), f"Expected {expected_solution}, but got {y_new}"
-
-
-# def test_diffrax_implicit_reverse_mode():
-#     """Test reverse-mode differentiation for the diffrax Implicit Euler method."""
-#     y0 = jnp.array([1.0])
-#     dt = 0.01
-
-#     term = ODETerm(simple_derivatives)
-#     root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
-#     solver = ImplicitEuler(root_finder=root_finder)
-
-#     def wrapped_diffrax_implicit(y0):
-#         return jnp.sum(
-#             diffrax_implicit(y0, dt, simple_derivatives, (), term, solver, max_steps=10)
-#         )
-
-#     # Check if reverse-mode differentiation works
-#     grad_diffrax = grad(wrapped_diffrax_implicit)(y0)
-
-#     assert jnp.isfinite(grad_diffrax).all(), f"Invalid gradient: {grad_diffrax}"
