@@ -7,6 +7,8 @@ from jaxley.synapses.synapse import Synapse
 from jaxley_mech.solvers import SolverExtension
 
 META = {
+    "species": "Larval zebrafish",
+    "cell_type": "UV cone photoreceptor",
     "reference": [
         "Schroeder, C., Oesterle, J., Berens, P., Yoshimatsu, T., & Baden, T. (2021). eLife."
     ]
