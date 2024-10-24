@@ -48,7 +48,6 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K_GC": 0.5,  # μM, Ca2+ GC affinity
             f"{prefix}_m": 4.0,  # unitless, Ca2+ GC cooperativity
             f"{prefix}_I_dark": 20**3 * 0.01,  # pA, Dark current
-            f"{prefix}_surface_area": 100,  # um^2,
         }
         self.channel_states = {
             f"{prefix}_R": 0.0,
@@ -157,7 +156,7 @@ class Phototransduction(Channel, SolverExtension):
         I = -k * G**n  # eq(4) #pA
 
         I *= 1e-9
-        area = params[f"{prefix}_surface_area"] * 1e-8
+        area = 2 * jnp.pi * params["length"] * params["radius"] * 1e-8  # um^2 to cm^2
         current_density = I / area
 
         return current_density

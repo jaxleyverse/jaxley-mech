@@ -49,7 +49,6 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K": 10,  # # μM, half-saturation constant for cGMP hydrolysis
             f"{prefix}_K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
             f"{prefix}_J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
-            f"{prefix}_surface_area": 100,  # um^2,
         }
         self.channel_states = {
             f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
@@ -198,8 +197,8 @@ class Phototransduction(Channel, SolverExtension):
         current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)  # from Kamiyama et al. (2009)
 
         current *= 1e-9
-        area = params[f"{prefix}_surface_area"] * 1e-8
-        current_density = current / area
+        area = 2 * jnp.pi * params["length"] * params["radius"] * 1e-8  # um^2 to cm^2
+        current_density = current / area  # mA/cm^2
         return current_density
 
     def init_state(self, states, v, params, delta_t):

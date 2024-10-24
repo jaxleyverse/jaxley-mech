@@ -492,6 +492,8 @@ class CaPump(Channel, SolverExtension):
         Cab_ld = states[f"{prefix}_Cab_ld"]
         Cab_hd = states[f"{prefix}_Cab_hd"]
 
+        scale_factor = (2 * jnp.pi * params["length"] * params["radius"] * 1e-8) / 1e-9
+        iCa = states["iCa"] * scale_factor  # mA/cm^2 to pA
         y0 = jnp.array([Cas, Cad, Cab_ls, Cab_hs, Cab_ld, Cab_hd])
 
         # Parameters for dynamics
@@ -513,7 +515,7 @@ class CaPump(Channel, SolverExtension):
             params[f"{prefix}_Jex2"],
             params[f"{prefix}_Kex2"],
             params[f"{prefix}_Cae"],
-            states[self.current_name] * 1000,  # Convert to pA
+            iCa,
             v,
         )
 
