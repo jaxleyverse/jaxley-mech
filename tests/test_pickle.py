@@ -19,7 +19,9 @@ net = jx.Network([cell] * 2)
 net.cell(0).branch("all").insert(HH())
 net.cell(0).branch(0).comp(0).record("v")
 jx.connect(
-    net.cell(0).branch(0).comp(0), net.cell(1).branch(0).comp(0), RibbonSynapse()
+    net.cell(0).branch(0).comp(0),
+    net.cell(1).branch(0).comp(0),
+    RibbonSynapse(solver="explicit"),
 )
 
 
