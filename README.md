@@ -20,3 +20,9 @@ pip install -e jaxley-mech
 ## Usage
 
 See the [notebooks](notebooks) folder for usage examples.
+
+To view available mechanisms, it is possible to run the following code:
+```python
+import jaxley_mech as jm
+jm.find_channel(ion="K", species="rat")
+```

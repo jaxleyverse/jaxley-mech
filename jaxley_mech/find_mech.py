@@ -19,7 +19,7 @@ def find_channel(name=None, ion=None, species=None, cell_type=None, reference=No
                 else:
                     inst = obj()
                 inst.META.pop("note", None)
-                all_meta.append({"ion": class_name} | inst.META)
+                all_meta.append({"name": class_name} | inst.META)
     df = pd.DataFrame(all_meta)
     
     # Scan based on args
@@ -48,8 +48,8 @@ def find_synapse():
 
 
 if __name__ == "__main__":
-    data = find_channel(ion="K") 
-    print(data.columns)
+    data = find_channel(ion="K", species="Cat") 
+    print(data)
 
     """
     TODO
