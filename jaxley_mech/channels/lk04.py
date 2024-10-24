@@ -8,7 +8,8 @@ from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponenti
 META = {
     "cell_type": "rod",
     "species": "Larval tiger salamanders (Ambystoma tigrinum)",
-    "reference": "Liu, X.-D., & Kourennyi, D. E. (2004). Effects of Tetraethylammonium on Kx Channels and Simulated Light Response in Rod Photoreceptorss. Annals of Biomedical Engineering, 32(10), 1428–1442. https://doi.org/10.1114/B:ABME.0000042230.99614.8d",
+    "reference": "Liu, et al (2004)",
+    "doi": "https://doi.org/10.1114/B:ABME.0000042230.99614.8d",
     "code": "https://modeldb.science/64228",
 }
 

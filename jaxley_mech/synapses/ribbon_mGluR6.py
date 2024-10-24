@@ -12,8 +12,12 @@ META = {
     "cell_type": "UV cone photoreceptor, rod bipolar cell",
     "reference": [
         "Schroeder, C., Oesterle, J., Berens, P., Yoshimatsu, T., & Baden, T. (2021). eLife.",
-        "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119."
-    ]
+        "Nishiyama, S., Hosoki, Y., Koike, C., & Amano, A. (2014). IEEE, 6116-6119.",
+    ],
+    "doi": [
+        "https://doi.org/10.7554/eLife.67851",
+        "",
+    ],
 }
 
 

@@ -51,9 +51,11 @@ class NaTaT(Channel):
         }
         self.current_name = f"i_Na"
         self.META = {
-            "reference": "Colbert and Pan, 2002",
-            "species": "unknown",
+            "reference": "Colbert and Pan (2002)",
+            "doi": "https://doi.org/10.1038/nn0602-857",
+            "species": "rat",
             "cell_type": "Layer 5 pyramidal cell",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/NaTa_t.mod",
         }
 
     def update_states(
@@ -131,8 +133,10 @@ class NaTs2T(Channel):
         self.current_name = f"i_Na"
         self.META = {
             "reference": "Colbert and Pan, 2002",
-            "species": "unknown",
+            "species": "rat",
             "cell_type": "Layer 5 pyramidal cell",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/NaTs2_t.mod",
+            "note": "Took the NaTa and shifted both activation/inactivation by 6 mv",
         }
 
     def update_states(
@@ -210,9 +214,11 @@ class NapEt2(Channel):
         }
         self.current_name = f"i_Na"
         self.META = {
-            "reference": "Magistretti and Alonso 1999",
-            "species": "unknown",
-            "cell_type": "Layer 5 pyramidal cell",
+            "reference": "Magistretti and Alonso (1999)",
+            "doi": "https://doi.org/10.1085/jgp.114.4.491",
+            "species": "rat",
+            "cell_type": "Entorhinal cortex layer-II principal neurons",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Nap_Et2.mod",
         }
 
     def update_states(
@@ -294,9 +300,12 @@ class KPst(Channel):
         }
         self.current_name = f"i_K"
         self.META = {
-            "reference": "Korngreen and Sakmann, 2000",
-            "mechanism": "Persistent component of the K current",
-            "adjustment": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
+            "reference": "Korngreen and Sakmann (2000)",
+            "doi": "https://doi.org/10.1111/j.1469-7793.2000.00621.x",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/K_Pst.mod",
+            "species": "rat",
+            "cell_type": "Layer 5 pyramidal cell",
+            "note": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
         }
 
     def update_states(
@@ -380,9 +389,12 @@ class KTst(Channel):
         }
         self.current_name = f"i_K"
         self.META = {
-            "reference": "Korngreen and Sakmann, 2000",
-            "mechanism": "Transient component of the K current",
-            "adjustment": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
+            "reference": "Korngreen and Sakmann (2000)",
+            "doi": "https://doi.org/10.1111/j.1469-7793.2000.00621.x",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/K_Tst.mod",
+            "species": "rat",
+            "cell_type": "Layer 5 pyramidal cell",
+            "note": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
         }
 
     def update_states(
@@ -456,7 +468,10 @@ class SKE2(Channel):
         self.current_name = f"i_K"
         self.META = {
             "reference": "Kohler et al., 1996",
-            "mechanism": "SK-type calcium-activated potassium current",
+            "doi": "https://doi.org/10.1126/science.273.5282.1709",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/SK_E2.mod",
+            "species": "rat, human",
+            "cell_type": "unknown",
         }
 
     def update_states(
@@ -519,8 +534,10 @@ class SKv3_1(Channel):
         }
         self.current_name = f"i_K"
         self.META = {
-            "reference": "The EMBO Journal, vol.11, no.7, 2473-2486, 1992",
-            "mechanism": "Shaw-related potassium channel family SKv3_1",
+            "reference": "Rettig, et al. (1992)",
+            "doi": "https://doi.org/10.1002/j.1460-2075.1992.tb05312.x",
+            "species": "rat",
+            "cell_type": "unknown",
         }
 
     def update_states(
@@ -576,9 +593,12 @@ class M(Channel):
         }
         self.current_name = f"i_K"
         self.META = {
-            "reference": "Adams et al., 1982",
-            "mechanism": "M-currents and other potassium currents",
-            "temperature_correction": "Corrected rates using Q10 = 2.3, target temperature 34, original 21",
+            "reference": "Adams et al. (1982)",
+            "doi": "https://doi.org/10.1113/jphysiol.1982.sp014357",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Im.mod",
+            "species": "bullfrog",
+            "cell_type": "lumbar sympathetic neurones",
+            "note": "Corrected rates using Q10 = 2.3, target temperature 34, original 21",
         }
 
     def update_states(
@@ -643,8 +663,11 @@ class CaHVA(Channel):
         }
         self.current_name = f"i_Ca"
         self.META = {
-            "reference": "Reuveni, Friedman, Amitai, and Gutnick, J.Neurosci. 1993",
-            "mechanism": "HVA Ca2+ channel",
+            "reference": "Reuveni, et al. (1993)",
+            "doi": "https://doi.org/10.1523/jneurosci.13-11-04609.1993",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/SK_E2.mod",
+            "species": "rat",
+            "cell_type": "Layer 5 pyramidal cell",
         }
 
     def update_states(
@@ -712,8 +735,12 @@ class CaLVA(Channel):
         }
         self.current_name = f"i_Ca"
         self.META = {
-            "reference": "Based on Avery and Johnston 1996 and Randall 1997",
-            "mechanism": "LVA Ca2+ channel",
+            "reference": "Avery and Johnston (1996)",
+            "doi"
+            "https://doi.org/10.1523/jneurosci.16-18-05567.1996; "
+            "species": "rat",
+            "cell_type": "hippocampal CA3 pyramidal cell",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Ca_LVAst.mod",
         }
 
     def update_states(
@@ -789,8 +816,11 @@ class CaPump(Channel):
         }
         self.current_name = f"i_Ca"
         self.META = {
-            "reference": "Modified from Destexhe et al., 1994",
-            "mechanism": "Calcium dynamics",
+            "reference": "Destexhe et al., (1994)",
+            "doi": "https://doi.org/10.1152/jn.1994.72.2.803",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/CaDynamics_E2.mod",
+            "species": "ferret",
+            "cell_type": "thalamic reticular nucleus",
         }
 
     def update_states(self, u, dt, voltages, params):
@@ -840,6 +870,7 @@ class CaNernstReversal(Channel):
         self.channel_params = {}
         self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         self.current_name = f"i_Ca"
+        self.META = {}
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
@@ -885,8 +916,11 @@ class H(Channel):
         }
         self.current_name = f"i_H"
         self.META = {
-            "reference": "Kole, Hallermann, and Stuart, J. Neurosci., 2006",
-            "mechanism": "H-current (H)",
+            "reference": "Kole, et al. (2006)",
+            "doi": "https://doi.org/10.1523/JNEUROSCI.3664-05.2006",
+            "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Ih.mod",
+            "cell_type": "Layer 5 pyramidal cell",
+            "species": "rat",
         }
 
     def update_states(
@@ -930,4 +964,5 @@ class H(Channel):
         m_beta = 0.001 * 193 * save_exp(v / 33.1)
         m_inf = m_alpha / (m_alpha + m_beta)
         tau_m = 1 / (m_alpha + m_beta)
+        return m_inf, tau_m
         return m_inf, tau_m
