@@ -15,6 +15,7 @@ META = {
     "papers": [
         "Chen, Q., Ingram, N. T., Baudin, J., Angueyra, J. M., Sinha, R., & Rieke, F. (2024). Light-adaptation clamp: A tool to predictably manipulate photoreceptor light responses. https://doi.org/10.7554/eLife.93795.1",
     ],
+    "code": "https://github.com/chrischen2/photoreceptorLinearization",
 }
 
 
@@ -29,6 +30,7 @@ class Phototransduction(Channel, SolverExtension):
         atol: float = 1e-8,
         max_steps: int = 10,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
@@ -151,8 +153,13 @@ class Phototransduction(Channel, SolverExtension):
             params[f"{prefix}_n"],
             params[f"{prefix}_k"],
         )
-        I = -k * G**n  # eq(4)
-        return I
+        I = -k * G**n  # eq(4) #pA
+
+        I *= 1e-9
+        area = 2 * jnp.pi * params["length"] * params["radius"] * 1e-8  # um^2 to cm^2
+        current_density = I / area
+
+        return current_density
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""

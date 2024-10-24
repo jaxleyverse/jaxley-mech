@@ -38,6 +38,7 @@ class NaTaT(Channel):
     """Transient sodium current from Colbert and Pan, 2002."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -75,7 +76,7 @@ class NaTaT(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        na_cond = params[f"{prefix}_gNaTaT"] * 1000
+        na_cond = params[f"{prefix}_gNaTaT"]
         current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
@@ -116,6 +117,7 @@ class NaTs2T(Channel):
     """
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -153,7 +155,7 @@ class NaTs2T(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        na_cond = params[f"{prefix}_gNaTs2T"] * 1000
+        na_cond = params[f"{prefix}_gNaTs2T"]
         current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
@@ -195,6 +197,7 @@ class NapEt2(Channel):
     """
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -232,7 +235,7 @@ class NapEt2(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        na_cond = params[f"{prefix}_gNapEt2"] * 1000
+        na_cond = params[f"{prefix}_gNapEt2"]
         current = na_cond * (ms**3) * hs * (voltages - params["eNa"])
         return current
 
@@ -278,6 +281,7 @@ class KPst(Channel):
     """Persistent component of the K current from Korngreen and Sakmann, 2000, adjusted for junction potential."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -315,7 +319,7 @@ class KPst(Channel):
         """Compute the potassium current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        k_cond = params[f"{prefix}_gKPst"] * (ms**2) * hs * 1000
+        k_cond = params[f"{prefix}_gKPst"] * (ms**2) * hs
         current = k_cond * (voltages - params["eK"])
         return current
 
@@ -363,6 +367,7 @@ class KTst(Channel):
     """Transient component of the K current from Korngreen and Sakmann, 2000, adjusted for junction potential."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -400,7 +405,7 @@ class KTst(Channel):
         """Compute the potassium current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        k_cond = params[f"{prefix}_gKTst"] * (ms**4) * hs * 1000
+        k_cond = params[f"{prefix}_gKTst"] * (ms**4) * hs
         current = k_cond * (voltages - params["eK"])
         return current
 
@@ -437,6 +442,7 @@ class SKE2(Channel):
     """SK-type calcium-activated potassium current from Kohler et al., 1996."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -473,7 +479,7 @@ class SKE2(Channel):
         """Compute the potassium current through the channel."""
         prefix = self._name
         z = u[f"{prefix}_z"]
-        k_cond = params[f"{prefix}_gSKE2"] * z * 1000  # Conversion factor for units
+        k_cond = params[f"{prefix}_gSKE2"] * z
         current = k_cond * (voltages - params["eK"])
         return current
 
@@ -501,6 +507,7 @@ class SKv3_1(Channel):
     """Shaw-related potassium channel family SKv3_1 from The EMBO Journal, 1992."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -535,7 +542,7 @@ class SKv3_1(Channel):
         """Compute the potassium current through the channel."""
         prefix = self._name
         m = u[f"{prefix}_m"]
-        k_cond = params[f"{prefix}_gSKv3_1"] * m * 1000  # Conversion factor for units
+        k_cond = params[f"{prefix}_gSKv3_1"] * m
         current = k_cond * (voltages - params["eK"])
         return current
 
@@ -557,6 +564,7 @@ class M(Channel):
     """M-currents and other potassium currents in bullfrog sympathetic neurones from Adams et al., 1982, with temperature corrections."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -592,7 +600,7 @@ class M(Channel):
         """Compute the potassium current through the channel."""
         prefix = self._name
         m = u[f"{prefix}_m"]
-        k_cond = params[f"{prefix}_gM"] * m * 1000  # Conversion factor for units
+        k_cond = params[f"{prefix}_gM"] * m
         current = k_cond * (voltages - params["eK"])
         return current
 
@@ -623,6 +631,7 @@ class CaHVA(Channel):
     """High-Voltage-Activated (HVA) Ca2+ channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaHVA": 0.00001,  # S/cm^2
@@ -658,7 +667,7 @@ class CaHVA(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        ca_cond = params[f"{prefix}_gCaHVA"] * (ms**2) * hs * 1000
+        ca_cond = params[f"{prefix}_gCaHVA"] * (ms**2) * hs
         current = ca_cond * (voltages - u["eCa"])
         return current
 
@@ -691,6 +700,7 @@ class CaLVA(Channel):
     """Low-Voltage-Activated (LVA) Ca2+ channel, based on Avery and Johnston 1996 and Randall 1997"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gCaLVA": 0.00001,  # S/cm^2
@@ -726,7 +736,7 @@ class CaLVA(Channel):
         """Compute the current through the channel."""
         prefix = self._name
         ms, hs = u[f"{prefix}_m"], u[f"{prefix}_h"]
-        ca_cond = params[f"{prefix}_gCaLVA"] * (ms**2) * hs * 1000
+        ca_cond = params[f"{prefix}_gCaLVA"] * (ms**2) * hs
         current = ca_cond * (voltages - u["eCa"])
         return current
 
@@ -766,6 +776,7 @@ class CaPump(Channel):
         self,
         name: Optional[str] = None,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_params = {
             f"{self._name}_gamma": 0.05,  # Fraction of free calcium (not buffered)
@@ -819,6 +830,7 @@ class CaNernstReversal(Channel):
         self,
         name: Optional[str] = None,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)
@@ -861,6 +873,7 @@ class H(Channel):
     """H-current (H) from Kole, Hallermann, and Stuart, J. Neurosci., 2006."""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -895,7 +908,7 @@ class H(Channel):
         """Compute the nonspecific current through the channel."""
         prefix = self._name
         m = u[f"{prefix}_m"]
-        h_cond = params[f"{prefix}_gH"] * m * 1000  # Conversion factor for units
+        h_cond = params[f"{prefix}_gH"] * m
         current = h_cond * (voltages - params["eH"])
         return current
 

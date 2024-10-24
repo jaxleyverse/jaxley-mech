@@ -21,6 +21,7 @@ class Phototransduction(Channel, SolverExtension):
         atol: float = 1e-8,
         max_steps: int = 10,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
 
@@ -194,7 +195,11 @@ class Phototransduction(Channel, SolverExtension):
         J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
         J = J_max * cGMP**3 / (cGMP**3 + K**3)  # eq(12)
         current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)  # from Kamiyama et al. (2009)
-        return current
+
+        current *= 1e-9
+        area = 2 * jnp.pi * params["length"] * params["radius"] * 1e-8  # um^2 to cm^2
+        current_density = current / area  # mA/cm^2
+        return current_density
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""

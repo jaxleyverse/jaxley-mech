@@ -29,6 +29,7 @@ class Leak(Channel):
     """Leakage current"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -50,10 +51,8 @@ class Leak(Channel):
     ):
         """""Return the updated states.""" ""
         prefix = self._name
-        gLeak = (
-            params[f"{prefix}_gLeak"] * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        return gLeak * (v - params[f"{prefix}_eLeak"])
+        gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
+        return gLeak * (v - params[f"{prefix}_eLeak"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -64,6 +63,7 @@ class Na(Channel):
     """Sodium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -94,10 +94,8 @@ class Na(Channel):
         """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gNa = (
-            params[f"{prefix}_gNa"] * (m**3) * h * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        return gNa * (v - params[f"{prefix}_eNa"])
+        gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
+        return gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -128,6 +126,7 @@ class Kdr(Channel):
     """Delayed Rectifier Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -145,7 +144,6 @@ class Kdr(Channel):
         prefix = self._name
         m = states[f"{prefix}_m"]
         new_m = solve_gate_exponential(m, dt, *Kdr.m_gate(v))
-        # jax.debug.print("new_m={new_m}, v={v}", new_m=new_m, v=v)
         return {f"{prefix}_m": new_m}
 
     def compute_current(
@@ -154,11 +152,9 @@ class Kdr(Channel):
         """""Return the updated states.""" ""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        gKdr = (
-            params[f"{prefix}_gKdr"] * (m**4) * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
+        gKdr = params[f"{prefix}_gKdr"] * m**4  # S/cm^2
 
-        return gKdr * (v - params[f"eK"])
+        return gKdr * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -186,6 +182,7 @@ class KA(Channel):
     """A type Potassium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -216,10 +213,8 @@ class KA(Channel):
         """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gKA = (
-            params[f"{prefix}_gKA"] * (m**3) * h * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        return gKA * (v - params[f"eK"])
+        gKA = params[f"{prefix}_gKA"] * (m**3) * h  # S/cm^2
+        return gKA * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -250,6 +245,7 @@ class CaL(Channel):
     """L-type Calcium channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -280,10 +276,8 @@ class CaL(Channel):
         """Return the updated states."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        gCaL = (
-            params[f"{prefix}_gCaL"] * (m**2) * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        current = gCaL * (v - states["eCa"])
+        gCaL = params[f"{prefix}_gCaL"] * (m**2)  # S/cm^2
+        current = gCaL * (v - states["eCa"])  # S/cm^2 * mV = mA/cm^2
         return current
 
     def init_state(self, states, v, params, delta_t):
@@ -306,6 +300,7 @@ class CaN(Channel):
     """N-type Ca channel"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -335,10 +330,8 @@ class CaN(Channel):
         """Return the updated states."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        gCaN = (
-            params[f"{prefix}_gCaN"] * (m**2) * h * 1000
-        )  # mS/cm^2, multiply with 1000 to convert Siemens to milli Siemens.
-        return gCaN * (v - states[f"eCa"])
+        gCaN = params[f"{prefix}_gCaN"] * (m**2) * h  # S/cm^2
+        return gCaN * (v - states[f"eCa"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -369,6 +362,7 @@ class CaPumpNS(Channel):
     """Non-spatial Calcium pump"""
 
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)
@@ -406,7 +400,7 @@ class CaPumpNS(Channel):
         K_pump = params["K_pump"]
         j_pump = v_pump * (Cai**4 / (Cai**4 + K_pump**4))
 
-        iCa = states["iCa"] / 1_000
+        iCa = states["iCa"]
 
         driving_channel = -10_000.0 * iCa / (2 * F * V_cell)
         driving_channel = select(
@@ -431,6 +425,7 @@ class CaPumpNS(Channel):
 
 class KCa(Channel):
     def __init__(self, name: Optional[str] = None):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
         self.channel_params = {
@@ -464,9 +459,9 @@ class KCa(Channel):
 
         # changed to the second-power from fm97
         x = (Cai / K_KCa) ** 2
-        gKCa = params[f"{prefix}_gKCa"] * (x / (1 + x)) * 1000
+        gKCa = params[f"{prefix}_gKCa"] * (x / (1 + x))  # S/cm^2
 
-        return gKCa * (v - params[f"eK"])
+        return gKCa * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
@@ -481,6 +476,7 @@ class CaNernstReversal(Channel):
         self,
         name: Optional[str] = None,
     ):
+        self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)
