@@ -275,6 +275,7 @@ class Kv(Channel):
         }
         self.current_name = f"iKv"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -351,8 +352,7 @@ class Hyper(Channel, SolverExtension):
         }
         self.current_name = f"iHyper"
         self.META = {
-            "reference": [],
-            "Species": "generic",
+            "species": "generic",
         }
 
     def derivatives(self, t, states, args):
@@ -458,6 +458,7 @@ class Ca(Channel):
         }
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(
         self,
@@ -557,7 +558,7 @@ class CaPump(Channel, SolverExtension):
         self.current_name = f"iCa"
         self.META = {
             "reference": "Modified from Destexhe et al., 1994",
-            "mechanism": "Calcium dynamics",
+            "ion": "Ca"
         }
 
     def derivatives(self, t, states, args):
@@ -709,6 +710,8 @@ class CaNernstReversal(Channel):
             "Cas": 0.0966,  # μM
         }
         self.current_name = f"iCa"
+        self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
@@ -745,6 +748,7 @@ class KCa(Channel):
         }
         self.current_name = f"iKCa"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -809,6 +813,7 @@ class ClCa(Channel):
         }
         self.current_name = f"iClCa"
         self.META = META
+        self.META.update({"ion": "Cl"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]

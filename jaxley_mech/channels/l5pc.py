@@ -56,6 +56,7 @@ class NaTaT(Channel):
             "species": "rat",
             "cell_type": "Layer 5 pyramidal cell",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/NaTa_t.mod",
+            "ion": "Na",
         }
 
     def update_states(
@@ -137,6 +138,7 @@ class NaTs2T(Channel):
             "cell_type": "Layer 5 pyramidal cell",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/NaTs2_t.mod",
             "note": "Took the NaTa and shifted both activation/inactivation by 6 mv",
+            "ion": "Na",
         }
 
     def update_states(
@@ -219,6 +221,7 @@ class NapEt2(Channel):
             "species": "rat",
             "cell_type": "Entorhinal cortex layer-II principal neurons",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Nap_Et2.mod",
+            "ion": "Na"
         }
 
     def update_states(
@@ -306,6 +309,7 @@ class KPst(Channel):
             "species": "rat",
             "cell_type": "Layer 5 pyramidal cell",
             "note": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
+            "ion": "K"
         }
 
     def update_states(
@@ -395,6 +399,7 @@ class KTst(Channel):
             "species": "rat",
             "cell_type": "Layer 5 pyramidal cell",
             "note": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
+            "ion": "K"
         }
 
     def update_states(
@@ -472,6 +477,7 @@ class SKE2(Channel):
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/SK_E2.mod",
             "species": "rat, human",
             "cell_type": "unknown",
+            "ion": "K"
         }
 
     def update_states(
@@ -538,6 +544,7 @@ class SKv3_1(Channel):
             "doi": "https://doi.org/10.1002/j.1460-2075.1992.tb05312.x",
             "species": "rat",
             "cell_type": "unknown",
+            "ion": "K"
         }
 
     def update_states(
@@ -599,6 +606,7 @@ class M(Channel):
             "species": "bullfrog",
             "cell_type": "lumbar sympathetic neurones",
             "note": "Corrected rates using Q10 = 2.3, target temperature 34, original 21",
+            "ion": "K"
         }
 
     def update_states(
@@ -668,6 +676,7 @@ class CaHVA(Channel):
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/SK_E2.mod",
             "species": "rat",
             "cell_type": "Layer 5 pyramidal cell",
+            "ion": "Ca"
         }
 
     def update_states(
@@ -736,11 +745,11 @@ class CaLVA(Channel):
         self.current_name = f"i_Ca"
         self.META = {
             "reference": "Avery and Johnston (1996)",
-            "doi"
-            "https://doi.org/10.1523/jneurosci.16-18-05567.1996; "
+            "doi": "https://doi.org/10.1523/jneurosci.16-18-05567.1996",
             "species": "rat",
             "cell_type": "hippocampal CA3 pyramidal cell",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Ca_LVAst.mod",
+            "ion": "Ca"
         }
 
     def update_states(
@@ -821,6 +830,7 @@ class CaPump(Channel):
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/CaDynamics_E2.mod",
             "species": "ferret",
             "cell_type": "thalamic reticular nucleus",
+            "ion": "Ca"
         }
 
     def update_states(self, u, dt, voltages, params):
@@ -870,7 +880,7 @@ class CaNernstReversal(Channel):
         self.channel_params = {}
         self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         self.current_name = f"i_Ca"
-        self.META = {}
+        self.META = {"ion": "Ca"}
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""

@@ -71,6 +71,7 @@ class Na(Channel):
         self.channel_states = {f"{prefix}_m": 0.1, f"{prefix}_h": 0.0}
         self.current_name = f"iNa"
         self.META = META
+        self.META.update({"ion": "Na"})
 
     def update_states(
         self,
@@ -134,6 +135,7 @@ class Kdr(Channel):
         self.channel_states = {f"{prefix}_m": 0.1}
         self.current_name = f"iK"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -190,6 +192,7 @@ class KA(Channel):
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
         self.current_name = f"iK"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self,
@@ -252,6 +255,7 @@ class CaL(Channel):
         self.channel_states = {f"{prefix}_m": 0.1, "eCa": 125.0}
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(
         self,
@@ -307,6 +311,7 @@ class CaN(Channel):
         self.channel_states = {f"{prefix}_m": 1.0, f"{prefix}_h": 0.0, "eCa": 125.0}
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(
         self,
@@ -377,6 +382,7 @@ class CaPumpNS(Channel):
         }
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration due to the pump action."""
@@ -434,6 +440,7 @@ class KCa(Channel):
         self.channel_states = {"Cai": 1e-4}  # mM, intracellular calcium concentration
         self.current_name = f"iK"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -484,6 +491,8 @@ class CaNernstReversal(Channel):
         self.channel_params = {"Cao": 2.0}
         self.channel_states = {"eCa": 125.0, "Cai": 5e-05}
         self.current_name = f"iCa"
+        self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""

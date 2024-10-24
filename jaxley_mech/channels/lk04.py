@@ -63,6 +63,7 @@ class Kx(Channel):
         }
         self.current_name = f"iKx"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -112,6 +113,7 @@ class Kv(Channel):
         }
         self.current_name = f"iKv"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -210,6 +212,7 @@ class Ca(Channel):
         }
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(
         self,
@@ -285,7 +288,7 @@ class CaPump(Channel):
         self.current_name = f"iCa"
         self.META = {
             "reference": "Modified from Destexhe et al., 1994",
-            "mechanism": "Calcium dynamics",
+            "ion": "Ca"
         }
 
     def update_states(self, states, dt, v, params):
@@ -337,6 +340,8 @@ class CaNernstReversal(Channel):
         self.channel_params = {"Cao": 2.0}
         self.channel_states = {"eCa": 40.0, "Cai": 2e-3}
         self.current_name = f"iCa"
+        self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
@@ -378,6 +383,7 @@ class KCa(Channel):
         }
         self.current_name = f"iKCa"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -427,6 +433,7 @@ class ClCa(Channel):
         }
         self.current_name = f"iClCa"
         self.META = META
+        self.META.update({"ion": "Cl"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
