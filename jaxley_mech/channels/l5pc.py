@@ -870,9 +870,7 @@ class CaNernstReversal(Channel):
         self.channel_params = {}
         self.channel_states = {"eCa": 0.0, "CaCon_i": 5e-05, "CaCon_e": 2.0}
         self.current_name = f"i_Ca"
-        self.META = {
-            
-        }
+        self.META = {}
 
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""

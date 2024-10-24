@@ -12,6 +12,8 @@ META = {
     "doi": "https://www.csc.kth.se/utbildning/kth/kurser/DD2435/biomod12/kursbunt/f9/KochCh1Destexhe.pdf",
     "code": "https://modeldb.science/18500?tab=2",
     "note": "no doi for this book chapter, link to the pdf instead",
+    "species": "unknown",
+    "cell_type": "unknown",
 }
 
 
