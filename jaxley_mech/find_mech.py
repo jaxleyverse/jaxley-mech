@@ -2,8 +2,12 @@ import importlib
 import pkgutil
 import inspect
 import pandas as pd
-import numpy as np
 
+def _format_lists(df):
+    """Formats lists found in the dataframe."""
+    def format_element(x):
+        return ', '.join(map(str, x)) if isinstance(x, list) else x
+    return df.map(format_element)
 
 def find_channel(
     name=None,
@@ -45,12 +49,12 @@ def find_channel(
     filter_values = {k: v for k, v in bound_args.arguments.items() if v is not None}
 
     if not filter_values:
-        return df
+        return _format_lists(df)
     else:
         mask = pd.Series(True, index=df.index)
         for k, v in filter_values.items():
             mask &= df[k].fillna("").str.contains(v, regex=False, na=False)
-        return df[mask]
+        return _format_lists(df[mask])
 
 
 def find_synapse(
@@ -86,9 +90,15 @@ def find_synapse(
     filter_values = {k: v for k, v in bound_args.arguments.items() if v is not None}
 
     if not filter_values:
-        return df
+        return _format_lists(df)
     else:
         mask = pd.Series(True, index=df.index)
         for k, v in filter_values.items():
             mask &= df[k].fillna("").str.contains(v, regex=False, na=False)
-        return df[mask]
+        return _format_lists(df[mask])
+    
+if __name__ == "__main__":
+    # Find all channels with species='mouse'
+    print(find_channel(species="rat"))
+    # Find all synapses with species='mouse'
+    print(find_synapse(species="rat"))
