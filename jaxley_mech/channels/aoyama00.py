@@ -12,8 +12,8 @@ from jaxley.solver_gate import (
 )
 
 META = {
-    "cell_type": "Horizontal cell",
-    "species": "Rabbit",
+    "cell_type": "horizontal cell",
+    "species": "rabbit",
     "reference": "Aoyama et al. (2000)",
     "doi": "https://doi.org/10.1016/S0168-0102(00)00111-5",
 }

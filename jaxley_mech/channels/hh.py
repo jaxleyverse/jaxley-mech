@@ -199,9 +199,9 @@ class Na8States(Na, SolverExtension):
         self.current_name = f"i_Na"
         self.META = {
             "reference": "Armstrong, C. M. (1981).",
-            "doi": "https://doi.org/10.1152/physrev.1981.61.3.644", 
+            "doi": "https://doi.org/10.1152/physrev.1981.61.3.644",
             "species": "squid",
-            "ion": "Na"
+            "ion": "Na",
         }
 
     def derivatives(self, t, states, args):
@@ -366,7 +366,7 @@ class K5States(K, SolverExtension):
             "reference": "Armstrong, (1969)",
             "doi": "https://doi.org/10.1085/jgp.54.5.553",
             "species": "squid",
-            "ion": "K"
+            "ion": "K",
         }
 
     def derivatives(self, t, states, args):

@@ -54,7 +54,7 @@ class NaTaT(Channel):
             "reference": "Colbert and Pan (2002)",
             "doi": "https://doi.org/10.1038/nn0602-857",
             "species": "rat",
-            "cell_type": "Layer 5 pyramidal cell",
+            "cell_type": "layer 5 pyramidal cell",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/NaTa_t.mod",
             "ion": "Na",
         }
@@ -135,7 +135,7 @@ class NaTs2T(Channel):
         self.META = {
             "reference": "Colbert and Pan, 2002",
             "species": "rat",
-            "cell_type": "Layer 5 pyramidal cell",
+            "cell_type": "layer 5 pyramidal cell",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/NaTs2_t.mod",
             "note": "Took the NaTa and shifted both activation/inactivation by 6 mv",
             "ion": "Na",
@@ -219,9 +219,9 @@ class NapEt2(Channel):
             "reference": "Magistretti and Alonso (1999)",
             "doi": "https://doi.org/10.1085/jgp.114.4.491",
             "species": "rat",
-            "cell_type": "Entorhinal cortex layer-II principal neurons",
+            "cell_type": "entorhinal cortex layer-II principal neurons",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Nap_Et2.mod",
-            "ion": "Na"
+            "ion": "Na",
         }
 
     def update_states(
@@ -307,9 +307,9 @@ class KPst(Channel):
             "doi": "https://doi.org/10.1111/j.1469-7793.2000.00621.x",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/K_Pst.mod",
             "species": "rat",
-            "cell_type": "Layer 5 pyramidal cell",
+            "cell_type": "layer 5 pyramidal cell",
             "note": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
-            "ion": "K"
+            "ion": "K",
         }
 
     def update_states(
@@ -397,9 +397,9 @@ class KTst(Channel):
             "doi": "https://doi.org/10.1111/j.1469-7793.2000.00621.x",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/K_Tst.mod",
             "species": "rat",
-            "cell_type": "Layer 5 pyramidal cell",
+            "cell_type": "layer 5 pyramidal cell",
             "note": "Shifted -10 mV to correct for junction potential, rates corrected with Q10",
-            "ion": "K"
+            "ion": "K",
         }
 
     def update_states(
@@ -477,7 +477,7 @@ class SKE2(Channel):
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/SK_E2.mod",
             "species": "rat, human",
             "cell_type": "unknown",
-            "ion": "K"
+            "ion": "K",
         }
 
     def update_states(
@@ -544,7 +544,7 @@ class SKv3_1(Channel):
             "doi": "https://doi.org/10.1002/j.1460-2075.1992.tb05312.x",
             "species": "rat",
             "cell_type": "unknown",
-            "ion": "K"
+            "ion": "K",
         }
 
     def update_states(
@@ -606,7 +606,7 @@ class M(Channel):
             "species": "bullfrog",
             "cell_type": "lumbar sympathetic neurones",
             "note": "Corrected rates using Q10 = 2.3, target temperature 34, original 21",
-            "ion": "K"
+            "ion": "K",
         }
 
     def update_states(
@@ -675,8 +675,8 @@ class CaHVA(Channel):
             "doi": "https://doi.org/10.1523/jneurosci.13-11-04609.1993",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/SK_E2.mod",
             "species": "rat",
-            "cell_type": "Layer 5 pyramidal cell",
-            "ion": "Ca"
+            "cell_type": "layer 5 pyramidal cell",
+            "ion": "Ca",
         }
 
     def update_states(
@@ -749,7 +749,7 @@ class CaLVA(Channel):
             "species": "rat",
             "cell_type": "hippocampal CA3 pyramidal cell",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Ca_LVAst.mod",
-            "ion": "Ca"
+            "ion": "Ca",
         }
 
     def update_states(
@@ -830,7 +830,7 @@ class CaPump(Channel):
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/CaDynamics_E2.mod",
             "species": "ferret",
             "cell_type": "thalamic reticular nucleus",
-            "ion": "Ca"
+            "ion": "Ca",
         }
 
     def update_states(self, u, dt, voltages, params):
@@ -929,7 +929,7 @@ class H(Channel):
             "reference": "Kole, et al. (2006)",
             "doi": "https://doi.org/10.1523/JNEUROSCI.3664-05.2006",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Ih.mod",
-            "cell_type": "Layer 5 pyramidal cell",
+            "cell_type": "layer 5 pyramidal cell",
             "species": "rat",
         }
 

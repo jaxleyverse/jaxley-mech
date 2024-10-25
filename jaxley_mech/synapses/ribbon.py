@@ -10,7 +10,7 @@ META = {
     "reference": "Schroeder, et al. (2021)",
     "doi": "https://doi.org/10.7554/eLife.67851",
     "species": "larval zebrafish",
-    "cell_type": "UV-cones",
+    "cell_type": "UV cone photoreceptor",
 }
 
 

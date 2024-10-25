@@ -21,8 +21,12 @@ pip install -e jaxley-mech
 
 See the [notebooks](notebooks) folder for usage examples.
 
-To view available mechanisms, it is possible to run the following code:
+To view available mechanisms and filter them, it is possible to run the following code:
 ```python
 import jaxley_mech as jm
-jm.find_channel(ion="K", species="rat")
+print(jm.find_channel()) # shows metadata of the available channels
+print(jm.find_channel(ion="K", species="rat")) # shows metadata of channels with these properties
+
+all_synapses = jm.find_synapse()
+print(all_synapses.reference) # shows the references of all synapses
 ```

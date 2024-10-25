@@ -10,8 +10,8 @@ from ..utils import efun
 __all__ = ["Leak", "Na", "K", "KA", "Ca", "CaNernstReversal", "KCa"]
 
 META = {
-    "species": "Tiger salamander",
-    "cell_type": "Retinal ganglion cell",
+    "species": "tiger salamander",
+    "cell_type": "retinal ganglion cell",
     "reference": "Fohlmeister & Miller (1997)",
     "doi": "https://doi.org/10.1152/jn.1997.78.4.1935",
 }
@@ -336,7 +336,7 @@ class CaPump(Channel):
         self.META = {
             "reference": "Destexhe, A., Babloyantz, A., & Sejnowski, TJ. Ionic mechanisms for intrinsic slow oscillations in thalamic relay neurons. Biophys. J. 65: 1538-1552, 1993.",
             "code": "https://modeldb.science/3670?tab=2&file=NTW_NEW/capump.mod",
-            "ion": "Ca"
+            "ion": "Ca",
         }
 
     def update_states(self, states, dt, v, params):

@@ -9,10 +9,11 @@ from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponenti
 from jaxley_mech.solvers import SolverExtension
 
 META = {
-    "cell_type": "rod (inner segment)",
-    "species": "Larval tiger salamanders (Ambystoma tigrinum)",
+    "cell_type": "rod photoreceptor",
+    "species": "larval tiger salamander",
     "reference": "Kamiyama, et al. (2009).",
-    "doi": "https://doi.org/10.1016/j.visres.2009.03.003", 
+    "doi": "https://doi.org/10.1016/j.visres.2009.03.003",
+    "note": "Inner segment of the rod photoreceptor",
 }
 
 
@@ -556,10 +557,7 @@ class CaPump(Channel, SolverExtension):
             f"{prefix}_Cab_hf": 29.068,  # Bound buffer h concentration in μM
         }
         self.current_name = f"iCa"
-        self.META = {
-            "reference": "Modified from Destexhe et al., 1994",
-            "ion": "Ca"
-        }
+        self.META = {"reference": "Modified from Destexhe et al., 1994", "ion": "Ca"}
 
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the calcium pump system."""

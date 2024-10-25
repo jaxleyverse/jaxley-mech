@@ -16,8 +16,8 @@ from ..utils import efun
 __all__ = ["Leak", "Na", "Kdr", "KA", "CaL", "CaN", "CaPumpNS", "KCa"]
 
 META = {
-    "species": "Cat",
-    "cell_type": "Retinal ganglion cells",
+    "species": "cat",
+    "cell_type": "retinal ganglion cell",
     "reference": "Benison et al. (2001)",
     "doi": "https://doi.org/10.1006/jtbi.2000.2289",
 }
