@@ -22,7 +22,7 @@ def find_channel(
     doi=None,
     code=None,
 ):
-    # Import all the channel metadata
+    """Return channel metadata in a dataframe filtered by the argument fields."""
     all_meta = []
     jmc = importlib.import_module("jaxley_mech.channels")
     for _, mod_name, _ in pkgutil.walk_packages(jmc.__path__, jmc.__name__ + "."):
@@ -40,7 +40,6 @@ def find_channel(
                 all_meta.append({"name": class_name} | inst.META)
     df = pd.DataFrame(all_meta)
 
-    # Scan the metadata based on args
     bound_args = inspect.signature(find_channel).bind(
         name=name,
         ion=ion,
@@ -64,7 +63,7 @@ def find_channel(
 def find_synapse(
     name=None, species=None, cell_type=None, reference=None, doi=None, code=None
 ):
-    # Import all the synapse metadata
+    """Return synapse metadata in a dataframe filtered by the argument fields."""
     all_meta = []
     jmc = importlib.import_module("jaxley_mech.synapses")
     for _, mod_name, _ in pkgutil.walk_packages(jmc.__path__, jmc.__name__ + "."):
@@ -82,7 +81,6 @@ def find_synapse(
                 all_meta.append({"name": class_name} | inst.META)
     df = pd.DataFrame(all_meta)
 
-    # Scan the metadata based on args
     bound_args = inspect.signature(find_channel).bind(
         name=name,
         species=species,
