@@ -3,7 +3,7 @@ from . import (
     benison01,
     chen24,
     fohlmeister97,
-    hh,
+    hodgkin52,
     kamiyama09,
     l5pc,
     liu04,

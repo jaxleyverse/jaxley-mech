@@ -21,7 +21,12 @@ pip install -e jaxley-mech
 
 See the [notebooks](notebooks) folder for usage examples.
 
-To view available mechanisms and filter them, it is possible to run the following code:
+First author last names and year abbreviations for the papers in which mechanism models 
+are first described are used as the file names in cases where more than one mechanism is
+included or multiple implementations exist. For single mechanisms, e.g. the ribbon synapse model, the file is simply 
+named ribbon.py.
+
+To view available mechanisms and filter them by species, cell type, reference, etc., it is possible to run the following code:
 ```python
 import jaxley_mech as jm
 print(jm.find_channel()) # shows metadata of the available channels
