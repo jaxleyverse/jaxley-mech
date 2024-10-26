@@ -3,11 +3,15 @@ import pkgutil
 import inspect
 import pandas as pd
 
+
 def _format_lists(df):
     """Formats lists found in the dataframe."""
+
     def format_element(x):
-        return ', '.join(map(str, x)) if isinstance(x, list) else x
+        return ", ".join(map(str, x)) if isinstance(x, list) else x
+
     return df.map(format_element)
+
 
 def find_channel(
     name=None,
@@ -96,9 +100,3 @@ def find_synapse(
         for k, v in filter_values.items():
             mask &= df[k].fillna("").str.contains(v, regex=False, na=False)
         return _format_lists(df[mask])
-    
-if __name__ == "__main__":
-    # Find all channels with species='mouse'
-    print(find_channel(species="rat"))
-    # Find all synapses with species='mouse'
-    print(find_synapse(species="rat"))

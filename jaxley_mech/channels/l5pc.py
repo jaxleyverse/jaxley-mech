@@ -475,7 +475,7 @@ class SKE2(Channel):
             "reference": "Kohler et al., 1996",
             "doi": "https://doi.org/10.1126/science.273.5282.1709",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/SK_E2.mod",
-            "species": "rat, human",
+            "species": ["rat", "human"],
             "cell_type": "unknown",
             "ion": "K",
         }
