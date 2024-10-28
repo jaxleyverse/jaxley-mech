@@ -10,8 +10,8 @@ from ..utils import efun
 __all__ = ["Leak", "Na", "K", "KA", "Ca", "CaNernstReversal", "KCa"]
 
 META = {
-    "species": "Tiger salamander",
-    "cell_type": "Retinal ganglion cell",
+    "species": "tiger salamander",
+    "cell_type": "retinal ganglion cell",
     "reference": "Fohlmeister & Miller (1997)",
     "doi": "https://doi.org/10.1152/jn.1997.78.4.1935",
 }
@@ -65,6 +65,7 @@ class Na(Channel):
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
         self.current_name = f"iNa"
         self.META = META
+        self.META.update({"ion": "Na"})
 
     def update_states(
         self,
@@ -127,6 +128,7 @@ class K(Channel):
         self.channel_states = {f"{prefix}_n": 0.1}
         self.current_name = f"iK"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -173,6 +175,7 @@ class KA(Channel):
         self.channel_states = {f"{prefix}_A": 0.2, f"{prefix}_hA": 0.2}
         self.current_name = f"iK"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self,
@@ -242,6 +245,7 @@ class Ca(Channel):
         }
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(self, states, dt, v, params):
         """Return the updated states."""
@@ -287,6 +291,8 @@ class CaNernstReversal(Channel):
         self.channel_params = {"Cao": 2.0}
         self.channel_states = {"eCa": 125.0, "Cai": 5e-05}
         self.current_name = f"iCa"
+        self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
@@ -329,8 +335,8 @@ class CaPump(Channel):
         self.current_name = f"iCa"
         self.META = {
             "reference": "Destexhe, A., Babloyantz, A., & Sejnowski, TJ. Ionic mechanisms for intrinsic slow oscillations in thalamic relay neurons. Biophys. J. 65: 1538-1552, 1993.",
-            "mechanism": "ATPase pump",
-            "source": "https://modeldb.science/3670?tab=2&file=NTW_NEW/capump.mod",
+            "code": "https://modeldb.science/3670?tab=2&file=NTW_NEW/capump.mod",
+            "ion": "Ca",
         }
 
     def update_states(self, states, dt, v, params):
@@ -386,6 +392,7 @@ class KCa(Channel):
         self.channel_states = {"Cai": 1e-4}
         self.current_name = f"iK"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self,

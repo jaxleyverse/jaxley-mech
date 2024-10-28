@@ -12,8 +12,8 @@ from jaxley.solver_gate import (
 )
 
 META = {
-    "cell_type": "Horizontal cell",
-    "species": "Rabbit",
+    "cell_type": "horizontal cell",
+    "species": "rabbit",
     "reference": "Aoyama et al. (2000)",
     "doi": "https://doi.org/10.1016/S0168-0102(00)00111-5",
 }
@@ -67,6 +67,7 @@ class Na(Channel):
         self.channel_states = {f"{prefix}_m": 0.026, f"{prefix}_h": 0.922}
         self.current_name = f"iNa"
         self.META = META
+        self.META.update({"ion": "Na"})
 
     def update_states(
         self,
@@ -134,6 +135,7 @@ class Kdr(Channel):
         }
         self.current_name = f"iKdr"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -198,6 +200,7 @@ class Kto(Channel):
         }
         self.current_name = f"iKto"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -261,6 +264,7 @@ class Kar(Channel):
         }
         self.current_name = f"iKar"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -311,6 +315,7 @@ class Ca(Channel):
         }
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(
         self,

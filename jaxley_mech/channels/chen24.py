@@ -10,8 +10,8 @@ from jaxley.channels import Channel
 from jaxley_mech.solvers import SolverExtension
 
 META = {
-    "cell_type": "rod and cones",
-    "species": "monkey and mouse",
+    "cell_type": ["rod photoreceptor", "cone photoreceptor"],
+    "species": ["monkey", "mouse"],
     "reference": "Chen, et al. (2024)",
     "doi": "https://doi.org/10.7554/eLife.93795.2",
     "code": "https://github.com/chrischen2/photoreceptorLinearization",

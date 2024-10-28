@@ -62,8 +62,8 @@ class Phototransduction(Channel, SolverExtension):
         }
         self.current_name = f"iPhoto"
         self.META = {
-            "cell_type": "rod",
-            "species": "salamander (Ambystoma tigrinum)",
+            "cell_type": "rod photoreceptor",
+            "species": "tiger salamander",
             "reference": "Torre, et al. (1990)",
             "doi": "https://doi.org/10.1101/SQB.1990.055.01.054",
             "note": "The model is from Torre et al. (1990) but variable naming convention and default parameters are from Kamiyama et al. (2009).",

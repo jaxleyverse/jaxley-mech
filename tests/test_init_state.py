@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from jaxley_mech.channels.fm97 import KA, Ca, K, KCa, Leak, Na
+from jaxley_mech.channels.fohlmeister97 import KA, Ca, K, KCa, Leak, Na
 
 
 @pytest.mark.parametrize("channel_class", [Na, K, KA, Leak, Ca, KCa])

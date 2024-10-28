@@ -9,11 +9,11 @@ from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponenti
 from jaxley_mech.solvers import SolverExtension
 
 META = {
-    "cell_type": "Bipolar cell",
-    "species": "Goldfish; White Bass; Axolotl; Tiger Salamander; Dogfish",
+    "cell_type": "bipolar cell",
+    "species": ["goldfish", "white bass", "axolotl", "tiger salamander", "dogfish"],
     "reference": "Usui, et al. (1996)",
     "doi": "https://doi.org/10.1016/S0042-6989(96)00179-4",
-    "notes": "There were various errors in equations in the original paper. All errors are corrected by the 2005 Book chapter from the same authors.",
+    "note": "There were various errors in equations in the original paper. All errors are corrected by the 2005 Book chapter from the same authors.",
 }
 
 
@@ -67,6 +67,7 @@ class Kv(Channel):
         }
         self.current_name = f"iKv"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -134,6 +135,7 @@ class KA(Channel):
         }
         self.current_name = f"iKA"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
@@ -215,7 +217,7 @@ class Hyper(Channel, SolverExtension):
         self.current_name = f"iHyper"
         self.META = {
             "reference": [],
-            "Species": "generic",
+            "species": "generic",
         }
 
     def derivatives(self, t, states, args):
@@ -321,6 +323,7 @@ class Ca(Channel):
         }
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(
         self,
@@ -418,6 +421,7 @@ class CaPump(Channel, SolverExtension):
         }
         self.current_name = f"iCa"
         self.META = META
+        self.META.update({"ion": "Ca"})
 
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the calcium pump system."""
@@ -555,6 +559,8 @@ class CaNernstReversal(Channel):
             "Cas": 0.0001,  # mM
         }
         self.current_name = f"iCa"
+        self.META = META
+        self.META.update({"ion": "Ca"})
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration based on calcium current and decay."""
@@ -591,6 +597,7 @@ class KCa(Channel):
         }
         self.current_name = f"iKCa"
         self.META = META
+        self.META.update({"ion": "K"})
 
     def update_states(
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
