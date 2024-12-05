@@ -30,14 +30,6 @@ class Ca_T(Channel):
         self.channel_params = {
             # To match the experimental data, I had to adapt the conductance
             f"{self._name}_gCa_T": 0.03634,  # S/cm^2
-
-
-            # This is the calcaultion from the dissertation of H. Benav:
-            # E_{Ca_T} = Neernst Ca++ * 45/100 + E_K * 55/100
-            # E_K is taken from usui96 of Kv channel
-            # E_{Ca_T} = 132.65mV ×0.45 + (-58mV) * 0.55 = 27.5mV
-            # Equilibrium potential for calcium:
-            "eCa": 27.5, # mV  
  
             # The facilitate the calculation we treat the resting potential
             # as fixed and set it to v_rest_global
@@ -45,6 +37,14 @@ class Ca_T(Channel):
 
         }
         self.channel_states = {
+            # This is the calcaultion from the dissertation of H. Benav:
+            # E_{Ca_T} = Neernst Ca++ * 45/100 + E_K * 55/100
+            # E_K is taken from usui96 of Kv channel
+            # E_{Ca_T} = 132.65mV ×0.45 + (-58mV) * 0.55 = 27.5mV
+            # Equilibrium potential for calcium:
+            "eCa": 27.5, # mV  
+            
+            
             # Experimentally determined values for the gating variables
             # Initial value for m gating variable
             f"{self._name}_m": 0.1, 
