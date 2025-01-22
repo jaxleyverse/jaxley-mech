@@ -836,7 +836,7 @@ class CaPump(Channel):
     def update_states(self, u, dt, voltages, params):
         """Update internal calcium concentration based on calcium current and decay."""
         prefix = self._name
-        ica = u["i_Ca"] / 1_000.0
+        ica = u["i_Ca"]
         cai = u["CaCon_i"]
         gamma = params[f"{prefix}_gamma"]
         decay = params[f"{prefix}_decay"]
