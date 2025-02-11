@@ -55,6 +55,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_S": 1.0,
             f"{prefix}_C": 0.336,
             f"{prefix}_Stim": 0.0,
+            f"{prefix}_I": 0.0,
         }
         self.current_name = f"iPhoto"
         self.META = META
@@ -62,9 +63,8 @@ class Phototransduction(Channel, SolverExtension):
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the phototransduction system."""
         R, P, G, C = states
-        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim = args
+        gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, stim, I = args
 
-        I = k * G**n  # Current through phototransduction channel
         q = beta * C_dark / I_dark
 
         dR_dt = gamma * stim - sigma * R  # eq(1)
@@ -104,12 +104,13 @@ class Phototransduction(Channel, SolverExtension):
 
         # States
         Stim = states[f"{prefix}_Stim"]
-        P, R, G, S, C = (
+        P, R, G, S, C, I = (
             states[f"{prefix}_P"],
             states[f"{prefix}_R"],
             states[f"{prefix}_G"],
             states[f"{prefix}_S"],
             states[f"{prefix}_C"],
+            states[f"{prefix}_I"],
         )
         y0 = jnp.array([R, P, G, C])
         args_tuple = (
@@ -124,6 +125,7 @@ class Phototransduction(Channel, SolverExtension):
             I_dark,
             S,
             Stim,
+            I
         )
 
         y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
@@ -133,6 +135,8 @@ class Phototransduction(Channel, SolverExtension):
         S_max = eta / phi * G_dark * (1 + (C_dark / K_GC) ** m)
         S_new = S_max / (1 + (C / K_GC) ** m)  # New state of S, not its derivative
 
+        I_new = k * G**n  # Current through phototransduction channel
+
         return {
             f"{prefix}_R": R_new,
             f"{prefix}_P": P_new,
@@ -140,6 +144,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_S": S_new,
             f"{prefix}_C": C_new,
             f"{prefix}_Stim": Stim,
+            f"{prefix}_I": I_new,
         }
 
     def compute_current(
@@ -147,14 +152,10 @@ class Phototransduction(Channel, SolverExtension):
     ):
         """Compute the current through the phototransduction channel."""
         prefix = self._name
-        G = states[f"{prefix}_G"]
-        n, k = (
-            params[f"{prefix}_n"],
-            params[f"{prefix}_k"],
-        )
-        I = -k * G**n  # eq(4) #pA
 
-        I *= 1e-9
+        I = -1 * states[f"{prefix}_I"]  # pA
+        I *= 1e-9 # mA
+
         area = 2 * jnp.pi * params["length"] * params["radius"] * 1e-8  # um^2 to cm^2
         current_density = I / area
 
@@ -163,11 +164,13 @@ class Phototransduction(Channel, SolverExtension):
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
-        eta, phi, G_dark, C_dark = (
+        eta, phi, G_dark, C_dark, k, n = (
             params[f"{prefix}_eta"],
             params[f"{prefix}_phi"],
             params[f"{prefix}_G_dark"],
             params[f"{prefix}_C_dark"],
+            params[f"{prefix}_k"],
+            params[f"{prefix}_n"],
         )
         return {
             f"{prefix}_R": 0.0,
@@ -176,4 +179,5 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_S": G_dark * eta / phi,
             f"{prefix}_C": C_dark,
             f"{prefix}_Stim": 0.0,
+            f"{prefix}_I": k * G_dark**n,
         }
