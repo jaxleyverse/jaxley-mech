@@ -152,7 +152,6 @@ class Phototransduction(Channel, SolverExtension):
     ):
         """Compute the current through the phototransduction channel."""
         prefix = self._name
-
         I = -1 * states[f"{prefix}_I"]  # pA
         I *= 1e-9 # mA
 
