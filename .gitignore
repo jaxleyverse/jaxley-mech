@@ -6,3 +6,4 @@ notebooks/_dev*
 notebooks/_test*
 
 .DS_Store
+.pytest_cache

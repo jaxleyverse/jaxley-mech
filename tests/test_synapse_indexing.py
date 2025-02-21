@@ -21,7 +21,7 @@ def test_multiparameter_setting():
     Tests global index dropping: d4daaf019596589b9430219a15f1dda0b1c34d85
     """
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
+    branch = jx.Branch(comp, ncomp=4)
     cell = jx.Cell(branch, parents=[-1])
     net = jx.Network([cell for _ in range(2)])
 
@@ -85,7 +85,7 @@ def test_set_and_querying_params_one_type(synapse_type):
         synapse_instance = synapse_type()
 
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
+    branch = jx.Branch(comp, ncomp=4)
     cell = jx.Cell(branch, parents=[-1])
     net = jx.Network([cell for _ in range(4)])
 
@@ -136,7 +136,7 @@ def test_set_and_querying_params_two_types(synapse_type):
         synapse_type = synapse_type()
 
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
+    branch = jx.Branch(comp, ncomp=4)
     cell = jx.Cell(branch, parents=[-1])
     net = jx.Network([cell for _ in range(4)])
 
@@ -204,7 +204,7 @@ def test_shuffling_order_of_set(synapse_type):
         synapse_instance = synapse_type()
 
     comp = jx.Compartment()
-    branch = jx.Branch(comp, nseg=4)
+    branch = jx.Branch(comp, ncomp=4)
     cell = jx.Cell(branch, parents=[-1])
 
     net1 = jx.Network([cell for _ in range(4)])
