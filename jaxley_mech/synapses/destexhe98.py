@@ -2,8 +2,8 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jax.lax import select
-from jaxley.solver_gate import save_exp
 from jaxley.mechanisms.synapses import Synapse
+from jaxley.solver_gate import save_exp
 
 __all__ = ["AMPA", "GABAa", "GABAb", "NMDA"]
 
@@ -19,7 +19,7 @@ META = {
 
 class AMPA(Synapse):
     def __init__(self, name: Optional[str] = None):
-        self._name = name = name if name else self.__class__.__name__
+        self.name = name = name if name else self.__class__.__name__
 
         self.params = {
             f"{name}_gAMPA": 0.1e-3,  # Maximum conductance (μS)
@@ -132,7 +132,7 @@ class AMPA(Synapse):
 
 class GABAa(Synapse):
     def __init__(self, name: Optional[str] = None):
-        self._name = name = name if name else self.__class__.__name__
+        self.name = name = name if name else self.__class__.__name__
 
         self.params = {
             f"{name}_gGABAa": 0.1e-3,  # Maximum conductance (μS)
@@ -157,7 +157,7 @@ class GABAa(Synapse):
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
         # Decrement timecount by delta_t, initialize if first run
-        name = self._name
+        name = self.name
         timecount = u[f"{name}_timecount"]
         new_timecount = select(
             timecount == -1,
@@ -225,7 +225,7 @@ class GABAa(Synapse):
 
     def init_state(self, v, params):
         """Initialize the state."""
-        name = self._name
+        name = self.name
         return {
             f"{name}_R": 0,
             f"{name}_R0": 0,
@@ -236,7 +236,7 @@ class GABAa(Synapse):
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Compute and return synaptic current."""
-        name = self._name
+        name = self.name
         g_syn = (
             params[f"{name}_gGABAa"] * u[f"{name}_R"]
         )  # multiply with 1000 to convert Siemens to milli Siemens.
@@ -245,7 +245,7 @@ class GABAa(Synapse):
 
 class GABAb(Synapse):
     def __init__(self, name: Optional[str] = None):
-        self._name = name = name if name else self.__class__.__name__
+        self.name = name = name if name else self.__class__.__name__
 
         self.params = {
             f"{name}_gGABAb": 0.1e-3,  # Maximum conductance (μS)
@@ -273,7 +273,7 @@ class GABAb(Synapse):
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
         # Decrement timecount by delta_t, initialize if first run
-        name = self._name
+        name = self.name
         timecount = u[f"{name}_timecount"]
         new_timecount = select(
             timecount == -1,
@@ -325,7 +325,7 @@ class GABAb(Synapse):
 
     def init_state(self, v, params):
         """Initialize the state."""
-        name = self._name
+        name = self.name
         return {
             f"{name}_R": 0,
             f"{name}_G": 0,
@@ -336,7 +336,7 @@ class GABAb(Synapse):
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Compute and return synaptic current."""
-        name = self._name
+        name = self.name
         KD = params[f"{name}_KD"]
         n = params[f"{name}_n"]
         Gn = u[f"{name}_G"] ** n
@@ -346,7 +346,7 @@ class GABAb(Synapse):
 
 class NMDA(Synapse):
     def __init__(self, name: Optional[str] = None):
-        self._name = name = name if name else self.__class__.__name__
+        self.name = name = name if name else self.__class__.__name__
 
         self.params = {
             f"{name}_gNMDA": 0.1e-3,  # Maximum conductance (μS)
@@ -372,7 +372,7 @@ class NMDA(Synapse):
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state."""
         # Decrement timecount by delta_t, initialize if first run
-        name = self._name
+        name = self.name
         timecount = u[f"{name}_timecount"]
         new_timecount = select(
             timecount == -1,
@@ -434,7 +434,7 @@ class NMDA(Synapse):
 
     def init_state(self, v, params):
         """Initialize the state."""
-        name = self._name
+        name = self.name
         return {
             f"{name}_R": 0,
             f"{name}_R0": 0,
@@ -446,7 +446,7 @@ class NMDA(Synapse):
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Compute and return synaptic current."""
-        name = self._name
+        name = self.name
         R = u[f"{name}_R"]
         B = self.mgblock(post_voltage, params[f"{name}_mg"])
         g_syn = params[f"{name}_gNMDA"] * R * B

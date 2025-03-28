@@ -11,11 +11,9 @@ class GapJunction(Synapse):
     """
 
     def __init__(self, name: Optional[str] = None):
-        self._name = name = name if name else self.__class__.__name__
+        self.name = name = name if name else self.__class__.__name__
 
-        self.params = {
-            f"{name}_gE": 0.001  # the conductance across the gap junction
-        }
+        self.params = {f"{name}_gE": 0.001}  # the conductance across the gap junction
         self.states = {}
         self.META = {
             "reference": "Abbott and Marder (1998)",
@@ -28,4 +26,4 @@ class GapJunction(Synapse):
 
     def compute_current(self, u, pre_voltage, post_voltage, params):
         """Return updated current."""
-        return -1 * params[f"{self._name}_gE"] * (pre_voltage - post_voltage)
+        return -1 * params[f"{self.name}_gE"] * (pre_voltage - post_voltage)

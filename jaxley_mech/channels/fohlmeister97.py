@@ -3,7 +3,8 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
+from jaxley.solver_gate import (exponential_euler, save_exp,
+                                solve_gate_exponential)
 
 from ..utils import efun
 
@@ -23,7 +24,7 @@ class Leak(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gLeak": 0.05e-3,  # S/cm^2
             f"{prefix}_eLeak": -67.0,  # mV
@@ -42,7 +43,7 @@ class Leak(Channel):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Given channel states and voltage, return the current through the channel."""
-        prefix = self._name
+        prefix = self.name
         gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
         return gLeak * (v - params[f"{prefix}_eLeak"])  # S/cm^2 * mV = mA/cm^2
 
@@ -57,7 +58,7 @@ class Na(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gNa": 50e-3,  # S/cm^2
             f"{prefix}_eNa": 35.0,  # mV
@@ -75,7 +76,7 @@ class Na(Channel):
         params: Dict[str, jnp.ndarray],
     ):
         """Return the updated states."""
-        prefix = self._name
+        prefix = self.name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         new_m = solve_gate_exponential(m, dt, *Na.m_gate(v))
         new_h = solve_gate_exponential(h, dt, *Na.h_gate(v))
@@ -85,7 +86,7 @@ class Na(Channel):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Given channel states and voltage, return the current through the channel."""
-        prefix = self._name
+        prefix = self.name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
 
@@ -93,7 +94,7 @@ class Na(Channel):
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         alpha_m, beta_m = Na.m_gate(v)
         alpha_h, beta_h = Na.h_gate(v)
         return {
@@ -120,7 +121,7 @@ class K(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gK": 12e-3,  # S/cm^2
             "eK": -75.0,  # mV
@@ -134,7 +135,7 @@ class K(Channel):
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
     ):
         """Return the updated states."""
-        prefix = self._name
+        prefix = self.name
         ns = states[f"{prefix}_n"]
         new_n = solve_gate_exponential(ns, dt, *K.n_gate(v))
         return {f"{prefix}_n": new_n}
@@ -143,14 +144,14 @@ class K(Channel):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Given channel states and voltage, return the current through the channel."""
-        prefix = self._name
+        prefix = self.name
         n = states[f"{prefix}_n"]
         gK = params[f"{prefix}_gK"] * (n**4)  # S/cm^2
         return gK * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         alpha_n, beta_n = K.n_gate(v)
         return {
             f"{prefix}_n": alpha_n / (alpha_n + beta_n),
@@ -167,7 +168,7 @@ class KA(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gKA": 36e-3,  # S/cm^2
             f"eK": -75,  # mV
@@ -185,7 +186,7 @@ class KA(Channel):
         params: Dict[str, jnp.ndarray],
     ):
         """Return the updated states."""
-        prefix = self._name
+        prefix = self.name
         A, hA = states[f"{prefix}_A"], states[f"{prefix}_hA"]
         new_A = solve_gate_exponential(A, dt, *KA.A_gate(v))
         new_hA = solve_gate_exponential(hA, dt, *KA.hA_gate(v))
@@ -195,14 +196,14 @@ class KA(Channel):
         self, states: Dict[str, jnp.ndarray], v: float, params: Dict[str, jnp.ndarray]
     ):
         """Given channel states and voltage, return the current through the channel."""
-        prefix = self._name
+        prefix = self.name
         A, hA = states[f"{prefix}_A"], states[f"{prefix}_hA"]
         gKA = params[f"{prefix}_gKA"] * (A**3) * hA  # S/cm^2
         return gKA * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         alpha_a, beta_a = KA.A_gate(v)
         alpha_ha, beta_ha = KA.hA_gate(v)
         return {
@@ -229,7 +230,7 @@ class Ca(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.channel_constants = {
             "F": 96485.3329,  # C/mol (Faraday's constant)
             "T": 295.15,  # Kelvin (temperature)
@@ -249,21 +250,21 @@ class Ca(Channel):
 
     def update_states(self, states, dt, v, params):
         """Return the updated states."""
-        prefix = self._name
+        prefix = self.name
         cs = states[f"{prefix}_c"]
         new_c = solve_gate_exponential(cs, dt, *Ca.c_gate(v))
         return {f"{prefix}_c": new_c}
 
     def compute_current(self, states, v, params):
         """Given channel states and voltage, return the current through the channel."""
-        prefix = self._name
+        prefix = self.name
         c = states[f"{prefix}_c"]
         gCa = params[f"{prefix}_gCa"] * (c**3)  # S/cm^2
         return gCa * (v - states[f"eCa"])  # S/cm^2 * mV = mA/cm^2
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         alpha_c, beta_c = Ca.c_gate(v)
         return {f"{prefix}_c": alpha_c / (alpha_c + beta_c)}
 
@@ -341,7 +342,7 @@ class CaPump(Channel):
 
     def update_states(self, states, dt, v, params):
         """Update internal calcium concentration due to pump action and calcium currents."""
-        prefix = self._name
+        prefix = self.name
         iCa = states[f"iCa"]
         Cai = states[f"Cai"]
 
@@ -383,7 +384,7 @@ class KCa(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gKCa": 0.05e-3,  # S/cm^2
             "eK": -75.0,  # mV
@@ -408,7 +409,7 @@ class KCa(Channel):
         self, states: Dict[str, jnp.ndarray], v: float, params: Dict[str, jnp.ndarray]
     ):
         """Given channel states and voltage, return the current through the channel."""
-        prefix = self._name
+        prefix = self.name
         Cai = states["Cai"]
         Cad = params[f"{prefix}_Cad"]
         x = (Cai / Cad) ** 2

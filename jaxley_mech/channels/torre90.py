@@ -25,7 +25,7 @@ class Phototransduction(Channel, SolverExtension):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
 
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_alpha1": 20.0,  # /s, rate constant of Rh* inactivation
             f"{prefix}_alpha2": 0.0005,  # /s, rate constant of the reaction Rhi -> Rh*
@@ -129,7 +129,7 @@ class Phototransduction(Channel, SolverExtension):
         **kwargs,
     ):
         """Update state of phototransduction variables."""
-        prefix = self._name
+        prefix = self.name
         dt /= 1000  # Convert to seconds
 
         # Retrieve states
@@ -188,7 +188,7 @@ class Phototransduction(Channel, SolverExtension):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Compute the current through the phototransduction channel."""
-        prefix = self._name
+        prefix = self.name
         cGMP = states[f"{prefix}_cGMP"]
         J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
         J = J_max * cGMP**3 / (cGMP**3 + K**3)  # eq(12)
@@ -201,7 +201,7 @@ class Phototransduction(Channel, SolverExtension):
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         return {
             f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
             f"{prefix}_Ca": 0.3,  # μM, intracellular Ca concentration

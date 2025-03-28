@@ -32,7 +32,7 @@ class Phototransduction(Channel, SolverExtension):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
-        prefix = self._name
+        prefix = self.name
         self.params = {  # Table 1 / Figure 8
             f"{prefix}_sigma": 22.0,  # σ, /s, Opsin decay rate constant
             f"{prefix}_gamma": 10.0,  # γ, unitless, Opsin gain
@@ -83,7 +83,7 @@ class Phototransduction(Channel, SolverExtension):
         **kwargs,
     ):
         """Update state of phototransduction variables."""
-        prefix = self._name
+        prefix = self.name
         dt /= 1000
 
         # Parameters
@@ -146,7 +146,7 @@ class Phototransduction(Channel, SolverExtension):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Compute the current through the phototransduction channel."""
-        prefix = self._name
+        prefix = self.name
         G = states[f"{prefix}_G"]
         n, k = (
             params[f"{prefix}_n"],
@@ -162,7 +162,7 @@ class Phototransduction(Channel, SolverExtension):
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         eta, phi, G_dark, C_dark = (
             params[f"{prefix}_eta"],
             params[f"{prefix}_phi"],

@@ -1,8 +1,8 @@
 from typing import Optional
 
 import jax.numpy as jnp
-from jaxley.solver_gate import save_exp
 from jaxley.mechanisms.synapses.synapse import Synapse
+from jaxley.solver_gate import save_exp
 
 from jaxley_mech.solvers import SolverExtension
 
@@ -25,7 +25,7 @@ class RibbonSynapse(Synapse, SolverExtension):
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
-        self._name = name = name if name else self.__class__.__name__
+        self.name = name = name if name else self.__class__.__name__
         self.params = {
             f"{name}_gS": 1e-6,  # Maximal synaptic conductance (uS)
             f"{name}_e_syn": 0.0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
@@ -75,7 +75,7 @@ class RibbonSynapse(Synapse, SolverExtension):
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state using the chosen solver."""
-        name = self._name
+        name = self.name
 
         # Parameters
         args_tuple = (

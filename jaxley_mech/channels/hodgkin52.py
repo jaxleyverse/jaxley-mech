@@ -20,7 +20,7 @@ class Leak(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gLeak": 0.3e-3,  # S/cm^2
             f"{prefix}_eLeak": -65.0,  # mV
@@ -40,7 +40,7 @@ class Leak(Channel):
     ):
         """Return current."""
         # Multiply with 1000 to convert Siemens to milli Siemens.
-        prefix = self._name
+        prefix = self.name
         leak_conds = params[f"{prefix}_gLeak"]  # S/cm^2
         return leak_conds * (v - params[f"{prefix}_eLeak"])
 
@@ -55,7 +55,7 @@ class Na(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gNa": 40e-3,  # S/cm^2
             f"{prefix}_eNa": 55.0,  # mV
@@ -73,7 +73,7 @@ class Na(Channel):
         params: Dict[str, jnp.ndarray],
     ):
         "Update state."
-        prefix = self._name
+        prefix = self.name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         new_m = solve_gate_exponential(m, dt, *self.m_gate(v))
         new_h = solve_gate_exponential(h, dt, *self.h_gate(v))
@@ -84,7 +84,7 @@ class Na(Channel):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         "Return current."
-        prefix = self._name
+        prefix = self.name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
         current = gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
@@ -92,7 +92,7 @@ class Na(Channel):
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         alpha_m, beta_m = self.m_gate(v)
         alpha_h, beta_h = self.h_gate(v)
         return {
@@ -121,7 +121,7 @@ class K(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        prefix = self._name
+        prefix = self.name
         self.params = {
             f"{prefix}_gK": 35e-3,  # S/cm^2
             f"{prefix}_eK": -77.0,  # mV
@@ -135,7 +135,7 @@ class K(Channel):
         self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
     ):
         """Update state."""
-        prefix = self._name
+        prefix = self.name
         n = states[f"{prefix}_n"]
         new_n = solve_gate_exponential(n, dt, *self.n_gate(v))
         return {f"{prefix}_n": new_n}
@@ -144,14 +144,14 @@ class K(Channel):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        prefix = self._name
+        prefix = self.name
         n = states[f"{prefix}_n"]
         gK = params[f"{prefix}_gK"] * (n**4)  # S/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
-        prefix = self._name
+        prefix = self.name
         alpha_n, beta_n = self.n_gate(v)
         return {
             f"{prefix}_n": alpha_n / (alpha_n + beta_n),
@@ -179,7 +179,7 @@ class Na8States(Na, SolverExtension):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
-        prefix = self._name
+        prefix = self.name
         self.solver = solver
         self.params = {
             f"{prefix}_gNa": 40e-3,  # S/cm^2
@@ -261,7 +261,7 @@ class Na8States(Na, SolverExtension):
         params: Dict[str, jnp.ndarray],
     ):
         """Update state."""
-        prefix = self._name
+        prefix = self.name
 
         # Retrieve states
         C3 = states[f"{prefix}_C3"]
@@ -299,14 +299,14 @@ class Na8States(Na, SolverExtension):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        prefix = self._name
+        prefix = self.name
         O = states[f"{prefix}_O"]
         gNa = params[f"{prefix}_gNa"] * O  # S/cm^2
         return gNa * (v - params[f"{prefix}_eNa"])
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state to steady-state values."""
-        prefix = self._name
+        prefix = self.name
         alpha_m, beta_m = self.m_gate(v)
         alpha_h, beta_h = self.h_gate(v)
 
@@ -348,7 +348,7 @@ class K5States(K, SolverExtension):
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
-        prefix = self._name
+        prefix = self.name
         self.solver = solver
         self.params = {
             f"{prefix}_gK": 35e-3,  # S/cm^2
@@ -406,7 +406,7 @@ class K5States(K, SolverExtension):
         **kwargs,
     ):
         """Update state using the specified solver."""
-        prefix = self._name
+        prefix = self.name
 
         # Retrieve states
         C4 = states[f"{prefix}_C4"]
@@ -437,14 +437,14 @@ class K5States(K, SolverExtension):
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
         """Return current."""
-        prefix = self._name
+        prefix = self.name
         O = states[f"{prefix}_O"]
         gK = params[f"{prefix}_gK"] * O  # S/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
     def init_state(self, states, v, params, delta_t):
         """Initialize the state to steady-state values."""
-        prefix = self._name
+        prefix = self.name
         alpha_n, beta_n = self.n_gate(v)
 
         n_inf = alpha_n / (alpha_n + beta_n)

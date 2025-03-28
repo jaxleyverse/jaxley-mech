@@ -2,8 +2,8 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jax.lax import select
-from jaxley.solver_gate import save_exp
 from jaxley.mechanisms.synapses import Synapse
+from jaxley.solver_gate import save_exp
 
 from jaxley_mech.solvers import SolverExtension
 
@@ -29,7 +29,7 @@ class Ribbon_mGluR6(Synapse, SolverExtension):
     ):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
-        self._name = name = name if name else self.__class__.__name__
+        self.name = name = name if name else self.__class__.__name__
 
         self.params = {
             f"{name}_e_max": 1.5,  # Maximum glutamate release
@@ -98,7 +98,7 @@ class Ribbon_mGluR6(Synapse, SolverExtension):
 
     def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
         """Return updated synapse state using the chosen solver."""
-        name = self._name
+        name = self.name
 
         # Parameters
         args_tuple = (
