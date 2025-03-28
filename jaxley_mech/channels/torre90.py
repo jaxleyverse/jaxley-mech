@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from jax.lax import select
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 from jaxley_mech.solvers import SolverExtension
@@ -26,7 +26,7 @@ class Phototransduction(Channel, SolverExtension):
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
 
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_alpha1": 20.0,  # /s, rate constant of Rh* inactivation
             f"{prefix}_alpha2": 0.0005,  # /s, rate constant of the reaction Rhi -> Rh*
             f"{prefix}_alpha3": 0.05,  # /s, rate constant of the decay of inactive rhodopsin
@@ -50,7 +50,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
             f"{prefix}_J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
         }
-        self.channel_states = {
+        self.states = {
             f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
             f"{prefix}_Ca": 0.3,  # μM, intracellular Ca concentration
             f"{prefix}_Cab": 34.9,  # μM, Bound intra Ca concentration

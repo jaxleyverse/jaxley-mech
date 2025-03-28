@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.solver_gate import save_exp
-from jaxley.synapses import Synapse
+from jaxley.mechanisms.synapses import Synapse
 
 __all__ = ["AMPA", "GABAa", "GABAb", "NMDA"]
 
@@ -21,7 +21,7 @@ class AMPA(Synapse):
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 
-        self.synapse_params = {
+        self.params = {
             f"{name}_gAMPA": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eAMPA": 0.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
@@ -31,7 +31,7 @@ class AMPA(Synapse):
             f"{name}_vt_pre": 0,  # Presynaptic voltage threshold for release (mV)
             f"{name}_deadtime": 1,  # Minimum time between release events (ms)
         }
-        self.synapse_states = {
+        self.states = {
             f"{name}_R": 0,  # Fraction of open receptors
             f"{name}_C": 0,  # Transmitter concentration
             f"{name}_lastrelease": -1000,  # Time since last release (ms)
@@ -134,7 +134,7 @@ class GABAa(Synapse):
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 
-        self.synapse_params = {
+        self.params = {
             f"{name}_gGABAa": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eGABAa": -80.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
@@ -144,7 +144,7 @@ class GABAa(Synapse):
             f"{name}_vt_pre": 0,  # Presynaptic voltage threshold for release (mV)
             f"{name}_deadtime": 1,  # Minimum time between release events (ms)
         }
-        self.synapse_states = {
+        self.states = {
             f"{name}_R": 0,  # Fraction of open receptors
             f"{name}_C": 0,  # Transmitter concentration
             f"{name}_lastrelease": -1000,  # Time since last release (ms)
@@ -247,7 +247,7 @@ class GABAb(Synapse):
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 
-        self.synapse_params = {
+        self.params = {
             f"{name}_gGABAb": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eGABAb": -95.0,  # Reversal potential (mV)
             f"{name}_Cmax": 0.5,  # Max transmitter concentration (mM)
@@ -261,7 +261,7 @@ class GABAb(Synapse):
             f"{name}_KD": 100,  # Dissociation constant of K+ channel
             f"{name}_n": 4,  # Number of binding sites of G-protein on K+ channel
         }
-        self.synapse_states = {
+        self.states = {
             f"{name}_R": 0,  # Fraction of activated receptors
             f"{name}_G": 0,  # Fraction of activated G-protein
             f"{name}_C": 0,  # Transmitter concentration
@@ -348,7 +348,7 @@ class NMDA(Synapse):
     def __init__(self, name: Optional[str] = None):
         self._name = name = name if name else self.__class__.__name__
 
-        self.synapse_params = {
+        self.params = {
             f"{name}_gNMDA": 0.1e-3,  # Maximum conductance (μS)
             f"{name}_eNMDA": 0.0,  # Reversal potential (mV)
             f"{name}_Cmax": 1,  # Max transmitter concentration (mM)
@@ -359,7 +359,7 @@ class NMDA(Synapse):
             f"{name}_deadtime": 1,  # Minimum time between release events (ms)
             f"{name}_mg": 1,  # External magnesium concentration (mM)
         }
-        self.synapse_states = {
+        self.states = {
             f"{name}_R": 0,  # Fraction of open receptors
             f"{name}_C": 0,  # Transmitter concentration
             f"{name}_lastrelease": -1000,  # Time since last release (ms)

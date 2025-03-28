@@ -3,7 +3,7 @@ from typing import Dict, Optional, Union
 import jax.debug
 import jax.numpy as jnp
 from jax.lax import select
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 from jaxley_mech.solvers import SolverExtension
@@ -32,7 +32,7 @@ class Phototransduction(Channel, SolverExtension):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_alpha1": 50.0,  # /s, rate constant of Rh* inactivation
             f"{prefix}_alpha2": 0.0003,  # /s, rate constant of the reaction Rhi -> Rh*
             f"{prefix}_alpha3": 0.03,  # /s, rate constant of the decay of inactive rhodopsin
@@ -55,7 +55,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K_c": 0.1,  # nM, intracellular Ca2+ concentration halving the cyclase activity
             f"{prefix}_J_max": 5040.0,  # pA, maximal cGMP-gated current in excised patches
         }
-        self.channel_states = {
+        self.states = {
             f"{prefix}_cGMP": 2.0,  # μM, cGMP concentration
             f"{prefix}_Ca": 0.3,  # μM, intracellular Ca concentration
             f"{prefix}_Cab": 34.9,  # μM, Bound intra Ca concentration
@@ -233,11 +233,11 @@ class Leak(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gLeak": 0.35e-3,  # S/cm^2
             f"{prefix}_eLeak": -77.0,  # mV
         }
-        self.channel_states = {}
+        self.states = {}
         self.current_name = f"iLeak"
         self.META = META
 
@@ -266,11 +266,11 @@ class Kv(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKv": 2e-3,  # S/cm^2
             "eK": -74,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.43,  # Initial value for n gating variable
             f"{self._name}_h": 0.999,  # Initial value for n gating variable
         }
@@ -340,11 +340,11 @@ class Hyper(Channel, SolverExtension):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gHyper": 3e-3,  # S/cm^2
             f"{prefix}_eHyper": -32.0,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{prefix}_C1": 0.646,
             f"{prefix}_C2": 0.298,
             f"{prefix}_O1": 0.0517,
@@ -440,7 +440,7 @@ class Hyper(Channel, SolverExtension):
         return alpha, beta
 
     def init_state(self, states, v, params, delta_t):
-        return self.channel_states
+        return self.states
 
 
 class Ca(Channel):
@@ -449,10 +449,10 @@ class Ca(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gCa": 0.7e-3,  # S/cm^2
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.436,  # Initial value for m gating variable
             f"{self._name}_h": 0.5,  # Initial value for h gating variable
             "eCa": 40.0,  # mV, dependent on CaNernstReversal
@@ -529,7 +529,7 @@ class CaPump(Channel, SolverExtension):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_F": 9.648e4,  # Faraday's constant in C/mol
             f"{prefix}_V1": 3.812e-13,  # Compartment volume 1 in dm^3
             f"{prefix}_V2": 5.236e-13,  # Compartment volume 2 in dm^3
@@ -548,7 +548,7 @@ class CaPump(Channel, SolverExtension):
             f"{prefix}_Kex2": 0.5,  # External calcium concentration factor 2 in μM
             f"{prefix}_Cae": 0.01,  # External calcium concentration in μM
         }
-        self.channel_states = {
+        self.states = {
             f"Cas": 0.0966,  # Initial internal calcium concentration in mM
             f"{prefix}_Caf": 0.0966,  # Free intracellular calcium concentration in μM
             f"{prefix}_Cab_ls": 80.929,  # Bound buffer f concentration in μM
@@ -702,8 +702,8 @@ class CaNernstReversal(Channel):
     ):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {"Cao": 1600}  # μM
-        self.channel_states = {
+        self.params = {"Cao": 1600}  # μM
+        self.states = {
             "eCa": 40.0,  # mV
             "Cas": 0.0966,  # μM
         }
@@ -733,13 +733,13 @@ class KCa(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKCa": 5e-3,  # S/cm^2
             f"{self._name}_Khalf": 0.3,  # mM, half-activation concentration
             # with an unfortunate name conflict with potassium K
             "eK": -74,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.642,  # Initial value for m gating variable
             f"{self._name}_n": 0.1,  # Initial value for n gating variable
             "Cas": 0.0966,  # Initial internal calcium concentration in μM
@@ -800,12 +800,12 @@ class ClCa(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gClCa": 2e-3,  # S/cm^2
             f"{self._name}_Khalf": 0.37,  # uM, half-activation concentration
             f"{self._name}_eClCa": -20,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.1,  # Initial value for n gating variable
             "Cas": 0.0966,  # Initial internal calcium concentration in μM
         }

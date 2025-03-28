@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 from jaxley_mech.solvers import SolverExtension
@@ -21,11 +21,11 @@ class Leak(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gLeak": 0.3e-3,  # S/cm^2
             f"{prefix}_eLeak": -65.0,  # mV
         }
-        self.channel_states = {}
+        self.states = {}
         self.current_name = f"i_Leak"
         self.META = META
 
@@ -56,11 +56,11 @@ class Na(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gNa": 40e-3,  # S/cm^2
             f"{prefix}_eNa": 55.0,  # mV
         }
-        self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
         self.current_name = f"i_Na"
         self.META = META
         self.META.update({"ion": "Na"})
@@ -122,11 +122,11 @@ class K(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gK": 35e-3,  # S/cm^2
             f"{prefix}_eK": -77.0,  # mV
         }
-        self.channel_states = {f"{prefix}_n": 0.1}
+        self.states = {f"{prefix}_n": 0.1}
         self.current_name = f"i_K"
         self.META = META
         self.META.update({"ion": "K"})
@@ -181,12 +181,12 @@ class Na8States(Na, SolverExtension):
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.solver = solver
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gNa": 40e-3,  # S/cm^2
             f"{prefix}_eNa": 55.0,  # mV
         }
         # Initialize all states
-        self.channel_states = {
+        self.states = {
             f"{prefix}_C3": 1.0,
             f"{prefix}_C2": 0.0,
             f"{prefix}_C1": 0.0,
@@ -350,11 +350,11 @@ class K5States(K, SolverExtension):
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.solver = solver
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gK": 35e-3,  # S/cm^2
             f"{prefix}_eK": -77.0,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{prefix}_C4": 1.0,
             f"{prefix}_C3": 0,
             f"{prefix}_C2": 0,

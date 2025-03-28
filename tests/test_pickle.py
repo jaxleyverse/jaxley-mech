@@ -5,7 +5,7 @@ import pickle
 
 import jaxley as jx
 import pytest
-from jaxley.channels import HH
+from jaxley.mechanisms.channels import HH
 
 from jaxley_mech.synapses import RibbonSynapse
 

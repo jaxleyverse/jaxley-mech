@@ -2,7 +2,7 @@ from typing import Dict, Optional, Union
 
 import jax.numpy as jnp
 from jax.lax import select
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 META = {
@@ -21,11 +21,11 @@ class Leak(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gLeak": 0.52e-3,  # S/cm^2
             f"{prefix}_eLeak": -74.0,  # mV
         }
-        self.channel_states = {}
+        self.states = {}
         self.current_name = f"iLeak"
         self.META = META
 
@@ -54,11 +54,11 @@ class Kx(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKx": 1.04e-3,  # S/cm^2
             "eK": -74,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_n": 0.1,  # Initial value for m gating variable
         }
         self.current_name = f"iKx"
@@ -104,11 +104,11 @@ class Kv(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKv": 10e-3,  # S/cm^2
             "eK": -74,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_n": 0.1,  # Initial value for n gating variable
         }
         self.current_name = f"iKv"
@@ -154,11 +154,11 @@ class Hyper(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gHyper": 2.5e-3,  # S/cm^2
             f"{self._name}_eHyper": -32,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_n": 0.000456,
         }
         self.current_name = f"iHyper"
@@ -202,10 +202,10 @@ class Ca(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gCa": 4e-3,  # S/cm^2
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.0,  # Initial value for m gating variable
             f"{self._name}_h": 1.0,  # Initial value for h gating variable
             "eCa": 40.0,  # mV, dependent on CaNernstReversal
@@ -277,12 +277,12 @@ class CaPump(Channel):
     ):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_depth": 0.1,
             f"{self._name}_taur": 20,  # Rate of removal of calcium in ms
             f"{self._name}_cainf": 5e-5,  # mM
         }
-        self.channel_states = {
+        self.states = {
             "Cai": 2e-3,  # Initial internal calcium concentration in mM
         }
         self.current_name = f"iCa"
@@ -334,8 +334,8 @@ class CaNernstReversal(Channel):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {"Cao": 2.0}
-        self.channel_states = {"eCa": 40.0, "Cai": 2e-3}
+        self.params = {"Cao": 2.0}
+        self.states = {"eCa": 40.0, "Cai": 2e-3}
         self.current_name = f"iCa"
         self.META = META
         self.META.update({"ion": "Ca"})
@@ -368,13 +368,13 @@ class KCa(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKCa": 5e-3,  # S/cm^2
             f"{self._name}_Khalf": 3.32,  # mM, half-activation concentration
             # with an unfortunate name conflict with potassium K
             "eK": -74,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_n": 0.1,  # Initial value for n gating variable
             "Cai": 2e-3,  # Initial internal calcium concentration in mM
         }
@@ -418,13 +418,13 @@ class ClCa(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gClCa": 1.3e-3,  # S/cm^2
             f"{self._name}_Khalf": 1,  # uM, half-activation concentration
             # with an unfortunate name conflict with potassium K
             f"{self._name}_eClCa": -20,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_n": 0.1,  # Initial value for n gating variable
             "Cai": 2e-3,  # Initial internal calcium concentration in mM
         }

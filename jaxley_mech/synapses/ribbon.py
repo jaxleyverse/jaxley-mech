@@ -2,7 +2,7 @@ from typing import Optional
 
 import jax.numpy as jnp
 from jaxley.solver_gate import save_exp
-from jaxley.synapses.synapse import Synapse
+from jaxley.mechanisms.synapses.synapse import Synapse
 
 from jaxley_mech.solvers import SolverExtension
 
@@ -26,7 +26,7 @@ class RibbonSynapse(Synapse, SolverExtension):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         self._name = name = name if name else self.__class__.__name__
-        self.synapse_params = {
+        self.params = {
             f"{name}_gS": 1e-6,  # Maximal synaptic conductance (uS)
             f"{name}_e_syn": 0.0,  # Reversal potential of postsynaptic membrane at the receptor (mV)
             f"{name}_e_max": 1.5,  # Maximum glutamate release
@@ -39,7 +39,7 @@ class RibbonSynapse(Synapse, SolverExtension):
             f"{name}_k": 1.0,  # Slope of calcium conversion nonlinearity
             f"{name}_V_half": -35.0,  # Half the voltage that gives maximum glutamate release
         }
-        self.synapse_states = {
+        self.states = {
             f"{name}_exo": 0.75,  # Number of vesicles released
             f"{name}_RRP": 1.5,  # Number of vesicles at the dock
             f"{name}_IP": 5.0,  # Number of vesicles at the ribbon

@@ -3,7 +3,7 @@ from typing import Dict, Optional
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.solver_gate import save_exp
-from jaxley.synapses import Synapse
+from jaxley.mechanisms.synapses import Synapse
 
 from jaxley_mech.solvers import SolverExtension
 
@@ -31,7 +31,7 @@ class Ribbon_mGluR6(Synapse, SolverExtension):
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         self._name = name = name if name else self.__class__.__name__
 
-        self.synapse_params = {
+        self.params = {
             f"{name}_e_max": 1.5,  # Maximum glutamate release
             f"{name}_r_max": 2.0,  # Rate of RP --> IP, movement to the ribbon
             f"{name}_i_max": 4.0,  # Rate of IP --> RRP, movement to the dock
@@ -45,7 +45,7 @@ class Ribbon_mGluR6(Synapse, SolverExtension):
             f"{name}_eTRPM1": -11.5,  # Reversal potential (mV)
             f"{name}_KGlu": 5.0,  # Half saturating NT concentration (num vesicles)
         }
-        self.synapse_states = {
+        self.states = {
             f"{name}_exo": 0.75,  # Number of vesicles released
             f"{name}_RRP": 1.5,  # Number of vesicles at the dock
             f"{name}_IP": 5.0,  # Number of vesicles at the ribbon

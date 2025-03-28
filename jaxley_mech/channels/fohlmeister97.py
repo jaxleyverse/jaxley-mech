@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jax.lax import select
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 from ..utils import efun
@@ -24,11 +24,11 @@ class Leak(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gLeak": 0.05e-3,  # S/cm^2
             f"{prefix}_eLeak": -67.0,  # mV
         }
-        self.channel_states = {}
+        self.states = {}
         self.current_name = f"iLeak"
         self.META = META
 
@@ -58,11 +58,11 @@ class Na(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gNa": 50e-3,  # S/cm^2
             f"{prefix}_eNa": 35.0,  # mV
         }
-        self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
+        self.states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
         self.current_name = f"iNa"
         self.META = META
         self.META.update({"ion": "Na"})
@@ -121,11 +121,11 @@ class K(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gK": 12e-3,  # S/cm^2
             "eK": -75.0,  # mV
         }
-        self.channel_states = {f"{prefix}_n": 0.1}
+        self.states = {f"{prefix}_n": 0.1}
         self.current_name = f"iK"
         self.META = META
         self.META.update({"ion": "K"})
@@ -168,11 +168,11 @@ class KA(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gKA": 36e-3,  # S/cm^2
             f"eK": -75,  # mV
         }
-        self.channel_states = {f"{prefix}_A": 0.2, f"{prefix}_hA": 0.2}
+        self.states = {f"{prefix}_A": 0.2, f"{prefix}_hA": 0.2}
         self.current_name = f"iK"
         self.META = META
         self.META.update({"ion": "K"})
@@ -235,10 +235,10 @@ class Ca(Channel):
             "T": 295.15,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gCa": 2.2e-3,  # S/cm^2
         }
-        self.channel_states = {
+        self.states = {
             f"{prefix}_c": 0.1,
             f"eCa": 40.0,  # mV
             f"Cai": 1e-4,  # mM (internal calcium concentration)
@@ -288,8 +288,8 @@ class CaNernstReversal(Channel):
             "T": 279.45,  # Kelvin (temperature)
             "R": 8.314,  # J/(mol K) (gas constant)
         }
-        self.channel_params = {"Cao": 2.0}
-        self.channel_states = {"eCa": 125.0, "Cai": 5e-05}
+        self.params = {"Cao": 2.0}
+        self.states = {"eCa": 125.0, "Cai": 5e-05}
         self.current_name = f"iCa"
         self.META = META
         self.META.update({"ion": "Ca"})
@@ -325,11 +325,11 @@ class CaPump(Channel):
     ):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self.name}_taur": 10,  # Time constant of calcium removal in ms
             f"{self.name}_cainf": 2.4e-4,  # Equilibrium calcium concentration in mM
         }
-        self.channel_states = {
+        self.states = {
             f"Cai": 5e-5,  # Initial internal calcium concentration in mM
         }
         self.current_name = f"iCa"
@@ -384,12 +384,12 @@ class KCa(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gKCa": 0.05e-3,  # S/cm^2
             "eK": -75.0,  # mV
             f"{prefix}_Cad": 1e-3,
         }
-        self.channel_states = {"Cai": 1e-4}
+        self.states = {"Cai": 1e-4}
         self.current_name = f"iK"
         self.META = META
         self.META.update({"ion": "K"})

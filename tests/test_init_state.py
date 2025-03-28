@@ -12,17 +12,17 @@ def test_init_state(channel_class):
 
     channel = channel_class()
     init_state = channel.init_state(
-        channel.channel_states, voltages, channel.channel_params, dt
+        channel.states, voltages, channel.params, dt
     )
 
     # Deal with adding potentially missing states (which have no init).
-    updated_states = channel.channel_states
+    updated_states = channel.states
     for key, val in init_state.items():
         updated_states[key] = val
     updated_states[f"{channel.current_name}"] = 0.0
 
     # Add radius and length for those channels that rely on it (e.g. Ca).
-    params = channel.channel_params
+    params = channel.params
     params["radius"] = 1.0
     params["length"] = 1.0
 

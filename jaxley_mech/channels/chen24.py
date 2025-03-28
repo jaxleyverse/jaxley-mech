@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from jax.lax import select
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 
 from jaxley_mech.solvers import SolverExtension
 
@@ -33,7 +33,7 @@ class Phototransduction(Channel, SolverExtension):
         super().__init__(name)
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
-        self.channel_params = {  # Table 1 / Figure 8
+        self.params = {  # Table 1 / Figure 8
             f"{prefix}_sigma": 22.0,  # σ, /s, Opsin decay rate constant
             f"{prefix}_gamma": 10.0,  # γ, unitless, Opsin gain
             f"{prefix}_phi": 22.0,  # φ, /s, PDE decay rate constant
@@ -48,7 +48,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_m": 4.0,  # unitless, Ca2+ GC cooperativity
             f"{prefix}_I_dark": 20**3 * 0.01,  # pA, Dark current
         }
-        self.channel_states = {
+        self.states = {
             f"{prefix}_R": 0.0,
             f"{prefix}_P": 90.0,
             f"{prefix}_G": 1.0,

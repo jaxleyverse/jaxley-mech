@@ -3,7 +3,7 @@ from typing import Dict, Optional, Union
 import jax.debug
 import jax.numpy as jnp
 from jax.lax import select
-from jaxley.channels import Channel
+from jaxley.mechanisms.channels import Channel
 from jaxley.solver_gate import (
     exponential_euler,
     save_exp,
@@ -26,11 +26,11 @@ class Leak(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gLeak": 0.5e-3,  # S/cm^2
             f"{prefix}_eLeak": -80.0,  # mV
         }
-        self.channel_states = {}
+        self.states = {}
         self.current_name = f"iLeak"
         self.META = META
 
@@ -60,11 +60,11 @@ class Na(Channel):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
         prefix = self._name
-        self.channel_params = {
+        self.params = {
             f"{prefix}_gNa": 2.4e-3,  # S/cm^2
             f"{prefix}_eNa": 55.0,  # mV
         }
-        self.channel_states = {f"{prefix}_m": 0.026, f"{prefix}_h": 0.922}
+        self.states = {f"{prefix}_m": 0.026, f"{prefix}_h": 0.922}
         self.current_name = f"iNa"
         self.META = META
         self.META.update({"ion": "Na"})
@@ -125,11 +125,11 @@ class Kdr(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKdr": 4.5e-3,  # S/cm^2
             "eK": -80,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.139,  # Initial value for m gating variable
             f"{self._name}_h": 0.932,  # Initial value for h gating variable
         }
@@ -190,11 +190,11 @@ class Kto(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKto": 15e-3,  # S/cm^2
             "eK": -80,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.139,  # Initial value for m gating variable
             f"{self._name}_h": 0.932,  # Initial value for h gating variable
         }
@@ -255,11 +255,11 @@ class Kar(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gKar": 4.5e-3,  # S/cm^2
             "eK": -80,  # mV
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.139,  # Initial value for m gating variable
         }
         self.current_name = f"iKar"
@@ -306,11 +306,11 @@ class Ca(Channel):
     def __init__(self, name: Optional[str] = None):
         self.current_is_in_mA_per_cm2 = True
         super().__init__(name)
-        self.channel_params = {
+        self.params = {
             f"{self._name}_gCa": 9e-3,  # S/cm^2
             "eCa": 54.176,  # mV, =12.9 * log(2/0.03)
         }
-        self.channel_states = {
+        self.states = {
             f"{self._name}_m": 0.059,  # Initial value for m gating variable
         }
         self.current_name = f"iCa"
