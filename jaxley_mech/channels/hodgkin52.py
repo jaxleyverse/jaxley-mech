@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import save_exp, solve_gate_exponential
+from jaxley.mechanisms.solvers import save_exp, solve_gate_exponential
 
 from jaxley_mech.solvers import SolverExtension
 

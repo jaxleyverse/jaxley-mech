@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from jax.lax import select
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import save_exp, solve_gate_exponential
+from jaxley.mechanisms.solvers import save_exp, solve_gate_exponential
 
 from jaxley_mech.solvers import SolverExtension
 

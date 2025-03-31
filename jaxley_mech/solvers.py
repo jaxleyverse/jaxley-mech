@@ -8,7 +8,7 @@ import optimistix as optx
 from diffrax import ImplicitEuler, ODETerm, diffeqsolve
 from jax import lax
 from jax.scipy.linalg import solve
-from jaxley.solver_gate import save_exp
+from jaxley.mechanisms.solvers import save_exp
 
 
 ### Solver extensions

@@ -3,8 +3,11 @@ from typing import Dict, Optional, Union
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.mechanisms.channels import Channel
-from jaxley.solver_gate import (exponential_euler, save_exp,
-                                solve_gate_exponential)
+from jaxley.mechanisms.solvers import (
+    exponential_euler,
+    save_exp,
+    solve_gate_exponential,
+)
 
 META = {
     "cell_type": "rod photoreceptor",

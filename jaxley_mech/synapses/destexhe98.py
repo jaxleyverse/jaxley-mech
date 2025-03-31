@@ -2,8 +2,8 @@ from typing import Dict, Optional
 
 import jax.numpy as jnp
 from jax.lax import select
+from jaxley.mechanisms.solvers import save_exp
 from jaxley.mechanisms.synapses import Synapse
-from jaxley.solver_gate import save_exp
 
 __all__ = ["AMPA", "GABAa", "GABAb", "NMDA"]
 

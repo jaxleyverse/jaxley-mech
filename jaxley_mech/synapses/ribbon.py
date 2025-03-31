@@ -1,8 +1,8 @@
 from typing import Optional
 
 import jax.numpy as jnp
+from jaxley.mechanisms.solvers import save_exp
 from jaxley.mechanisms.synapses.synapse import Synapse
-from jaxley.solver_gate import save_exp
 
 from jaxley_mech.solvers import SolverExtension
 

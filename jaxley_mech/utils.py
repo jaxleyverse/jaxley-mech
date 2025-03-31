@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-from jaxley.solver_gate import save_exp
+from jaxley.mechanisms.solvers import save_exp
 
 
 def efun(x, y):
