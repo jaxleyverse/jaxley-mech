@@ -25,7 +25,7 @@ def find_channel(
 ):
     """Return channel metadata in a dataframe filtered by the argument fields."""
     all_meta = []
-    jmc = importlib.import_module("jaxley_mech.channels")
+    jmc = importlib.import_module("jaxley_mech.mechanisms.channels")
     for _, mod_name, _ in pkgutil.walk_packages(jmc.__path__, jmc.__name__ + "."):
         module = importlib.import_module(mod_name)
         classes = inspect.getmembers(module, inspect.isclass)
