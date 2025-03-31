@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jaxley.mechanisms.channels import Channel
 from jaxley.mechanisms.solvers import save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import SolverExtension
+from jaxley_mech.mechanisms.solvers import SolverExtension
 
 META = {
     "reference": "Hodgkin & Huxley (1952)",

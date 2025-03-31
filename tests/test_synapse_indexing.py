@@ -11,8 +11,7 @@ import pytest
 from jaxley.mechanisms.channels import HH
 from jaxley.mechanisms.synapses import IonotropicSynapse
 
-from jaxley_mech.synapses import (AMPA, NMDA, GABAa, GABAb, GapJunction,
-                                  RibbonSynapse)
+from jaxley_mech.synapses import AMPA, NMDA, GABAa, GABAb, GapJunction, RibbonSynapse
 
 
 def test_multiparameter_setting():

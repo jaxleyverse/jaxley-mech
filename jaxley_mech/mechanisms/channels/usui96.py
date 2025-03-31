@@ -10,7 +10,7 @@ from jaxley.mechanisms.solvers import (
     solve_gate_exponential,
 )
 
-from jaxley_mech.solvers import SolverExtension
+from jaxley_mech.mechanisms.solvers import SolverExtension
 
 META = {
     "cell_type": "bipolar cell",

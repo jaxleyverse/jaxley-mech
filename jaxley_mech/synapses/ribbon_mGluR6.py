@@ -5,7 +5,7 @@ from jax.lax import select
 from jaxley.mechanisms.solvers import save_exp
 from jaxley.mechanisms.synapses import Synapse
 
-from jaxley_mech.solvers import SolverExtension
+from jaxley_mech.mechanisms.solvers import SolverExtension
 
 META = {
     "species": ["larval zebrafish", "rat"],

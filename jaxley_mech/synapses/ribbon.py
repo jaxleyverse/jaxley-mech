@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jaxley.mechanisms.solvers import save_exp
 from jaxley.mechanisms.synapses.synapse import Synapse
 
-from jaxley_mech.solvers import SolverExtension
+from jaxley_mech.mechanisms.solvers import SolverExtension
 
 META = {
     "reference": "Schroeder, et al. (2021)",

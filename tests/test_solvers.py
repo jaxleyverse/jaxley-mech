@@ -5,7 +5,12 @@ import pytest
 from diffrax import ImplicitEuler, ODETerm
 from jax import grad
 
-from jaxley_mech.solvers import diffrax_implicit, explicit_euler, newton, rk45
+from jaxley_mech.mechanisms.solvers import (
+    diffrax_implicit,
+    explicit_euler,
+    newton,
+    rk45,
+)
 
 
 # Define a simple system of ODEs (dy/dt = -y) with known solution.

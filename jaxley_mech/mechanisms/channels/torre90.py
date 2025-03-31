@@ -7,7 +7,7 @@ from jax.lax import select
 from jaxley.mechanisms.channels import Channel
 from jaxley.mechanisms.solvers import save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import SolverExtension
+from jaxley_mech.mechanisms.solvers import SolverExtension
 
 
 class Phototransduction(Channel, SolverExtension):

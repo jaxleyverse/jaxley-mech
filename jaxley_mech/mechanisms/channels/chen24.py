@@ -7,7 +7,7 @@ import numpy as np
 from jax.lax import select
 from jaxley.mechanisms.channels import Channel
 
-from jaxley_mech.solvers import SolverExtension
+from jaxley_mech.mechanisms.solvers import SolverExtension
 
 META = {
     "cell_type": ["rod photoreceptor", "cone photoreceptor"],
