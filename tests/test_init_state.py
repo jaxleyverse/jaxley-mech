@@ -5,19 +5,17 @@ from jaxley_mech.channels.fohlmeister97 import KA, Ca, K, KCa, Leak, Na
 
 
 @pytest.mark.parametrize("channel_class", [Na, K, KA, Leak, Ca, KCa])
-def test_init_state(channel_class):
+def test_init_states(channel_class):
     """Test whether, if the channels are initialized in fixed point, they do not change."""
     voltages = -65.0
     dt = 0.025
 
     channel = channel_class()
-    init_state = channel.init_state(
-        channel.states, voltages, channel.params, dt
-    )
+    init_states = channel.init_states(channel.states, voltages, channel.params, dt)
 
     # Deal with adding potentially missing states (which have no init).
     updated_states = channel.states
-    for key, val in init_state.items():
+    for key, val in init_states.items():
         updated_states[key] = val
     updated_states[f"{channel.current_name}"] = 0.0
 
@@ -29,5 +27,5 @@ def test_init_state(channel_class):
     new_states = channel.update_states(updated_states, dt, voltages, params)
 
     # Channel states should not have changed.
-    for key in init_state.keys():
-        assert np.max(np.abs(new_states[key] - init_state[key])) < 1e-8
+    for key in init_states.keys():
+        assert np.max(np.abs(new_states[key] - init_states[key])) < 1e-8

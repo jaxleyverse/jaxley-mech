@@ -44,7 +44,7 @@ class Leak(Channel):
         leak_conds = params[f"{prefix}_gLeak"]  # S/cm^2
         return leak_conds * (v - params[f"{prefix}_eLeak"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}
 
@@ -90,7 +90,7 @@ class Na(Channel):
         current = gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
         return current
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(v)
@@ -149,7 +149,7 @@ class K(Channel):
         gK = params[f"{prefix}_gK"] * (n**4)  # S/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_n, beta_n = self.n_gate(v)
@@ -304,7 +304,7 @@ class Na8States(Na, SolverExtension):
         gNa = params[f"{prefix}_gNa"] * O  # S/cm^2
         return gNa * (v - params[f"{prefix}_eNa"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state to steady-state values."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(v)
@@ -442,7 +442,7 @@ class K5States(K, SolverExtension):
         gK = params[f"{prefix}_gK"] * O  # S/cm^2
         return gK * (v - params[f"{prefix}_eK"])
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state to steady-state values."""
         prefix = self.name
         alpha_n, beta_n = self.n_gate(v)

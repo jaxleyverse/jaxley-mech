@@ -49,7 +49,7 @@ class Leak(Channel):
         gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
         return gLeak * (v - params[f"{prefix}_eLeak"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}
 
@@ -93,7 +93,7 @@ class Na(Channel):
         gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
         return gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = Na.m_gate(v)
@@ -153,7 +153,7 @@ class Kdr(Channel):
 
         return gKdr * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = Kdr.m_gate(v)
@@ -214,7 +214,7 @@ class KA(Channel):
         gKA = params[f"{prefix}_gKA"] * (m**3) * h  # S/cm^2
         return gKA * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = KA.m_gate(v)
@@ -279,7 +279,7 @@ class CaL(Channel):
         current = gCaL * (v - states["eCa"])  # S/cm^2 * mV = mA/cm^2
         return current
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = CaL.m_gate(v)
@@ -333,7 +333,7 @@ class CaN(Channel):
         gCaN = params[f"{prefix}_gCaN"] * (m**2) * h  # S/cm^2
         return gCaN * (v - states[f"eCa"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = CaN.m_gate(v)
@@ -417,7 +417,7 @@ class CaPumpNS(Channel):
         """The pump does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}
 
@@ -463,7 +463,7 @@ class KCa(Channel):
 
         return gKCa * (v - params[f"eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         return {}
@@ -506,6 +506,6 @@ class CaNernstReversal(Channel):
         """This dynamics model does not directly contribute to the membrane current."""
         return 0
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         return {}

@@ -137,7 +137,7 @@ class Ribbon_mGluR6(Synapse, SolverExtension):
             f"{name}_mTRPM1": new_mTRPM1,
         }
 
-    def init_state(self, v, params):
+    def init_states(self, v, params):
         """Initialize the state."""
         name = self.name
         return {

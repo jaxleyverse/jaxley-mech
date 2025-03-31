@@ -110,7 +110,7 @@ class AMPA(Synapse):
             f"{name}_R1": new_R1,
         }
 
-    def init_state(self, v, params):
+    def init_states(self, v, params):
         """Initialize the state."""
         name = self.name
         return {
@@ -223,7 +223,7 @@ class GABAa(Synapse):
             f"{name}_R1": new_R1,
         }
 
-    def init_state(self, v, params):
+    def init_states(self, v, params):
         """Initialize the state."""
         name = self.name
         return {
@@ -323,7 +323,7 @@ class GABAb(Synapse):
             f"{name}_timecount": new_timecount,
         }
 
-    def init_state(self, v, params):
+    def init_states(self, v, params):
         """Initialize the state."""
         name = self.name
         return {
@@ -432,7 +432,7 @@ class NMDA(Synapse):
             f"{name}_R1": new_R1,
         }
 
-    def init_state(self, v, params):
+    def init_states(self, v, params):
         """Initialize the state."""
         name = self.name
         return {

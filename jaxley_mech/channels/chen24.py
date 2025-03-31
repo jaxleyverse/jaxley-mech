@@ -160,7 +160,7 @@ class Phototransduction(Channel, SolverExtension):
 
         return current_density
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self.name
         eta, phi, G_dark, C_dark = (

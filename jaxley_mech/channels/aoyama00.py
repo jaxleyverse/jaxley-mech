@@ -45,7 +45,7 @@ class Leak(Channel):
         gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
         return gLeak * (v - params[f"{prefix}_eLeak"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}
 
@@ -91,7 +91,7 @@ class Na(Channel):
 
         return gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(v)
@@ -155,7 +155,7 @@ class Kdr(Channel):
         k_cond = params[f"{prefix}_gKdr"] * m**4 * h  # S/cm^2
         return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(v)
@@ -220,7 +220,7 @@ class Kto(Channel):
         k_cond = params[f"{prefix}_gKto"] * m**3 * h  # S/cm^2
         return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         alpha_m, beta_m = self.m_gate(v)
@@ -281,7 +281,7 @@ class Kar(Channel):
         k_cond = params[f"{prefix}_gKar"] * m**5  # S/cm^2
         return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
         m = self.m_gate(v)
@@ -338,7 +338,7 @@ class Ca(Channel):
         current = ca_cond * (v - params["eCa"])  # S/cm^2 * mV = mA/cm^2
         return current
 
-    def init_state(self, states, v, params, delta_t):
+    def init_states(self, states, v, params, delta_t):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self.name
 
