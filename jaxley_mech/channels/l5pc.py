@@ -197,7 +197,7 @@ class NaTs2T(Channel):
 
 
 class NapEt2(Channel):
-    """Persistent sodium current from Magistretti & Alonso 1999.
+    """Persistent sodium current from Magistretti & Alonso 1999, Hay et al. 2011.
 
     Comment: corrected rates using q10 = 2.3, target temperature 34, orginal 21.
     """
@@ -218,6 +218,8 @@ class NapEt2(Channel):
         self.META = {
             "reference": "Magistretti and Alonso (1999)",
             "doi": "https://doi.org/10.1085/jgp.114.4.491",
+            "reference_2": "Hay et al. (2011)",
+            "doi_2": "https://doi.org/10.1371/journal.pcbi.1002107",
             "species": "rat",
             "cell_type": "entorhinal cortex layer-II principal neurons",
             "code": "https://github.com/BlueBrain/BluePyOpt/blob/master/examples/l5pc/mechanisms/Nap_Et2.mod",
@@ -265,43 +267,6 @@ class NapEt2(Channel):
         alpha = (0.182 * (v + 38 + 1e-6)) / (1 - save_exp(-(v + 38 + 1e-6) / 6))
         beta = (0.124 * (-v - 38 + 1e-6)) / (1 - save_exp(-(-v - 38 + 1e-6) / 6))
         tau_m = 6 / (alpha + beta) / qt
-        m_inf = 1.0 / (1 + save_exp((v + 52.7) / -4.6))
-        return m_inf, tau_m
-
-    @staticmethod
-    def h_gate(v):
-        """Voltage-dependent dynamics for the h gating variable."""
-        qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
-        alpha = (-2.88e-6 * (v + 17 + 1e-6)) / (1 - save_exp((v + 17 + 1e-6) / 4.63))
-        beta = (6.94e-6 * (v + 64.4 + 1e-6)) / (1 - save_exp((-(v + 64.4) + 1e-6) / 6))
-        tau_h = 1 / (alpha + beta) / qt
-        h_inf = 1.0 / (1 + save_exp((v + 48.8) / 10))
-
-        return h_inf, tau_h
-
-
-class NapEt2_2(NapEt2):
-    """Persistent sodium current from Hay et al. 2011. Same as NEURON's NapEt2.
-
-    Comment: corrected rates using q10 = 2.3, target temperature 34, orginal 21.
-    """
-
-    def __init__(self, name: Optional[str] = None):
-        super().__init__(name)
-        self.META["reference"] = (
-            "https://journals.plos.org/ploscompbiol/article/file?id=10.1371/journal.pcbi.1002107&type=printable"
-        )
-        self.META["note"] = "Corticocallosally projecting cells, Le Be et al. 2006"
-
-    @staticmethod
-    def m_gate(v):
-        """Voltage-dependent dynamics for the m gating variable."""
-        qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
-        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - save_exp(-(v + 38 + 1e-6) / 6))
-        beta = (0.124 * (-v - 38 + 1e-6)) / (
-            1 - save_exp(-(-v - 38 + 1e-6) / 6)
-        )  # differs from Magistretti & Alonso 1999
-        tau_m = 6 / (alpha + beta) / qt
         m_inf = 1.0 / (1 + save_exp((v + 52.6) / -4.6))
         return m_inf, tau_m
 
@@ -312,7 +277,7 @@ class NapEt2_2(NapEt2):
         alpha = (-2.88e-6 * (v + 17 + 1e-6)) / (1 - save_exp((v + 17 + 1e-6) / 4.63))
         beta = (6.94e-6 * (v + 64.4 + 1e-6)) / (
             1 - save_exp((-(v + 64.4) + 1e-6) / 2.63)
-        )  # differs from Magistretti & Alonso 1999
+        )
         tau_h = 1 / (alpha + beta) / qt
         h_inf = 1.0 / (1 + save_exp((v + 48.8) / 10))
 
