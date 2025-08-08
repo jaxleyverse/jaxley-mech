@@ -1,4 +1,5 @@
 from typing import Dict, Optional
+import jax.numpy as jnp
 from jaxley.channels import Channel
 from jaxley_mech.solvers import SolverExtension
 
@@ -25,28 +26,48 @@ class Phototransduction(Channel, SolverExtension):
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.channel_params = {
-            "tau_r": 28.0, # relaxation time (ms)
-            "tau_y": 33.0, # timescale of the linear response (ms)
-            "tau_z": 19.0, # timescale of the slow response (ms)
-            "alpha": 0.8, # constant scaling the linear filter (mV*um^2*ms/photon)
-            "beta": 0.16, # constant scaling the nonlinear filter (1/mV)
-            "gamma": 0.23, # weighting factor of the two timescales
-            "ny": 4.0, # rise behavior of the linear response
-            "nz": 10.0,
-        
+            f"{prefix}_tau_r": 28.0, # relaxation time (ms)
+            f"{prefix}_tau_y": 33.0, # timescale of the linear response (ms)
+            f"{prefix}_tau_z": 19.0, # timescale of the slow response (ms)
+            f"{prefix}_alpha": 0.8, # constant scaling the linear filter (mV*um^2*ms/photon)
+            f"{prefix}_beta": 0.16, # constant scaling the nonlinear filter (1/mV)
+            f"{prefix}_gamma": 0.23, # weighting factor of the two timescales
+            f"{prefix}_ny": 4.0, # rise behavior of the linear response
+            f"{prefix}_nz": 10.0,
+            f"{prefix}_V_rest": -35.0, # the PR rmp (mV)
         }
-        self.channel_states = {}
+        self.channel_states = {
+            f"{prefix}_r": -35.0, # difference between instantaneous rp and dark rp
+            f"{prefix}_y": 0.0, # filtered light intensity
+            f"{prefix}_z": 0.0, # filtered light intensity
+            f"{prefix}_Stim": 0.0, # stimulus (TODO: units P*/s?)
+            "v": -35.0 # PR voltage (mV)
+            }
         self.current_name = f"iPhoto"
         self.META = META
 
     def derivatives(self, t, states, args):
         pass
 
-    def update_states(seld, states, dt, v, params, **kwargs):
-        pass
+    def update_states(self, states, dt, v, params, **kwargs):
+        prefix = self._name
+        y0 = jnp.array([
+            states[f"{prefix}_r"],
+            states[f"{prefix}_y"],
+            states[f"{prefix}_z"],
+        ])
+        args_tuple = ()
+        r_new, y_new, z_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
+        v_new = r_new + params[f"{prefix}_V_rest"]
+        return {
+            f"{prefix}_r": r_new,
+            f"{prefix}_y": y_new,
+            f"{prefix}_z": z_new,
+            "v": v_new
+            }
 
     def compute_current(self, states, v, params):
-        pass
+        return 0
 
     def init_state(self, states, v, params, delta_t):
         pass
