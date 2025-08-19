@@ -47,6 +47,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K_GC": 0.5,  # μM, Ca2+ GC affinity
             f"{prefix}_m": 4.0,  # unitless, Ca2+ GC cooperativity
             f"{prefix}_I_dark": 20**3 * 0.01,  # pA, Dark current
+            f"{prefix}_alpha": 1.0, # opsin expression factor used outside mech
         }
         self.channel_states = {
             f"{prefix}_R": 0.0,
