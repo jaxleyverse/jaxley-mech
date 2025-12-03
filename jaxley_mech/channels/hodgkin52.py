@@ -1,5 +1,6 @@
 from typing import Dict, Optional
 
+import jax
 import jax.numpy as jnp
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
@@ -184,6 +185,8 @@ class Na8States(Na, SolverExtension):
         self.channel_params = {
             f"{prefix}_gNa": 40e-3,  # S/cm^2
             f"{prefix}_eNa": 55.0,  # mV
+            f"{prefix}_N_Na": 1e4,  # number of Na channels
+            f"{prefix}_noise_seed": 0,
         }
         # Initialize all states
         self.channel_states = {
@@ -195,6 +198,7 @@ class Na8States(Na, SolverExtension):
             f"{prefix}_I2": 0.0,
             f"{prefix}_I1": 0.0,
             f"{prefix}_I": 0,
+            f"{prefix}_noise_ptr": 0,  # index for optional xi sequence in params
         }
         self.current_name = f"i_Na"
         self.META = {
@@ -253,12 +257,50 @@ class Na8States(Na, SolverExtension):
 
         return jnp.array([dC3_dt, dC2_dt, dC1_dt, dO_dt, dI3_dt, dI2_dt, dI1_dt, dI_dt])
 
+    def diffusion_matrix(self, x, v, params):
+        """Fox-Lu diffusion matrix for the 8-state Na channel."""
+        alpha_m, beta_m = self.m_gate(v)
+        alpha_h, beta_h = self.h_gate(v)
+        C3, C2, C1, O, I3, I2, I1, I = x
+        N = params[f"{self._name}_N_Na"]
+
+        D = jnp.zeros((8, 8), dtype=x.dtype)
+
+        def add(D, rate, nu):
+            return D + rate * jnp.outer(nu, nu)
+
+        D = add(D, 3 * alpha_m * C3 * N, jnp.array([-1, +1, 0, 0, 0, 0, 0, 0], dtype=x.dtype))
+        D = add(D, beta_m * C2 * N, jnp.array([+1, -1, 0, 0, 0, 0, 0, 0], dtype=x.dtype))
+        D = add(D, 2 * alpha_m * C2 * N, jnp.array([0, -1, +1, 0, 0, 0, 0, 0], dtype=x.dtype))
+        D = add(D, 2 * beta_m * C1 * N, jnp.array([0, +1, -1, 0, 0, 0, 0, 0], dtype=x.dtype))
+        D = add(D, alpha_m * C1 * N, jnp.array([0, 0, -1, +1, 0, 0, 0, 0], dtype=x.dtype))
+        D = add(D, 3 * beta_m * O * N, jnp.array([0, 0, +1, -1, 0, 0, 0, 0], dtype=x.dtype))
+
+        D = add(D, 3 * alpha_m * I3 * N, jnp.array([0, 0, 0, 0, -1, +1, 0, 0], dtype=x.dtype))
+        D = add(D, beta_m * I2 * N, jnp.array([0, 0, 0, 0, +1, -1, 0, 0], dtype=x.dtype))
+        D = add(D, 2 * alpha_m * I2 * N, jnp.array([0, 0, 0, 0, 0, -1, +1, 0], dtype=x.dtype))
+        D = add(D, 2 * beta_m * I1 * N, jnp.array([0, 0, 0, 0, 0, +1, -1, 0], dtype=x.dtype))
+        D = add(D, alpha_m * I1 * N, jnp.array([0, 0, 0, 0, 0, 0, -1, +1], dtype=x.dtype))
+        D = add(D, 3 * beta_m * I * N, jnp.array([0, 0, 0, 0, 0, 0, +1, -1], dtype=x.dtype))
+
+        D = add(D, beta_h * C3 * N, jnp.array([-1, 0, 0, 0, +1, 0, 0, 0], dtype=x.dtype))
+        D = add(D, alpha_h * I3 * N, jnp.array([+1, 0, 0, 0, -1, 0, 0, 0], dtype=x.dtype))
+        D = add(D, beta_h * C2 * N, jnp.array([0, -1, 0, 0, 0, +1, 0, 0], dtype=x.dtype))
+        D = add(D, alpha_h * I2 * N, jnp.array([0, +1, 0, 0, 0, -1, 0, 0], dtype=x.dtype))
+        D = add(D, beta_h * C1 * N, jnp.array([0, 0, -1, 0, 0, 0, +1, 0], dtype=x.dtype))
+        D = add(D, alpha_h * I1 * N, jnp.array([0, 0, +1, 0, 0, 0, -1, 0], dtype=x.dtype))
+        D = add(D, beta_h * O * N, jnp.array([0, 0, 0, -1, 0, 0, 0, +1], dtype=x.dtype))
+        D = add(D, alpha_h * I * N, jnp.array([0, 0, 0, +1, 0, 0, 0, -1], dtype=x.dtype))
+
+        return D / (N**2)
+
     def update_states(
         self,
         states: Dict[str, jnp.ndarray],
         dt: float,
         v: float,
         params: Dict[str, jnp.ndarray],
+        xi: Optional[jnp.ndarray] = None,
     ):
         """Update state."""
         prefix = self._name
@@ -276,10 +318,48 @@ class Na8States(Na, SolverExtension):
 
         y0 = jnp.array([C3, C2, C1, O, I3, I2, I1, I])
 
-        # Parameters for dynamics
-        args_tuple = (v,)
+        # For SDE path, work with nonnegative, normalized state fractions.
+        if self.solver_name == "sde":
+            y_in = jnp.clip(y0, 0.0)
+            y_in = y_in / jnp.maximum(y_in.sum(axis=0, keepdims=True), 1e-12)
+        else:
+            y_in = y0
 
-        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
+        # Parameters for dynamics
+        if self.solver_name == "sde":
+            if xi is None:
+                # Optional per-step noise from params; falls back to deterministic RNG.
+                ptr_key = f"{prefix}_noise_ptr"
+                xi_key = f"{prefix}_xi"
+                if xi_key in params:
+                    idx = states[ptr_key] % params[xi_key].shape[0]
+                    xi = params[xi_key][idx]
+                else:
+                    seed_arr = jnp.asarray(params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32)
+                    seed_vec = (
+                        jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
+                        if seed_arr.ndim == 0
+                        else seed_arr.ravel()
+                    )
+                    ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
+
+                    def sample_one(seed_i, ptr_i):
+                        key = jax.random.PRNGKey(seed_i)
+                        key = jax.random.fold_in(key, ptr_i)
+                        return jax.random.normal(key, shape=(y0.shape[0],))
+
+                    xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
+            args_tuple = (self.diffusion_matrix, v, params, xi)
+            y_arg = y_in
+        else:
+            args_tuple = (v,)
+            y_arg = y_in
+
+        y_new = self.solver_func(y_arg, dt, self.derivatives, args_tuple)
+
+        if self.solver_name == "sde":
+            y_new = jnp.clip(y_new, 0.0)
+            y_new = y_new / jnp.maximum(y_new.sum(axis=0, keepdims=True), 1e-12)
 
         # Unpack new states
         C3_new, C2_new, C1_new, O_new, I3_new, I2_new, I1_new, I_new = y_new
@@ -293,6 +373,7 @@ class Na8States(Na, SolverExtension):
             f"{prefix}_I2": I2_new,
             f"{prefix}_I1": I1_new,
             f"{prefix}_I": I_new,
+            f"{prefix}_noise_ptr": states[f"{prefix}_noise_ptr"] + 1,
         }
 
     def compute_current(
@@ -332,6 +413,7 @@ class Na8States(Na, SolverExtension):
             f"{prefix}_I2": I2,
             f"{prefix}_I1": I1,
             f"{prefix}_I": I,
+            f"{prefix}_noise_ptr": 0,
         }
 
 
@@ -353,6 +435,8 @@ class K5States(K, SolverExtension):
         self.channel_params = {
             f"{prefix}_gK": 35e-3,  # S/cm^2
             f"{prefix}_eK": -77.0,  # mV
+            f"{prefix}_N_K": 1e4,  # number of K channels
+            f"{prefix}_noise_seed": 0,
         }
         self.channel_states = {
             f"{prefix}_C4": 1.0,
@@ -360,6 +444,7 @@ class K5States(K, SolverExtension):
             f"{prefix}_C2": 0,
             f"{prefix}_C1": 0,
             f"{prefix}_O": 0.0,
+            f"{prefix}_noise_ptr": 0,  # index for optional xi sequence in params
         }
         self.current_name = f"i_K"
         self.META = {
@@ -397,12 +482,35 @@ class K5States(K, SolverExtension):
 
         return jnp.array([dC4_dt, dC3_dt, dC2_dt, dC1_dt, dO_dt])
 
+    def diffusion_matrix(self, x, v, params):
+        """Fox-Lu diffusion matrix for the 5-state K channel."""
+        alpha_n, beta_n = self.n_gate(v)
+        C4, C3, C2, C1, O = x
+        N = params[f"{self._name}_N_K"]
+
+        D = jnp.zeros((5, 5), dtype=x.dtype)
+
+        def add(D, rate, nu):
+            return D + rate * jnp.outer(nu, nu)
+
+        D = add(D, 4 * alpha_n * C4 * N, jnp.array([-1, +1, 0, 0, 0], dtype=x.dtype))
+        D = add(D, beta_n * C3 * N, jnp.array([+1, -1, 0, 0, 0], dtype=x.dtype))
+        D = add(D, 3 * alpha_n * C3 * N, jnp.array([0, -1, +1, 0, 0], dtype=x.dtype))
+        D = add(D, 2 * beta_n * C2 * N, jnp.array([0, +1, -1, 0, 0], dtype=x.dtype))
+        D = add(D, 2 * alpha_n * C2 * N, jnp.array([0, 0, -1, +1, 0], dtype=x.dtype))
+        D = add(D, 3 * beta_n * C1 * N, jnp.array([0, 0, +1, -1, 0], dtype=x.dtype))
+        D = add(D, alpha_n * C1 * N, jnp.array([0, 0, 0, -1, +1], dtype=x.dtype))
+        D = add(D, 4 * beta_n * O * N, jnp.array([0, 0, 0, +1, -1], dtype=x.dtype))
+
+        return D / (N**2)
+
     def update_states(
         self,
         states: Dict[str, jnp.ndarray],
         dt,
         v,
         params: Dict[str, jnp.ndarray],
+        xi: Optional[jnp.ndarray] = None,
         **kwargs,
     ):
         """Update state using the specified solver."""
@@ -417,10 +525,44 @@ class K5States(K, SolverExtension):
 
         y0 = jnp.array([C4, C3, C2, C1, O])
 
-        # Parameters for dynamics
-        args_tuple = (v,)
+        if self.solver_name == "sde":
+            y_in = jnp.clip(y0, 0.0)
+            y_in = y_in / jnp.maximum(y_in.sum(axis=0, keepdims=True), 1e-12)
+        else:
+            y_in = y0
 
-        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
+        # Parameters for dynamics
+        if self.solver_name == "sde":
+            if xi is None:
+                ptr_key = f"{prefix}_noise_ptr"
+                xi_key = f"{prefix}_xi"
+                if xi_key in params:
+                    idx = states[ptr_key] % params[xi_key].shape[0]
+                    xi = params[xi_key][idx]
+                else:
+                    seed_arr = jnp.asarray(params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32)
+                    seed_vec = (
+                        jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
+                        if seed_arr.ndim == 0
+                        else seed_arr.ravel()
+                    )
+                    ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
+
+                    def sample_one(seed_i, ptr_i):
+                        key = jax.random.PRNGKey(seed_i)
+                        key = jax.random.fold_in(key, ptr_i)
+                        return jax.random.normal(key, shape=(y0.shape[0],))
+
+                    xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
+            args_tuple = (self.diffusion_matrix, v, params, xi)
+        else:
+            args_tuple = (v,)
+
+        y_new = self.solver_func(y_in, dt, self.derivatives, args_tuple)
+
+        if self.solver_name == "sde":
+            y_new = jnp.clip(y_new, 0.0)
+            y_new = y_new / jnp.maximum(y_new.sum(axis=0, keepdims=True), 1e-12)
 
         # Unpack new states
         C4_new, C3_new, C2_new, C1_new, O_new = y_new
@@ -431,6 +573,7 @@ class K5States(K, SolverExtension):
             f"{prefix}_C2": C2_new,
             f"{prefix}_C1": C1_new,
             f"{prefix}_O": O_new,
+            f"{prefix}_noise_ptr": states[f"{prefix}_noise_ptr"] + 1,
         }
 
     def compute_current(
@@ -462,4 +605,5 @@ class K5States(K, SolverExtension):
             f"{prefix}_C2": C2,
             f"{prefix}_C1": C1,
             f"{prefix}_O": O,
+            f"{prefix}_noise_ptr": 0,
         }

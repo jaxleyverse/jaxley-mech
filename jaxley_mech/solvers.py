@@ -26,7 +26,7 @@ class SolverExtension:
 
         if solver is None:
             raise ValueError(
-                "Solver must be specified (`newton`, `explicit`, `rk45` and `diffrax_implicit`)."
+                "Solver must be specified (`newton`, `explicit`, `rk45`, `sde`, and `diffrax_implicit`)."
             )
         elif solver == "diffrax_implicit":
             self.term = ODETerm(self.derivatives)
@@ -54,6 +54,7 @@ class SolverExtension:
             "rk45": rk45,
             "explicit": explicit_euler,
             "diffrax_implicit": self._diffrax_implicit_wrapper,
+            "sde": self._sde_wrapper,
         }
         if solver not in solvers:
             raise ValueError(
@@ -70,6 +71,12 @@ class SolverExtension:
             rtol=self.solver_args["rtol"],
             atol=self.solver_args["atol"],
             max_steps=self.solver_args["max_steps"],
+        )
+
+    def _sde_wrapper(self, y0, dt, derivatives_func, args):
+        diffusion_func, v, params, xi = args
+        return sde_euler_maruyama(
+            y0, dt, derivatives_func, diffusion_func, (v, params, xi)
         )
 
     def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
@@ -249,3 +256,32 @@ def diffrax_implicit(
         term, solver, args=args, t0=0.0, t1=dt, dt0=dt, y0=y0, max_steps=max_steps
     )
     return jnp.squeeze(y_new.ys, axis=0)
+
+
+def sde_euler_maruyama(
+    y0: jnp.ndarray,
+    dt: float,
+    drift_func: Callable[..., jnp.ndarray],
+    diffusion_func: Callable[..., jnp.ndarray],
+    args: Tuple,
+    eps: float = 1e-12,
+) -> jnp.ndarray:
+    """
+    Euler-Maruyama step for SDEs: y_{k+1} = y_k + f(y_k) dt + S(y_k) xi sqrt(dt)
+
+    Parameters:
+    - y0 (jnp.ndarray): Current state vector.
+    - dt (float): Time step size.
+    - drift_func (Callable): Function returning the drift (deterministic derivatives).
+    - diffusion_func (Callable): Function returning the diffusion matrix.
+    - args (Tuple): Expected (v, params, xi) where xi ~ N(0, I) with shape (n_states,).
+    - eps (float): Small diagonal jitter for Cholesky stability.
+
+    Returns:
+    - jnp.ndarray: Updated state vector after one Euler-Maruyama step.
+    """
+    v, params, xi = args
+    drift = drift_func(0.0, y0, (v,))
+    D = diffusion_func(y0, v, params)
+    S = jnp.linalg.cholesky(D + eps * jnp.eye(D.shape[0]))
+    return y0 + drift * dt + S @ xi * jnp.sqrt(dt)
