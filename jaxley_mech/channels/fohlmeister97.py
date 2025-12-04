@@ -5,9 +5,10 @@ from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
+from ._base import StatesChannel
 from ..utils import efun
 
-__all__ = ["Leak", "Na", "K", "KA", "Ca", "CaNernstReversal", "KCa"]
+__all__ = ["Leak", "Na", "K", "KA", "Ca", "Ca4States", "CaNernstReversal", "KCa"]
 
 META = {
     "species": "tiger salamander",
@@ -273,6 +274,47 @@ class Ca(Channel):
         beta = 10 * save_exp(-(v + 38) / 18)
         return alpha, beta
 
+
+class Ca4States(StatesChannel, Ca):
+    """Calcium channel with c^3 gating as a 4-state Markov chain."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: str = "sde_implicit",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+    ):
+        Ca.__init__(self, name)
+        prefix = self._name
+
+        # Remove single-gate state; Markov states live on the simplex.
+        self.channel_states.pop(f"{prefix}_c", None)
+
+        # Channel-count and noise seed defaults.
+        self.channel_params.setdefault(f"{prefix}_N_Ca", 1e4)
+        self.channel_params.setdefault(f"{prefix}_noise_seed", 0)
+
+        StatesChannel.__init__(
+            self,
+            name=name,
+            gate_specs=[("c", 3, Ca.c_gate)],
+            count_param=f"{prefix}_N_Ca",
+            solver=solver,
+            rtol=rtol,
+            atol=atol,
+            max_steps=max_steps,
+            noise_seed_param=f"{prefix}_noise_seed",
+        )
+
+    def compute_current(
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+    ):
+        prefix = self._name
+        p_open = self.open_probability(states)
+        gCa = params[f"{prefix}_gCa"] * p_open  # S/cm^2
+        return gCa * (v - states["eCa"])  # S/cm^2 * mV = mA/cm^2
 
 class CaNernstReversal(Channel):
     """Compute Calcium reversal from inner and outer concentration of calcium."""
