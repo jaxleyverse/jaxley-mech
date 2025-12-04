@@ -26,7 +26,7 @@ class SolverExtension:
 
         if solver is None:
             raise ValueError(
-                "Solver must be specified (`newton`, `explicit`, `rk45`, `sde`, and `diffrax_implicit`)."
+                "Solver must be specified (`newton`, `explicit`, `rk45`, `sde`, `sde_implicit`, and `diffrax_implicit`)."
             )
         elif solver == "diffrax_implicit":
             self.term = ODETerm(self.derivatives)
@@ -55,6 +55,7 @@ class SolverExtension:
             "explicit": explicit_euler,
             "diffrax_implicit": self._diffrax_implicit_wrapper,
             "sde": self._sde_wrapper,
+            "sde_implicit": self._sde_implicit_wrapper,
         }
         if solver not in solvers:
             raise ValueError(
@@ -77,6 +78,19 @@ class SolverExtension:
         diffusion_func, v, params, xi = args
         return sde_euler_maruyama(
             y0, dt, derivatives_func, diffusion_func, (v, params, xi)
+        )
+
+    def _sde_implicit_wrapper(self, y0, dt, derivatives_func, args):
+        diffusion_func, v, params, xi = args
+        return sde_implicit_euler(
+            y0,
+            dt,
+            derivatives_func,
+            diffusion_func,
+            (v, params, xi),
+            rtol=self.solver_args["rtol"],
+            atol=self.solver_args["atol"],
+            max_steps=self.solver_args["max_steps"],
         )
 
     def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
@@ -285,3 +299,41 @@ def sde_euler_maruyama(
     D = diffusion_func(y0, v, params)
     S = jnp.linalg.cholesky(D + eps * jnp.eye(D.shape[0]))
     return y0 + drift * dt + S @ xi * jnp.sqrt(dt)
+
+
+def sde_implicit_euler(
+    y0: jnp.ndarray,
+    dt: float,
+    drift_func: Callable[..., jnp.ndarray],
+    diffusion_func: Callable[..., jnp.ndarray],
+    args: Tuple,
+    rtol: float = 1e-8,
+    atol: float = 1e-8,
+    max_steps: int = 10,
+    eps: float = 1e-12,
+) -> jnp.ndarray:
+    """
+    Semi-implicit (backward) Euler-Maruyama step: implicit drift, explicit diffusion.
+
+    Solves y = y0 + dt * f(y) + S(y0) xi sqrt(dt) with Newton iterations.
+    """
+    v, params, xi = args
+    D = diffusion_func(y0, v, params)
+    S = jnp.linalg.cholesky(D + eps * jnp.eye(D.shape[0]))
+
+    noise = S @ xi * jnp.sqrt(dt)
+    dt_safe = jnp.maximum(dt, 1e-12)
+
+    def drift_with_noise(_, y, v_arg, noise_dt):
+        return drift_func(0.0, y, (v_arg,)) + noise_dt
+
+    return newton(
+        y0,
+        dt_safe,
+        drift_with_noise,
+        v,
+        noise / dt_safe,
+        rtol=rtol,
+        atol=atol,
+        max_steps=max_steps,
+    )

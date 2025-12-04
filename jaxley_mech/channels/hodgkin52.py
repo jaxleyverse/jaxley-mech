@@ -200,7 +200,7 @@ class Na8States(Na, SolverExtension):
             f"{prefix}_I": 0,
             f"{prefix}_noise_ptr": 0,  # index for optional xi sequence in params
         }
-        self.current_name = f"i_Na"
+        self.current_name = "i_Na"
         self.META = {
             "reference": "Armstrong, C. M. (1981).",
             "doi": "https://doi.org/10.1152/physrev.1981.61.3.644",
@@ -269,28 +269,74 @@ class Na8States(Na, SolverExtension):
         def add(D, rate, nu):
             return D + rate * jnp.outer(nu, nu)
 
-        D = add(D, 3 * alpha_m * C3 * N, jnp.array([-1, +1, 0, 0, 0, 0, 0, 0], dtype=x.dtype))
-        D = add(D, beta_m * C2 * N, jnp.array([+1, -1, 0, 0, 0, 0, 0, 0], dtype=x.dtype))
-        D = add(D, 2 * alpha_m * C2 * N, jnp.array([0, -1, +1, 0, 0, 0, 0, 0], dtype=x.dtype))
-        D = add(D, 2 * beta_m * C1 * N, jnp.array([0, +1, -1, 0, 0, 0, 0, 0], dtype=x.dtype))
-        D = add(D, alpha_m * C1 * N, jnp.array([0, 0, -1, +1, 0, 0, 0, 0], dtype=x.dtype))
-        D = add(D, 3 * beta_m * O * N, jnp.array([0, 0, +1, -1, 0, 0, 0, 0], dtype=x.dtype))
+        D = add(
+            D,
+            3 * alpha_m * C3 * N,
+            jnp.array([-1, +1, 0, 0, 0, 0, 0, 0], dtype=x.dtype),
+        )
+        D = add(
+            D, beta_m * C2 * N, jnp.array([+1, -1, 0, 0, 0, 0, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D,
+            2 * alpha_m * C2 * N,
+            jnp.array([0, -1, +1, 0, 0, 0, 0, 0], dtype=x.dtype),
+        )
+        D = add(
+            D, 2 * beta_m * C1 * N, jnp.array([0, +1, -1, 0, 0, 0, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, alpha_m * C1 * N, jnp.array([0, 0, -1, +1, 0, 0, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, 3 * beta_m * O * N, jnp.array([0, 0, +1, -1, 0, 0, 0, 0], dtype=x.dtype)
+        )
 
-        D = add(D, 3 * alpha_m * I3 * N, jnp.array([0, 0, 0, 0, -1, +1, 0, 0], dtype=x.dtype))
-        D = add(D, beta_m * I2 * N, jnp.array([0, 0, 0, 0, +1, -1, 0, 0], dtype=x.dtype))
-        D = add(D, 2 * alpha_m * I2 * N, jnp.array([0, 0, 0, 0, 0, -1, +1, 0], dtype=x.dtype))
-        D = add(D, 2 * beta_m * I1 * N, jnp.array([0, 0, 0, 0, 0, +1, -1, 0], dtype=x.dtype))
-        D = add(D, alpha_m * I1 * N, jnp.array([0, 0, 0, 0, 0, 0, -1, +1], dtype=x.dtype))
-        D = add(D, 3 * beta_m * I * N, jnp.array([0, 0, 0, 0, 0, 0, +1, -1], dtype=x.dtype))
+        D = add(
+            D,
+            3 * alpha_m * I3 * N,
+            jnp.array([0, 0, 0, 0, -1, +1, 0, 0], dtype=x.dtype),
+        )
+        D = add(
+            D, beta_m * I2 * N, jnp.array([0, 0, 0, 0, +1, -1, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D,
+            2 * alpha_m * I2 * N,
+            jnp.array([0, 0, 0, 0, 0, -1, +1, 0], dtype=x.dtype),
+        )
+        D = add(
+            D, 2 * beta_m * I1 * N, jnp.array([0, 0, 0, 0, 0, +1, -1, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, alpha_m * I1 * N, jnp.array([0, 0, 0, 0, 0, 0, -1, +1], dtype=x.dtype)
+        )
+        D = add(
+            D, 3 * beta_m * I * N, jnp.array([0, 0, 0, 0, 0, 0, +1, -1], dtype=x.dtype)
+        )
 
-        D = add(D, beta_h * C3 * N, jnp.array([-1, 0, 0, 0, +1, 0, 0, 0], dtype=x.dtype))
-        D = add(D, alpha_h * I3 * N, jnp.array([+1, 0, 0, 0, -1, 0, 0, 0], dtype=x.dtype))
-        D = add(D, beta_h * C2 * N, jnp.array([0, -1, 0, 0, 0, +1, 0, 0], dtype=x.dtype))
-        D = add(D, alpha_h * I2 * N, jnp.array([0, +1, 0, 0, 0, -1, 0, 0], dtype=x.dtype))
-        D = add(D, beta_h * C1 * N, jnp.array([0, 0, -1, 0, 0, 0, +1, 0], dtype=x.dtype))
-        D = add(D, alpha_h * I1 * N, jnp.array([0, 0, +1, 0, 0, 0, -1, 0], dtype=x.dtype))
+        D = add(
+            D, beta_h * C3 * N, jnp.array([-1, 0, 0, 0, +1, 0, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, alpha_h * I3 * N, jnp.array([+1, 0, 0, 0, -1, 0, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, beta_h * C2 * N, jnp.array([0, -1, 0, 0, 0, +1, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, alpha_h * I2 * N, jnp.array([0, +1, 0, 0, 0, -1, 0, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, beta_h * C1 * N, jnp.array([0, 0, -1, 0, 0, 0, +1, 0], dtype=x.dtype)
+        )
+        D = add(
+            D, alpha_h * I1 * N, jnp.array([0, 0, +1, 0, 0, 0, -1, 0], dtype=x.dtype)
+        )
         D = add(D, beta_h * O * N, jnp.array([0, 0, 0, -1, 0, 0, 0, +1], dtype=x.dtype))
-        D = add(D, alpha_h * I * N, jnp.array([0, 0, 0, +1, 0, 0, 0, -1], dtype=x.dtype))
+        D = add(
+            D, alpha_h * I * N, jnp.array([0, 0, 0, +1, 0, 0, 0, -1], dtype=x.dtype)
+        )
 
         return D / (N**2)
 
@@ -300,7 +346,6 @@ class Na8States(Na, SolverExtension):
         dt: float,
         v: float,
         params: Dict[str, jnp.ndarray],
-        xi: Optional[jnp.ndarray] = None,
     ):
         """Update state."""
         prefix = self._name
@@ -318,46 +363,42 @@ class Na8States(Na, SolverExtension):
 
         y0 = jnp.array([C3, C2, C1, O, I3, I2, I1, I])
 
+        is_sde = self.solver_name in ("sde", "sde_implicit")
+
         # For SDE path, work with nonnegative, normalized state fractions.
-        if self.solver_name == "sde":
+        if is_sde:
             y_in = jnp.clip(y0, 0.0)
             y_in = y_in / jnp.maximum(y_in.sum(axis=0, keepdims=True), 1e-12)
         else:
             y_in = y0
 
         # Parameters for dynamics
-        if self.solver_name == "sde":
-            if xi is None:
-                # Optional per-step noise from params; falls back to deterministic RNG.
-                ptr_key = f"{prefix}_noise_ptr"
-                xi_key = f"{prefix}_xi"
-                if xi_key in params:
-                    idx = states[ptr_key] % params[xi_key].shape[0]
-                    xi = params[xi_key][idx]
-                else:
-                    seed_arr = jnp.asarray(params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32)
-                    seed_vec = (
-                        jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
-                        if seed_arr.ndim == 0
-                        else seed_arr.ravel()
-                    )
-                    ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
+        if is_sde:
+            ptr_key = f"{prefix}_noise_ptr"
 
-                    def sample_one(seed_i, ptr_i):
-                        key = jax.random.PRNGKey(seed_i)
-                        key = jax.random.fold_in(key, ptr_i)
-                        return jax.random.normal(key, shape=(y0.shape[0],))
+            seed_arr = jnp.asarray(
+                params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32
+            )
+            seed_vec = (
+                jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
+                if seed_arr.ndim == 0
+                else seed_arr.ravel()
+            )
+            ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
 
-                    xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
+            def sample_one(seed_i, ptr_i):
+                key = jax.random.PRNGKey(seed_i)
+                key = jax.random.fold_in(key, ptr_i)
+                return jax.random.normal(key, shape=(y0.shape[0],))
+
+            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
             args_tuple = (self.diffusion_matrix, v, params, xi)
-            y_arg = y_in
         else:
             args_tuple = (v,)
-            y_arg = y_in
 
-        y_new = self.solver_func(y_arg, dt, self.derivatives, args_tuple)
+        y_new = self.solver_func(y_in, dt, self.derivatives, args_tuple)
 
-        if self.solver_name == "sde":
+        if is_sde:
             y_new = jnp.clip(y_new, 0.0)
             y_new = y_new / jnp.maximum(y_new.sum(axis=0, keepdims=True), 1e-12)
 
@@ -510,7 +551,6 @@ class K5States(K, SolverExtension):
         dt,
         v,
         params: Dict[str, jnp.ndarray],
-        xi: Optional[jnp.ndarray] = None,
         **kwargs,
     ):
         """Update state using the specified solver."""
@@ -525,42 +565,40 @@ class K5States(K, SolverExtension):
 
         y0 = jnp.array([C4, C3, C2, C1, O])
 
-        if self.solver_name == "sde":
+        is_sde = self.solver_name in ("sde", "sde_implicit")
+
+        if is_sde:
             y_in = jnp.clip(y0, 0.0)
             y_in = y_in / jnp.maximum(y_in.sum(axis=0, keepdims=True), 1e-12)
         else:
             y_in = y0
 
         # Parameters for dynamics
-        if self.solver_name == "sde":
-            if xi is None:
-                ptr_key = f"{prefix}_noise_ptr"
-                xi_key = f"{prefix}_xi"
-                if xi_key in params:
-                    idx = states[ptr_key] % params[xi_key].shape[0]
-                    xi = params[xi_key][idx]
-                else:
-                    seed_arr = jnp.asarray(params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32)
-                    seed_vec = (
-                        jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
-                        if seed_arr.ndim == 0
-                        else seed_arr.ravel()
-                    )
-                    ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
+        if is_sde:
+            ptr_key = f"{prefix}_noise_ptr"
+            seed_arr = jnp.asarray(
+                params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32
+            )
+            seed_vec = (
+                jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
+                if seed_arr.ndim == 0
+                else seed_arr.ravel()
+            )
+            ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
 
-                    def sample_one(seed_i, ptr_i):
-                        key = jax.random.PRNGKey(seed_i)
-                        key = jax.random.fold_in(key, ptr_i)
-                        return jax.random.normal(key, shape=(y0.shape[0],))
+            def sample_one(seed_i, ptr_i):
+                key = jax.random.PRNGKey(seed_i)
+                key = jax.random.fold_in(key, ptr_i)
+                return jax.random.normal(key, shape=(y0.shape[0],))
 
-                    xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
+            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
             args_tuple = (self.diffusion_matrix, v, params, xi)
         else:
             args_tuple = (v,)
 
         y_new = self.solver_func(y_in, dt, self.derivatives, args_tuple)
 
-        if self.solver_name == "sde":
+        if is_sde:
             y_new = jnp.clip(y_new, 0.0)
             y_new = y_new / jnp.maximum(y_new.sum(axis=0, keepdims=True), 1e-12)
 
