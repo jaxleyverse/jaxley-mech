@@ -6,8 +6,8 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 import jax
 import jax.numpy as jnp
-
 from jaxley.channels import Channel
+
 from jaxley_mech.solvers import SolverExtension
 
 
@@ -25,12 +25,14 @@ class StatesChannel(Channel, SolverExtension):
         max_steps: int = 10,
         noise_seed_param: Optional[str] = None,
         xi_param: Optional[str] = None,
+        shield_mask: Optional[jnp.ndarray] = None,
         state_key_fn: Optional[Callable[[Tuple[int, ...], int], str]] = None,
     ):
         """
         Args:
             gate_specs: list of (gate_name, power, gate_fn) where gate_fn returns (alpha, beta).
             count_param: parameter name for channel count N (Fox–Lu scaling).
+            shield_mask: optional {0,1} mask to drop edge noise sources (stochastic shielding).
         """
         # Ensure base solver setup happens first so solver_func is available.
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
@@ -43,7 +45,9 @@ class StatesChannel(Channel, SolverExtension):
 
         self._gate_names = [g for g, _, _ in gate_specs]
         self._powers = [p for _, p, _ in gate_specs]
-        combos: List[Tuple[int, ...]] = list(product(*[range(p + 1) for p in self._powers]))
+        combos: List[Tuple[int, ...]] = list(
+            product(*[range(p + 1) for p in self._powers])
+        )
         # For HH-style m^p with a single h-gate, order h-open states first (C*,O), then h-closed (I*).
         if (
             state_key_fn is None
@@ -85,6 +89,14 @@ class StatesChannel(Channel, SolverExtension):
                     j = self._combo_to_idx[tuple(back)]
                     transitions.append(("beta", i, j, k, g_idx))
         self._transitions = transitions
+        self._shield_mask = None
+        if shield_mask is not None:
+            mask_array = jnp.asarray(shield_mask)
+            if mask_array.shape[0] != len(transitions):
+                raise ValueError(
+                    f"shield_mask must have length {len(transitions)}, got {mask_array.shape[0]}"
+                )
+            self._shield_mask = mask_array.astype(bool)
 
         if self.channel_states is None:
             self.channel_states = {}
@@ -94,6 +106,7 @@ class StatesChannel(Channel, SolverExtension):
         for idx, key in enumerate(self.state_keys):
             self.channel_states.setdefault(key, 1.0 if idx == closed_idx else 0.0)
         self.channel_states.setdefault(self.noise_ptr_key, 0)
+        # This is the actual number of channels in the compartment (not an arbitrary noise scale).
         self.channel_params.setdefault(self.count_param, 1e4)
         self.channel_params.setdefault(self.noise_seed_param, 0)
 
@@ -134,13 +147,29 @@ class StatesChannel(Channel, SolverExtension):
         y = jnp.clip(y, 0.0)
         return y / jnp.maximum(y.sum(axis=0, keepdims=True), 1e-12)
 
-    def sample_xi(self, states: Dict[str, jnp.ndarray], params: Dict[str, jnp.ndarray]):
+    @staticmethod
+    def channels_from_density(density_per_um2: float, area_um2: float) -> float:
+        """Helper to turn a channel density (channels/um^2) and area (um^2) into an absolute count."""
+        return density_per_um2 * area_um2
+
+    def sample_xi(
+        self,
+        states: Dict[str, jnp.ndarray],
+        params: Dict[str, jnp.ndarray],
+        size: Optional[int] = None,
+    ):
         """Sample xi using noise_seed + noise_ptr or optional precomputed xi sequence."""
+        xi_size = len(self.state_keys) if size is None else size
         ptr = jnp.asarray(states[self.noise_ptr_key])
         xi_key = self.xi_param
         if xi_key in params:
             idx = ptr % params[xi_key].shape[0]
-            return params[xi_key][idx]
+            xi_val = params[xi_key][idx]
+            if xi_val.shape[0] != xi_size:
+                raise ValueError(
+                    f"Expected xi[{xi_key}] with leading dimension {xi_size}, got {xi_val.shape[0]}"
+                )
+            return xi_val
 
         seed_arr = jnp.asarray(params.get(self.noise_seed_param, 0), dtype=jnp.uint32)
         seed_vec = (
@@ -153,7 +182,7 @@ class StatesChannel(Channel, SolverExtension):
         def sample_one(seed_i, ptr_i):
             key = jax.random.PRNGKey(seed_i)
             key = jax.random.fold_in(key, ptr_i)
-            return jax.random.normal(key, shape=(len(self.state_keys),))
+            return jax.random.normal(key, shape=(xi_size,))
 
         xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T
         return xi
@@ -189,18 +218,51 @@ class StatesChannel(Channel, SolverExtension):
             dydt = dydt.at[j].add(rate)
         return dydt
 
-    def diffusion_matrix(self, y: jnp.ndarray, v: float, params: Dict[str, jnp.ndarray]):
+    def diffusion_matrix(
+        self, y: jnp.ndarray, v: float, params: Dict[str, jnp.ndarray]
+    ):
         gate_rates = self._gate_rates(v)
         D = jnp.zeros((len(self.state_keys), len(self.state_keys)), dtype=y.dtype)
         N = params[self.count_param]
 
         for direction, i, j, factor, g_idx in self._transitions:
             alpha, beta = gate_rates[g_idx]
-            rate = factor * (alpha if direction == "alpha" else beta) * y[i] * N
+            yi = jnp.maximum(y[i], 0.0)
+            rate = factor * (alpha if direction == "alpha" else beta) * yi * N
             nu = jnp.zeros_like(y).at[j].set(1.0).at[i].add(-1.0)
             D = D + rate * jnp.outer(nu, nu)
 
         return D / jnp.maximum(N**2, 1e-12)
+
+    def edge_noise_increment(
+        self,
+        y: jnp.ndarray,
+        v: float,
+        params: Dict[str, jnp.ndarray],
+        xi: jnp.ndarray,  # shape = (n_transitions,)
+    ) -> jnp.ndarray:
+        """Compute Σ_k s_k(x) * xi_k with one noise source per directed edge.
+
+        This is the S * xi term in Pu & Thomas eqs. (3.4)–(3.6).
+        """
+        gate_rates = self._gate_rates(v)
+        N = params[self.count_param]
+
+        dy_noise = jnp.zeros_like(y)
+
+        for k, (xi_k, tr) in enumerate(zip(xi, self._transitions)):
+            if self._shield_mask is not None and not self._shield_mask[k]:
+                continue
+            direction, i, j, factor, g_idx = tr
+            alpha, beta = gate_rates[g_idx]
+            yi = jnp.maximum(y[i], 0.0)
+            rate = factor * (alpha if direction == "alpha" else beta) * yi * N
+            amp = jnp.sqrt(rate) / jnp.maximum(N, 1e-12)
+
+            nu = jnp.zeros_like(y).at[j].add(1.0).at[i].add(-1.0)
+            dy_noise = dy_noise + amp * xi_k * nu
+
+        return dy_noise
 
     # --- Channel API -------------------------------------------------
     def update_states(
@@ -212,19 +274,34 @@ class StatesChannel(Channel, SolverExtension):
         xi: Optional[jnp.ndarray] = None,
     ):
         y0 = jnp.stack([states[k] for k in self.state_keys])
-        y_in = self.project_simplex(y0)
+        y_in = y0
 
-        if xi is None:
-            xi = self.sample_xi(states, params)
-        xi = jnp.reshape(xi, y_in.shape)
+        solver_kind = self.solver_name
+        uses_noise = solver_kind in ("sde", "sde_implicit", "sde_edge", "sde_edges")
+        xi_array: Optional[jnp.ndarray] = None
+        if uses_noise:
+            if xi is None:
+                xi_size = (
+                    len(self._transitions)
+                    if solver_kind in ("sde_edge", "sde_edges")
+                    else len(self.state_keys)
+                )
+                xi = self.sample_xi(states, params, size=xi_size)
+            xi_array = jnp.asarray(xi)
 
-        if self.solver_name in ("sde", "sde_implicit"):
-            args_tuple = (self.diffusion_matrix, v, params, xi)
+        if solver_kind in ("sde", "sde_implicit"):
+            if xi_array is None:
+                raise ValueError("Noise term required for stochastic solver.")
+            xi_array = jnp.reshape(xi_array, y_in.shape)
+            args_tuple = (self.diffusion_matrix, v, params, xi_array)
+        elif solver_kind in ("sde_edge", "sde_edges"):
+            if xi_array is None:
+                raise ValueError("Noise term required for stochastic solver.")
+            args_tuple = (self.edge_noise_increment, v, params, xi_array)
         else:
             args_tuple = (v,)
 
         y_new = self.solver_func(y_in, dt, self.derivatives, args_tuple)
-        y_new = self.project_simplex(y_new)
 
         out = {k: val for k, val in zip(self.state_keys, y_new)}
         out[self.noise_ptr_key] = jnp.asarray(states[self.noise_ptr_key]) + 1

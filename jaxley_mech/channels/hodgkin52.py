@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
+from jaxley_mech.channels._base import StatesChannel
 from jaxley_mech.solvers import SolverExtension
 
 META = {
@@ -261,7 +262,7 @@ class Na8States(Na, SolverExtension):
         """Fox-Lu diffusion matrix for the 8-state Na channel."""
         alpha_m, beta_m = self.m_gate(v)
         alpha_h, beta_h = self.h_gate(v)
-        C3, C2, C1, O, I3, I2, I1, I = x
+        C3, C2, C1, O, I3, I2, I1, I = jnp.maximum(x, 0.0)
         N = params[f"{self._name}_N_Na"]
 
         D = jnp.zeros((8, 8), dtype=x.dtype)
@@ -338,7 +339,7 @@ class Na8States(Na, SolverExtension):
             D, alpha_h * I * N, jnp.array([0, 0, 0, +1, 0, 0, 0, -1], dtype=x.dtype)
         )
 
-        return D / (N**2)
+        return D / jnp.maximum(N**2, 1e-12)
 
     def update_states(
         self,
@@ -363,14 +364,13 @@ class Na8States(Na, SolverExtension):
 
         y0 = jnp.array([C3, C2, C1, O, I3, I2, I1, I])
 
-        is_sde = self.solver_name in ("sde", "sde_implicit")
-
-        # For SDE path, work with nonnegative, normalized state fractions.
-        if is_sde:
-            y_in = jnp.clip(y0, 0.0)
-            y_in = y_in / jnp.maximum(y_in.sum(axis=0, keepdims=True), 1e-12)
-        else:
-            y_in = y0
+        solver_kind = self.solver_name
+        if solver_kind in ("sde_edge", "sde_edges"):
+            raise ValueError(
+                "Na8States does not support edge-based noise; use the auto StatesChannel variant."
+            )
+        is_sde = solver_kind in ("sde", "sde_implicit")
+        y_in = y0
 
         # Parameters for dynamics
         if is_sde:
@@ -397,10 +397,6 @@ class Na8States(Na, SolverExtension):
             args_tuple = (v,)
 
         y_new = self.solver_func(y_in, dt, self.derivatives, args_tuple)
-
-        if is_sde:
-            y_new = jnp.clip(y_new, 0.0)
-            y_new = y_new / jnp.maximum(y_new.sum(axis=0, keepdims=True), 1e-12)
 
         # Unpack new states
         C3_new, C2_new, C1_new, O_new, I3_new, I2_new, I1_new, I_new = y_new
@@ -526,7 +522,7 @@ class K5States(K, SolverExtension):
     def diffusion_matrix(self, x, v, params):
         """Fox-Lu diffusion matrix for the 5-state K channel."""
         alpha_n, beta_n = self.n_gate(v)
-        C4, C3, C2, C1, O = x
+        C4, C3, C2, C1, O = jnp.maximum(x, 0.0)
         N = params[f"{self._name}_N_K"]
 
         D = jnp.zeros((5, 5), dtype=x.dtype)
@@ -543,7 +539,7 @@ class K5States(K, SolverExtension):
         D = add(D, alpha_n * C1 * N, jnp.array([0, 0, 0, -1, +1], dtype=x.dtype))
         D = add(D, 4 * beta_n * O * N, jnp.array([0, 0, 0, +1, -1], dtype=x.dtype))
 
-        return D / (N**2)
+        return D / jnp.maximum(N**2, 1e-12)
 
     def update_states(
         self,
@@ -565,13 +561,13 @@ class K5States(K, SolverExtension):
 
         y0 = jnp.array([C4, C3, C2, C1, O])
 
-        is_sde = self.solver_name in ("sde", "sde_implicit")
-
-        if is_sde:
-            y_in = jnp.clip(y0, 0.0)
-            y_in = y_in / jnp.maximum(y_in.sum(axis=0, keepdims=True), 1e-12)
-        else:
-            y_in = y0
+        solver_kind = self.solver_name
+        if solver_kind in ("sde_edge", "sde_edges"):
+            raise ValueError(
+                "K5States does not support edge-based noise; use the auto StatesChannel variant."
+            )
+        is_sde = solver_kind in ("sde", "sde_implicit")
+        y_in = y0
 
         # Parameters for dynamics
         if is_sde:
@@ -597,10 +593,6 @@ class K5States(K, SolverExtension):
             args_tuple = (v,)
 
         y_new = self.solver_func(y_in, dt, self.derivatives, args_tuple)
-
-        if is_sde:
-            y_new = jnp.clip(y_new, 0.0)
-            y_new = y_new / jnp.maximum(y_new.sum(axis=0, keepdims=True), 1e-12)
 
         # Unpack new states
         C4_new, C3_new, C2_new, C1_new, O_new = y_new
@@ -645,3 +637,92 @@ class K5States(K, SolverExtension):
             f"{prefix}_O": O,
             f"{prefix}_noise_ptr": 0,
         }
+
+
+class Na8StatesAuto(StatesChannel, Na):
+    """Na channel with m^3 h gating as an auto-generated 8-state chain."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: str = "sde_implicit",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+        shield_mask: Optional[jnp.ndarray] = None,
+    ):
+        Na.__init__(self, name)
+        prefix = self._name
+
+        # Remove single-gate states; Markov states live on the simplex.
+        self.channel_states.pop(f"{prefix}_m", None)
+        self.channel_states.pop(f"{prefix}_h", None)
+
+        # Channel-count and noise seed defaults.
+        self.channel_params.setdefault(f"{prefix}_N_Na", 1e4)
+        self.channel_params.setdefault(f"{prefix}_noise_seed", 0)
+
+        StatesChannel.__init__(
+            self,
+            name=name,
+            gate_specs=[("m", 3, Na.m_gate), ("h", 1, Na.h_gate)],
+            count_param=f"{prefix}_N_Na",
+            solver=solver,
+            rtol=rtol,
+            atol=atol,
+            max_steps=max_steps,
+            noise_seed_param=f"{prefix}_noise_seed",
+            shield_mask=shield_mask,
+        )
+
+    def compute_current(
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+    ):
+        prefix = self._name
+        p_open = self.open_probability(states)
+        gNa = params[f"{prefix}_gNa"] * p_open  # S/cm^2
+        return gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
+
+
+class K5StatesAuto(StatesChannel, K):
+    """K channel with n^4 gating as an auto-generated 5-state chain."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        solver: str = "sde_implicit",
+        rtol: float = 1e-8,
+        atol: float = 1e-8,
+        max_steps: int = 10,
+        shield_mask: Optional[jnp.ndarray] = None,
+    ):
+        K.__init__(self, name)
+        prefix = self._name
+
+        # Remove single-gate state; Markov states live on the simplex.
+        self.channel_states.pop(f"{prefix}_n", None)
+
+        # Channel-count and noise seed defaults.
+        self.channel_params.setdefault(f"{prefix}_N_K", 1e4)
+        self.channel_params.setdefault(f"{prefix}_noise_seed", 0)
+
+        StatesChannel.__init__(
+            self,
+            name=name,
+            gate_specs=[("n", 4, K.n_gate)],
+            count_param=f"{prefix}_N_K",
+            solver=solver,
+            rtol=rtol,
+            atol=atol,
+            max_steps=max_steps,
+            noise_seed_param=f"{prefix}_noise_seed",
+            shield_mask=shield_mask,
+        )
+
+    def compute_current(
+        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+    ):
+        prefix = self._name
+        p_open = self.open_probability(states)
+        gK = params[f"{prefix}_gK"] * p_open  # S/cm^2
+        return gK * (v - params[f"{prefix}_eK"])  # S/cm^2 * mV = mA/cm^2
