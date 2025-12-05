@@ -183,6 +183,7 @@ class Na8States(Na, SolverExtension):
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.solver = solver
+        self._edge_transitions = self._build_edge_transitions()
         self.channel_params = {
             f"{prefix}_gNa": 40e-3,  # S/cm^2
             f"{prefix}_eNa": 55.0,  # mV
@@ -208,6 +209,37 @@ class Na8States(Na, SolverExtension):
             "species": "squid",
             "ion": "Na",
         }
+
+    @staticmethod
+    def _build_edge_transitions():
+        """Match StatesChannel ordering for m^3 h (20 directed edges)."""
+        combos = [
+            (0, 1),
+            (1, 1),
+            (2, 1),
+            (3, 1),
+            (0, 0),
+            (1, 0),
+            (2, 0),
+            (3, 0),
+        ]
+        combo_index = {c: i for i, c in enumerate(combos)}
+        powers = [3, 1]
+        transitions = []
+        for i, combo in enumerate(combos):
+            for g_idx, power in enumerate(powers):
+                k = combo[g_idx]
+                if k < power:
+                    forward = list(combo)
+                    forward[g_idx] += 1
+                    j = combo_index[tuple(forward)]
+                    transitions.append(("alpha", i, j, power - k, g_idx))
+                if k > 0:
+                    back = list(combo)
+                    back[g_idx] -= 1
+                    j = combo_index[tuple(back)]
+                    transitions.append(("beta", i, j, k, g_idx))
+        return transitions
 
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the Markov states."""
@@ -346,62 +378,24 @@ class Na8States(Na, SolverExtension):
         alpha_m, beta_m = self.m_gate(v)
         alpha_h, beta_h = self.h_gate(v)
         y_mat = jnp.reshape(y, (y.shape[0], -1))
-        xi_mat = jnp.reshape(xi, (20, -1))
-        C3, C2, C1, O, I3, I2, I1, I = jnp.maximum(y_mat, 0.0)
+        xi_mat = jnp.reshape(xi, (len(self._edge_transitions), -1))
         N = params[f"{self._name}_N_Na"]
         N_safe = jnp.maximum(N, 1e-12)
 
-        rates = [
-            3 * alpha_m * C3 * N,
-            beta_m * C2 * N,
-            2 * alpha_m * C2 * N,
-            2 * beta_m * C1 * N,
-            alpha_m * C1 * N,
-            3 * beta_m * O * N,
-            3 * alpha_m * I3 * N,
-            beta_m * I2 * N,
-            2 * alpha_m * I2 * N,
-            2 * beta_m * I1 * N,
-            alpha_m * I1 * N,
-            3 * beta_m * I * N,
-            beta_h * C3 * N,
-            alpha_h * I3 * N,
-            beta_h * C2 * N,
-            alpha_h * I2 * N,
-            beta_h * C1 * N,
-            alpha_h * I1 * N,
-            beta_h * O * N,
-            alpha_h * I * N,
-        ]
-
-        nu_list = [
-            jnp.array([-1, +1, 0, 0, 0, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([+1, -1, 0, 0, 0, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, -1, +1, 0, 0, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, +1, -1, 0, 0, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, -1, +1, 0, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, +1, -1, 0, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, 0, -1, +1, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, 0, +1, -1, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, 0, 0, -1, +1, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, 0, 0, +1, -1, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, 0, 0, 0, -1, +1], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, 0, 0, 0, +1, -1], dtype=y_mat.dtype)[:, None],
-            jnp.array([-1, 0, 0, 0, +1, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([+1, 0, 0, 0, -1, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, -1, 0, 0, 0, +1, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, +1, 0, 0, 0, -1, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, -1, 0, 0, 0, +1, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, +1, 0, 0, 0, -1, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, -1, 0, 0, 0, +1], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, +1, 0, 0, 0, -1], dtype=y_mat.dtype)[:, None],
-        ]
-
         dy_noise = jnp.zeros_like(y_mat)
-        for xi_k, rate, nu in zip(xi_mat, rates, nu_list):
+        for xi_k, (direction, i, j, factor, g_idx) in zip(
+            xi_mat, self._edge_transitions
+        ):
+            alpha = alpha_m if g_idx == 0 else alpha_h
+            beta = beta_m if g_idx == 0 else beta_h
+            yi = jnp.maximum(y_mat[i], 0.0)
+            rate = factor * (alpha if direction == "alpha" else beta) * yi * N
+            nu = jnp.zeros((y_mat.shape[0], 1), dtype=y_mat.dtype).at[j, 0].set(1.0).at[
+                i, 0
+            ].add(-1.0)
             amp = jnp.sqrt(jnp.maximum(rate, 0.0)) / N_safe
             dy_noise = dy_noise + amp * xi_k[None, :] * nu
-        return dy_noise
+        return dy_noise.reshape(y.shape)
 
     def update_states(
         self,
@@ -424,7 +418,7 @@ class Na8States(Na, SolverExtension):
         I1 = states[f"{prefix}_I1"]
         I = states[f"{prefix}_I"]
 
-        y0 = jnp.stack([C3, C2, C1, O, I3, I2, I1, I])
+        y0 = jnp.array([C3, C2, C1, O, I3, I2, I1, I])
 
         solver_kind = self.solver_name
         is_sde = solver_kind in ("sde", "sde_implicit", "sde_edges")
@@ -449,10 +443,11 @@ class Na8States(Na, SolverExtension):
                 key = jax.random.fold_in(key, ptr_i)
                 return jax.random.normal(key, shape=(y0.shape[0],))
 
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape (8, n_nodes)
+            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
             args_tuple = (self.diffusion_matrix, v, params, xi)
         elif solver_kind == "sde_edges":
             ptr_key = f"{prefix}_noise_ptr"
+
             seed_arr = jnp.asarray(
                 params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32
             )
@@ -466,9 +461,9 @@ class Na8States(Na, SolverExtension):
             def sample_one(seed_i, ptr_i):
                 key = jax.random.PRNGKey(seed_i)
                 key = jax.random.fold_in(key, ptr_i)
-                return jax.random.normal(key, shape=(20,))
+                return jax.random.normal(key, shape=(len(self._edge_transitions),))
 
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape (20, n_nodes)
+            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches edges
             args_tuple = (self.edge_noise_increment, v, params, xi)
         else:
             args_tuple = (v,)
@@ -546,6 +541,7 @@ class K5States(K, SolverExtension):
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
         prefix = self._name
         self.solver = solver
+        self._edge_transitions = self._build_edge_transitions()
         self.channel_params = {
             f"{prefix}_gK": 35e-3,  # S/cm^2
             f"{prefix}_eK": -77.0,  # mV
@@ -567,6 +563,24 @@ class K5States(K, SolverExtension):
             "species": "squid",
             "ion": "K",
         }
+
+    @staticmethod
+    def _build_edge_transitions():
+        combos = [(0,), (1,), (2,), (3,), (4,)]
+        combo_index = {c: i for i, c in enumerate(combos)}
+        power = 4
+        transitions = []
+        for i, combo in enumerate(combos):
+            k = combo[0]
+            if k < power:
+                forward = (k + 1,)
+                j = combo_index[forward]
+                transitions.append(("alpha", i, j, power - k, 0))
+            if k > 0:
+                back = (k - 1,)
+                j = combo_index[back]
+                transitions.append(("beta", i, j, k, 0))
+        return transitions
 
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the Markov states."""
@@ -622,38 +636,22 @@ class K5States(K, SolverExtension):
         """Edge-based noise increment with one source per directed transition."""
         alpha_n, beta_n = self.n_gate(v)
         y_mat = jnp.reshape(y, (y.shape[0], -1))
-        xi_mat = jnp.reshape(xi, (8, -1))
-        C4, C3, C2, C1, O = jnp.maximum(y_mat, 0.0)
+        xi_mat = jnp.reshape(xi, (len(self._edge_transitions), -1))
         N = params[f"{self._name}_N_K"]
         N_safe = jnp.maximum(N, 1e-12)
 
-        rates = [
-            4 * alpha_n * C4 * N,
-            beta_n * C3 * N,
-            3 * alpha_n * C3 * N,
-            2 * beta_n * C2 * N,
-            2 * alpha_n * C2 * N,
-            3 * beta_n * C1 * N,
-            alpha_n * C1 * N,
-            4 * beta_n * O * N,
-        ]
-
-        nu_list = [
-            jnp.array([-1, +1, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([+1, -1, 0, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, -1, +1, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, +1, -1, 0, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, -1, +1, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, +1, -1, 0], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, -1, +1], dtype=y_mat.dtype)[:, None],
-            jnp.array([0, 0, 0, +1, -1], dtype=y_mat.dtype)[:, None],
-        ]
-
         dy_noise = jnp.zeros_like(y_mat)
-        for xi_k, rate, nu in zip(xi_mat, rates, nu_list):
+        for xi_k, (direction, i, j, factor, _g_idx) in zip(
+            xi_mat, self._edge_transitions
+        ):
+            yi = jnp.maximum(y_mat[i], 0.0)
+            rate = factor * (alpha_n if direction == "alpha" else beta_n) * yi * N
+            nu = jnp.zeros((y_mat.shape[0], 1), dtype=y_mat.dtype).at[j, 0].set(1.0).at[
+                i, 0
+            ].add(-1.0)
             amp = jnp.sqrt(jnp.maximum(rate, 0.0)) / N_safe
             dy_noise = dy_noise + amp * xi_k[None, :] * nu
-        return dy_noise
+        return dy_noise.reshape(y.shape)
 
     def update_states(
         self,
@@ -673,7 +671,7 @@ class K5States(K, SolverExtension):
         C1 = states[f"{prefix}_C1"]
         O = states[f"{prefix}_O"]
 
-        y0 = jnp.stack([C4, C3, C2, C1, O])
+        y0 = jnp.array([C4, C3, C2, C1, O])
 
         solver_kind = self.solver_name
         is_sde = solver_kind in ("sde", "sde_implicit", "sde_edges")
@@ -697,7 +695,7 @@ class K5States(K, SolverExtension):
                 key = jax.random.fold_in(key, ptr_i)
                 return jax.random.normal(key, shape=(y0.shape[0],))
 
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape (5, n_nodes)
+            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
             args_tuple = (self.diffusion_matrix, v, params, xi)
         elif solver_kind == "sde_edges":
             ptr_key = f"{prefix}_noise_ptr"
@@ -714,9 +712,9 @@ class K5States(K, SolverExtension):
             def sample_one(seed_i, ptr_i):
                 key = jax.random.PRNGKey(seed_i)
                 key = jax.random.fold_in(key, ptr_i)
-                return jax.random.normal(key, shape=(8,))
+                return jax.random.normal(key, shape=(len(self._edge_transitions),))
 
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape (8, n_nodes)
+            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # edge noises
             args_tuple = (self.edge_noise_increment, v, params, xi)
         else:
             args_tuple = (v,)
@@ -855,4 +853,3 @@ class K5StatesAuto(StatesChannel, K):
         p_open = self.open_probability(states)
         gK = params[f"{prefix}_gK"] * p_open  # S/cm^2
         return gK * (v - params[f"{prefix}_eK"])  # S/cm^2 * mV = mA/cm^2
-
