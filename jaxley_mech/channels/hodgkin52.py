@@ -241,6 +241,27 @@ class Na8States(Na, SolverExtension):
                     transitions.append(("beta", i, j, k, g_idx))
         return transitions
 
+    def _sample_xi(self, states, params, size):
+        ptr_key = f"{self._name}_noise_ptr"
+        seed_key = f"{self._name}_noise_seed"
+        ptr = jnp.asarray(states[ptr_key])
+
+        seed_arr = jnp.asarray(params.get(seed_key, 0), dtype=jnp.uint32)
+        seed_vec = (
+            jnp.broadcast_to(seed_arr, ptr.shape).ravel()
+            if seed_arr.ndim == 0
+            else seed_arr.ravel()
+        )
+        ptr_vec = jnp.asarray(ptr, dtype=jnp.uint32).ravel()
+
+        def sample_one(seed_i, ptr_i):
+            key = jax.random.PRNGKey(seed_i)
+            key = jax.random.fold_in(key, ptr_i)
+            return jax.random.normal(key, shape=(size,))
+
+        xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T
+        return xi
+
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the Markov states."""
         C3, C2, C1, O, I3, I2, I1, I = states
@@ -390,9 +411,13 @@ class Na8States(Na, SolverExtension):
             beta = beta_m if g_idx == 0 else beta_h
             yi = jnp.maximum(y_mat[i], 0.0)
             rate = factor * (alpha if direction == "alpha" else beta) * yi * N
-            nu = jnp.zeros((y_mat.shape[0], 1), dtype=y_mat.dtype).at[j, 0].set(1.0).at[
-                i, 0
-            ].add(-1.0)
+            nu = (
+                jnp.zeros((y_mat.shape[0], 1), dtype=y_mat.dtype)
+                .at[j, 0]
+                .set(1.0)
+                .at[i, 0]
+                .add(-1.0)
+            )
             amp = jnp.sqrt(jnp.maximum(rate, 0.0)) / N_safe
             dy_noise = dy_noise + amp * xi_k[None, :] * nu
         return dy_noise.reshape(y.shape)
@@ -421,50 +446,23 @@ class Na8States(Na, SolverExtension):
         y0 = jnp.array([C3, C2, C1, O, I3, I2, I1, I])
 
         solver_kind = self.solver_name
-        is_sde = solver_kind in ("sde", "sde_implicit", "sde_edges")
         y_in = y0
 
-        # Parameters for dynamics
+        uses_noise = solver_kind in ("sde", "sde_implicit", "sde_edges")
+        xi_array = None
+        if uses_noise:
+            xi_size = (
+                len(self._edge_transitions)
+                if solver_kind == "sde_edges"
+                else y0.shape[0]
+            )
+            xi_array = self._sample_xi(states, params, size=xi_size)
+
         if solver_kind in ("sde", "sde_implicit"):
-            ptr_key = f"{prefix}_noise_ptr"
-
-            seed_arr = jnp.asarray(
-                params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32
-            )
-            seed_vec = (
-                jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
-                if seed_arr.ndim == 0
-                else seed_arr.ravel()
-            )
-            ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
-
-            def sample_one(seed_i, ptr_i):
-                key = jax.random.PRNGKey(seed_i)
-                key = jax.random.fold_in(key, ptr_i)
-                return jax.random.normal(key, shape=(y0.shape[0],))
-
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
-            args_tuple = (self.diffusion_matrix, v, params, xi)
+            xi_array = jnp.reshape(xi_array, y_in.shape)
+            args_tuple = (self.diffusion_matrix, v, params, xi_array)
         elif solver_kind == "sde_edges":
-            ptr_key = f"{prefix}_noise_ptr"
-
-            seed_arr = jnp.asarray(
-                params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32
-            )
-            seed_vec = (
-                jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
-                if seed_arr.ndim == 0
-                else seed_arr.ravel()
-            )
-            ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
-
-            def sample_one(seed_i, ptr_i):
-                key = jax.random.PRNGKey(seed_i)
-                key = jax.random.fold_in(key, ptr_i)
-                return jax.random.normal(key, shape=(len(self._edge_transitions),))
-
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches edges
-            args_tuple = (self.edge_noise_increment, v, params, xi)
+            args_tuple = (self.edge_noise_increment, v, params, xi_array)
         else:
             args_tuple = (v,)
 
@@ -582,6 +580,27 @@ class K5States(K, SolverExtension):
                 transitions.append(("beta", i, j, k, 0))
         return transitions
 
+    def _sample_xi(self, states, params, size):
+        ptr_key = f"{self._name}_noise_ptr"
+        seed_key = f"{self._name}_noise_seed"
+        ptr = jnp.asarray(states[ptr_key])
+
+        seed_arr = jnp.asarray(params.get(seed_key, 0), dtype=jnp.uint32)
+        seed_vec = (
+            jnp.broadcast_to(seed_arr, ptr.shape).ravel()
+            if seed_arr.ndim == 0
+            else seed_arr.ravel()
+        )
+        ptr_vec = jnp.asarray(ptr, dtype=jnp.uint32).ravel()
+
+        def sample_one(seed_i, ptr_i):
+            key = jax.random.PRNGKey(seed_i)
+            key = jax.random.fold_in(key, ptr_i)
+            return jax.random.normal(key, shape=(size,))
+
+        xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T
+        return xi
+
     def derivatives(self, t, states, args):
         """Calculate the derivatives for the Markov states."""
         C4, C3, C2, C1, O = states
@@ -646,9 +665,13 @@ class K5States(K, SolverExtension):
         ):
             yi = jnp.maximum(y_mat[i], 0.0)
             rate = factor * (alpha_n if direction == "alpha" else beta_n) * yi * N
-            nu = jnp.zeros((y_mat.shape[0], 1), dtype=y_mat.dtype).at[j, 0].set(1.0).at[
-                i, 0
-            ].add(-1.0)
+            nu = (
+                jnp.zeros((y_mat.shape[0], 1), dtype=y_mat.dtype)
+                .at[j, 0]
+                .set(1.0)
+                .at[i, 0]
+                .add(-1.0)
+            )
             amp = jnp.sqrt(jnp.maximum(rate, 0.0)) / N_safe
             dy_noise = dy_noise + amp * xi_k[None, :] * nu
         return dy_noise.reshape(y.shape)
@@ -674,48 +697,20 @@ class K5States(K, SolverExtension):
         y0 = jnp.array([C4, C3, C2, C1, O])
 
         solver_kind = self.solver_name
-        is_sde = solver_kind in ("sde", "sde_implicit", "sde_edges")
         y_in = y0
 
         # Parameters for dynamics
+        uses_noise = solver_kind in ("sde", "sde_implicit", "sde_edges")
+        xi_array = None
+        if uses_noise:
+            xi_size = (len(self._edge_transitions) if solver_kind == "sde_edges" else y0.shape[0])
+            xi_array = self._sample_xi(states, params, size=xi_size)
+
         if solver_kind in ("sde", "sde_implicit"):
-            ptr_key = f"{prefix}_noise_ptr"
-            seed_arr = jnp.asarray(
-                params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32
-            )
-            seed_vec = (
-                jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
-                if seed_arr.ndim == 0
-                else seed_arr.ravel()
-            )
-            ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
-
-            def sample_one(seed_i, ptr_i):
-                key = jax.random.PRNGKey(seed_i)
-                key = jax.random.fold_in(key, ptr_i)
-                return jax.random.normal(key, shape=(y0.shape[0],))
-
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # shape matches y0
-            args_tuple = (self.diffusion_matrix, v, params, xi)
+            xi_array = jnp.reshape(xi_array, y_in.shape)
+            args_tuple = (self.diffusion_matrix, v, params, xi_array)
         elif solver_kind == "sde_edges":
-            ptr_key = f"{prefix}_noise_ptr"
-            seed_arr = jnp.asarray(
-                params.get(f"{prefix}_noise_seed", 0), dtype=jnp.uint32
-            )
-            seed_vec = (
-                jnp.broadcast_to(seed_arr, states[ptr_key].shape).ravel()
-                if seed_arr.ndim == 0
-                else seed_arr.ravel()
-            )
-            ptr_vec = jnp.asarray(states[ptr_key], dtype=jnp.uint32).ravel()
-
-            def sample_one(seed_i, ptr_i):
-                key = jax.random.PRNGKey(seed_i)
-                key = jax.random.fold_in(key, ptr_i)
-                return jax.random.normal(key, shape=(len(self._edge_transitions),))
-
-            xi = jax.vmap(sample_one)(seed_vec, ptr_vec).T  # edge noises
-            args_tuple = (self.edge_noise_increment, v, params, xi)
+            args_tuple = (self.edge_noise_increment, v, params, xi_array)
         else:
             args_tuple = (v,)
 
