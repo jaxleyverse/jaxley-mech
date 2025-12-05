@@ -277,13 +277,13 @@ class StatesChannel(Channel, SolverExtension):
         y_in = y0
 
         solver_kind = self.solver_name
-        uses_noise = solver_kind in ("sde", "sde_implicit", "sde_edge", "sde_edges")
+        uses_noise = solver_kind in ("sde", "sde_implicit", "sde_edges")
         xi_array: Optional[jnp.ndarray] = None
         if uses_noise:
             if xi is None:
                 xi_size = (
                     len(self._transitions)
-                    if solver_kind in ("sde_edge", "sde_edges")
+                    if solver_kind == "sde_edges"
                     else len(self.state_keys)
                 )
                 xi = self.sample_xi(states, params, size=xi_size)
@@ -294,7 +294,7 @@ class StatesChannel(Channel, SolverExtension):
                 raise ValueError("Noise term required for stochastic solver.")
             xi_array = jnp.reshape(xi_array, y_in.shape)
             args_tuple = (self.diffusion_matrix, v, params, xi_array)
-        elif solver_kind in ("sde_edge", "sde_edges"):
+        elif solver_kind == "sde_edges":
             if xi_array is None:
                 raise ValueError("Noise term required for stochastic solver.")
             args_tuple = (self.edge_noise_increment, v, params, xi_array)

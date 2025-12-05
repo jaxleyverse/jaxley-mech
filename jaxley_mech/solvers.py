@@ -23,7 +23,7 @@ class SolverExtension:
 
         if solver is None:
             raise ValueError(
-                "Solver must be specified (`newton`, `explicit`, `rk45`, `sde`, `sde_edge`, `sde_edges`, `sde_implicit`, and `diffrax_implicit`)."
+                "Solver must be specified (`newton`, `explicit`, `rk45`, `sde`, `sde_edges`, `sde_implicit`, and `diffrax_implicit`)."
             )
         elif solver == "diffrax_implicit":
             self.term = ODETerm(self.derivatives)
@@ -52,8 +52,7 @@ class SolverExtension:
             "explicit": explicit_euler,
             "diffrax_implicit": self._diffrax_implicit_wrapper,
             "sde": self._sde_wrapper,
-            "sde_edge": self._sde_edge_wrapper,
-            "sde_edges": self._sde_edge_wrapper,
+            "sde_edges": self._sde_edges_wrapper,
             "sde_implicit": self._sde_implicit_wrapper,
         }
         if solver not in solvers:
@@ -79,7 +78,7 @@ class SolverExtension:
             y0, dt, derivatives_func, diffusion_func, (v, params, xi)
         )
 
-    def _sde_edge_wrapper(self, y0, dt, derivatives_func, args):
+    def _sde_edges_wrapper(self, y0, dt, derivatives_func, args):
         edge_noise_func, v, params, xi = args
         return sde_euler_maruyama_edges(
             y0, dt, derivatives_func, edge_noise_func, (v, params, xi)
