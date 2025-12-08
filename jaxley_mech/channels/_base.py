@@ -12,7 +12,16 @@ from jaxley_mech.solvers import SolverExtension
 
 
 class StatesChannel(Channel, SolverExtension):
-    """Mixin for HH-style Markov chains built from independent two-state gates."""
+    """Mixin for HH-style Markov chains built from independent two-state gates.
+
+    Mathematically, this is the Fox–Lu / Goldwyn–Shea-Brown Markov SDE
+    for channel fractions y(t) (Na or K) (Goldwyn & Shea-Brown 2011, Eq. (6)–(7)):
+
+        dy = A(V) y dt + S(V, y) dW(t),
+
+    where A(V) is the Markov generator (drift from the HH rates) and
+    S@S^T = D(V, y) is the diffusion matrix from the system-size expansion.
+    """
 
     def __init__(
         self,
@@ -31,8 +40,25 @@ class StatesChannel(Channel, SolverExtension):
         """
         Args:
             gate_specs: list of (gate_name, power, gate_fn) where gate_fn returns (alpha, beta).
-            count_param: parameter name for channel count N (Fox–Lu scaling).
+
+                Each gate g has:
+                    power p   ~ HH exponent (e.g. 3 for m^3)
+                    gate_fn(v) -> (α_g(V), β_g(V))
+                These α,β are the HH subunit transition rates; they appear in the
+                Markov generator A(V) and diffusion matrix D(V,y).
+
+            count_param: parameter name for channel count N (Fox–Lu system size).
+                N is the number of channels of this type in the compartment; the
+                diffusion matrix scales like 1/N (Goldwyn Eq. (12)–(13)).
+
             shield_mask: optional {0,1} mask to drop edge noise sources (stochastic shielding).
+                Used in the edge-based noise decomposition (Pu & Thomas, Eqs. (3.4)–(3.6)).
+
+        This constructor:
+          • builds the Markov state space (combinations of open subunits),
+          • enumerates directed edges (transitions) with appropriate combinatorial factors,
+          • initializes fractions in the fully-closed state (y ≈ [1, 0, ..., 0]),
+          • sets N and noise_seed defaults.
         """
         # Ensure base solver setup happens first so solver_func is available.
         SolverExtension.__init__(self, solver, rtol, atol, max_steps)
@@ -45,10 +71,14 @@ class StatesChannel(Channel, SolverExtension):
 
         self._gate_names = [g for g, _, _ in gate_specs]
         self._powers = [p for _, p, _ in gate_specs]
+
+        # Enumerate channel configurations as tuples of (#open subunits per gate).
+        # This is Fox–Lu's y(t) or x(t): fractions in each configuration
+        # (Goldwyn & Shea-Brown, lines 247–251 on p.4).
         combos: List[Tuple[int, ...]] = list(
             product(*[range(p + 1) for p in self._powers])
         )
-        # For HH-style m^p with a single h-gate, order h-open states first (C*,O), then h-closed (I*).
+        # For Na-type m^p h: reorder so that h-open states (C*,O) come first (C3,C2,C1,O, then I3,...).
         if (
             state_key_fn is None
             and len(self._powers) == 2
@@ -58,6 +88,7 @@ class StatesChannel(Channel, SolverExtension):
             combos = sorted(combos, key=lambda c: (-c[1], c[0]))
         self._state_combos = combos
         self._combo_to_idx = {combo: i for i, combo in enumerate(self._state_combos)}
+        # Human-readable state names (C3,C2,C1,O,I3,... or generic s0,s1,...)
         self.state_keys = [
             state_key_fn(combo, i)
             if state_key_fn is not None
@@ -67,13 +98,25 @@ class StatesChannel(Channel, SolverExtension):
         self.open_state_idx = self._combo_to_idx[tuple(self._powers)]
         closed_idx = self._combo_to_idx[tuple(0 for _ in self._powers)]
 
-        # Precompute binomial coefficients for steady-state distribution.
+        # Binomial coefficients for the steady-state distribution on Markov states,
+        # matching the combinatorics of independent 2-state gates (cf. Goldwyn Eq. (10)–(13):
+        # stationary fractions in each configuration are binomial in m,h,n).
         self._binom_coeffs = [
             math.prod(math.comb(power, k) for power, k in zip(self._powers, combo))
             for combo in self._state_combos
         ]
 
-        # Precompute transitions (direction, src, dst, factor, gate_idx).
+        # Precompute directed transitions between Markov states.
+        # Each entry: (direction, i, j, factor, gate_idx)
+        #   direction: "alpha" (opening) or "beta" (closing)
+        #   i -> j: source and destination Markov states
+        #   factor: number of identically-behaving subunits that can flip
+        #   gate_idx: which gate (m,h,n,...) this transition uses
+        #
+        # These transitions define:
+        #   • the generator A(V) (drift) via sums of ν_r k_r(V) y_i,
+        #   • the diffusion D(V,y) via sums of ν_r ν_r^T k_r(V) y_i / N,
+        # as in Fox & Lu's system-size expansion (see their K_p(Y), D_pq(Y), Eqs. (22),(24),(27)).
         transitions = []
         for i, combo in enumerate(self._state_combos):
             for g_idx, (_, power, _) in enumerate(gate_specs):
@@ -89,6 +132,7 @@ class StatesChannel(Channel, SolverExtension):
                     j = self._combo_to_idx[tuple(back)]
                     transitions.append(("beta", i, j, k, g_idx))
         self._transitions = transitions
+        # Optional stochastic shielding mask: drop noise on some edges (Pu & Thomas / Schmidt & Galán).
         self._shield_mask = None
         if shield_mask is not None:
             mask_array = jnp.asarray(shield_mask)
@@ -103,15 +147,18 @@ class StatesChannel(Channel, SolverExtension):
         if self.channel_params is None:
             self.channel_params = {}
 
+        # Initialize y to fully-closed state: y_closed ≈ 1, others 0.
         for idx, key in enumerate(self.state_keys):
             self.channel_states.setdefault(key, 1.0 if idx == closed_idx else 0.0)
         self.channel_states.setdefault(self.noise_ptr_key, 0)
-        # This is the actual number of channels in the compartment (not an arbitrary noise scale).
+        # N = channel count (system size) used for 1/N diffusion scaling (Fox & Lu).
         self.channel_params.setdefault(self.count_param, 1e4)
+        # Base seed for Brownian path W(t) in the SDE dy = A y dt + S dW.
         self.channel_params.setdefault(self.noise_seed_param, 0)
 
     # --- Helpers -----------------------------------------------------
     def _gate_rates(self, v: float) -> List[Tuple[float, float]]:
+        # Returns [(α_g(V), β_g(V))] for each gate, the HH subunit rates used in A(V) and D(V,y).
         return [gate_fn(v) for _, _, gate_fn in self.gate_specs]
 
     def _default_state_key(self, combo: Tuple[int, ...]) -> str:
@@ -191,6 +238,15 @@ class StatesChannel(Channel, SolverExtension):
         return states[self.state_keys[self.open_state_idx]]
 
     def steady_state_distribution(self, v: float) -> jnp.ndarray:
+        """
+        Compute binomial steady-state distribution over Markov states for fixed V.
+
+        This is the Markov-chain analogue of Goldwyn Eq. (10)–(13): at fixed voltage,
+        the fraction of channels in each configuration is binomial in the gate open
+        probabilities p_g(V) = α_g / (α_g + β_g).  For example, for K (n^4):
+            E[fraction open K] = n^4
+            Var[fraction open K] = n^4 (1 - n^4) / N_K.
+        """
         gate_ps = []
         for (_, power, _), (alpha, beta) in zip(self.gate_specs, self._gate_rates(v)):
             p = alpha / (alpha + beta + 1e-12)
@@ -207,29 +263,53 @@ class StatesChannel(Channel, SolverExtension):
 
     # --- Dynamics ----------------------------------------------------
     def drift(self, t: float, y: jnp.ndarray, args: Tuple) -> jnp.ndarray:
+        """
+        Deterministic drift: dy/dt = A(V) y.
+
+        This is the A(V) y term in Goldwyn Eq. (6),(7), and Fox & Lu's R(Y)
+        (cf. Eq. (22),(26)): for each reaction r: i→j,
+
+            dy/dt += ν_r * k_r(V) * y_i
+
+        where ν_r = e_j - e_i is the stoichiometric vector, and k_r(V) is an
+        α or β rate times a combinatorial factor.
+        """
         v = args[0]
         gate_rates = self._gate_rates(v)
         dydt = jnp.zeros_like(y)
 
         for direction, i, j, factor, g_idx in self._transitions:
             alpha, beta = gate_rates[g_idx]
-            yi = jnp.maximum(y[i], 0.0)
-            rate = factor * (alpha if direction == "alpha" else beta) * yi
-            dydt = dydt.at[i].add(-rate)
-            dydt = dydt.at[j].add(rate)
+            rate = factor * (alpha if direction == "alpha" else beta) * y[i]
+            # Stoichiometry ν_r = e_j - e_i
+            nu = jnp.zeros_like(y).at[j].set(1.0).at[i].add(-1.0)
+            dydt = dydt + rate * nu
         return dydt
 
-    def diffuse(self, y: jnp.ndarray, v: float, params: Dict[str, jnp.ndarray]):
+    def diffusion_matrix(
+        self, y: jnp.ndarray, v: float, params: Dict[str, jnp.ndarray]
+    ):
+        """
+        Diffusion matrix D(y,V) for fractions y (Fox–Lu system-size expansion).
+
+        From the van Kampen / Fox–Lu expansion, for fractions y = n/N:
+            D(y,V) = (1/N) Σ_r k_r(V) y_{i_r} ν_r ν_r^T,
+        where the sum is over reactions r (edges i→j),
+        k_r(V) comes from α/β and combinatorial factors, and ν_r = e_j - e_i.
+
+        This D(y,V) is the diffusion matrix whose square root S(y,V) appears in
+        Goldwyn Eq. (6),(7): dy = A(V) y dt + S(V,y) dW(t), with S S^T = D.
+        """
         gate_rates = self._gate_rates(v)
         D = jnp.zeros((len(self.state_keys), len(self.state_keys)), dtype=y.dtype)
         N = params[self.count_param]
 
         for direction, i, j, factor, g_idx in self._transitions:
             alpha, beta = gate_rates[g_idx]
-            yi = jnp.maximum(y[i], 0.0)
-            rate = factor * (alpha if direction == "alpha" else beta) * yi
+            rate = factor * (alpha if direction == "alpha" else beta) * y[i]
             nu = jnp.zeros_like(y).at[j].set(1.0).at[i].add(-1.0)
-            D = D + rate * jnp.outer(nu, nu)
+            # Add contribution rate * ν_r ν_r^T
+            D += jnp.maximum(rate, 0.0) * jnp.outer(nu, nu)
 
         return D / jnp.maximum(N, 1e-12)
 
@@ -254,9 +334,8 @@ class StatesChannel(Channel, SolverExtension):
                 continue
             direction, i, j, factor, g_idx = tr
             alpha, beta = gate_rates[g_idx]
-            yi = jnp.maximum(y[i], 0.0)
-            rate = factor * (alpha if direction == "alpha" else beta) * yi
-            amp = jnp.sqrt(jnp.maximum(rate / N, 1e-12))
+            rate = factor * (alpha if direction == "alpha" else beta) * y[i]
+            amp = jnp.sqrt(jnp.maximum(rate, 1e-12) / N)
             nu = jnp.zeros_like(y).at[j].add(1.0).at[i].add(-1.0)
             dy_noise = dy_noise + amp * xi_k * nu
 
@@ -291,7 +370,7 @@ class StatesChannel(Channel, SolverExtension):
             if xi_array is None:
                 raise ValueError("Noise term required for stochastic solver.")
             xi_array = jnp.reshape(xi_array, y_in.shape)
-            args_tuple = (self.diffuse, v, params, xi_array)
+            args_tuple = (self.diffusion_matrix, v, params, xi_array)
         elif solver_kind == "sde_edges":
             if xi_array is None:
                 raise ValueError("Noise term required for stochastic solver.")
