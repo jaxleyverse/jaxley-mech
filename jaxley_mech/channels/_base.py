@@ -206,21 +206,20 @@ class StatesChannel(Channel, SolverExtension):
         return probs / jnp.maximum(probs.sum(), 1e-12)
 
     # --- Dynamics ----------------------------------------------------
-    def derivatives(self, t: float, y: jnp.ndarray, args: Tuple) -> jnp.ndarray:
+    def drift(self, t: float, y: jnp.ndarray, args: Tuple) -> jnp.ndarray:
         v = args[0]
         gate_rates = self._gate_rates(v)
         dydt = jnp.zeros_like(y)
 
         for direction, i, j, factor, g_idx in self._transitions:
             alpha, beta = gate_rates[g_idx]
-            rate = factor * (alpha if direction == "alpha" else beta) * y[i]
+            yi = jnp.maximum(y[i], 0.0)
+            rate = factor * (alpha if direction == "alpha" else beta) * yi
             dydt = dydt.at[i].add(-rate)
             dydt = dydt.at[j].add(rate)
         return dydt
 
-    def diffusion_matrix(
-        self, y: jnp.ndarray, v: float, params: Dict[str, jnp.ndarray]
-    ):
+    def diffuse(self, y: jnp.ndarray, v: float, params: Dict[str, jnp.ndarray]):
         gate_rates = self._gate_rates(v)
         D = jnp.zeros((len(self.state_keys), len(self.state_keys)), dtype=y.dtype)
         N = params[self.count_param]
@@ -228,11 +227,11 @@ class StatesChannel(Channel, SolverExtension):
         for direction, i, j, factor, g_idx in self._transitions:
             alpha, beta = gate_rates[g_idx]
             yi = jnp.maximum(y[i], 0.0)
-            rate = factor * (alpha if direction == "alpha" else beta) * yi * N
+            rate = factor * (alpha if direction == "alpha" else beta) * yi
             nu = jnp.zeros_like(y).at[j].set(1.0).at[i].add(-1.0)
             D = D + rate * jnp.outer(nu, nu)
 
-        return D / jnp.maximum(N**2, 1e-12)
+        return D / jnp.maximum(N, 1e-12)
 
     def edge_noise_increment(
         self,
@@ -256,8 +255,8 @@ class StatesChannel(Channel, SolverExtension):
             direction, i, j, factor, g_idx = tr
             alpha, beta = gate_rates[g_idx]
             yi = jnp.maximum(y[i], 0.0)
-            rate = factor * (alpha if direction == "alpha" else beta) * yi * N
-            amp = jnp.sqrt(rate) / jnp.maximum(N, 1e-12)
+            rate = factor * (alpha if direction == "alpha" else beta) * yi
+            amp = jnp.sqrt(rate / jnp.maximum(N, 1e-12))
 
             nu = jnp.zeros_like(y).at[j].add(1.0).at[i].add(-1.0)
             dy_noise = dy_noise + amp * xi_k * nu
@@ -293,7 +292,7 @@ class StatesChannel(Channel, SolverExtension):
             if xi_array is None:
                 raise ValueError("Noise term required for stochastic solver.")
             xi_array = jnp.reshape(xi_array, y_in.shape)
-            args_tuple = (self.diffusion_matrix, v, params, xi_array)
+            args_tuple = (self.diffuse, v, params, xi_array)
         elif solver_kind == "sde_edges":
             if xi_array is None:
                 raise ValueError("Noise term required for stochastic solver.")
@@ -301,7 +300,7 @@ class StatesChannel(Channel, SolverExtension):
         else:
             args_tuple = (v,)
 
-        y_new = self.solver_func(y_in, dt, self.derivatives, args_tuple)
+        y_new = self.solver_func(y_in, dt, self.drift, args_tuple)
 
         out = {k: val for k, val in zip(self.state_keys, y_new)}
         out[self.noise_ptr_key] = jnp.asarray(states[self.noise_ptr_key]) + 1

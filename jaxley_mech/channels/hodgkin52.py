@@ -28,7 +28,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -65.0,  # mV
         }
         self.channel_states = {}
-        self.current_name = f"i_Leak"
+        self.current_name = f"iLeak"
         self.META = META
 
     def update_states(
@@ -63,7 +63,7 @@ class Na(Channel):
             f"{prefix}_eNa": 55.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
-        self.current_name = f"i_Na"
+        self.current_name = "iNa"
         self.META = META
         self.META.update({"ion": "Na"})
 
@@ -129,7 +129,7 @@ class K(Channel):
             f"{prefix}_eK": -77.0,  # mV
         }
         self.channel_states = {f"{prefix}_n": 0.1}
-        self.current_name = f"i_K"
+        self.current_name = "iK"
         self.META = META
         self.META.update({"ion": "K"})
 
@@ -703,7 +703,11 @@ class K5States(K, SolverExtension):
         uses_noise = solver_kind in ("sde", "sde_implicit", "sde_edges")
         xi_array = None
         if uses_noise:
-            xi_size = (len(self._edge_transitions) if solver_kind == "sde_edges" else y0.shape[0])
+            xi_size = (
+                len(self._edge_transitions)
+                if solver_kind == "sde_edges"
+                else y0.shape[0]
+            )
             xi_array = self._sample_xi(states, params, size=xi_size)
 
         if solver_kind in ("sde", "sde_implicit"):
