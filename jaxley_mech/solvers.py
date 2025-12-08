@@ -302,7 +302,8 @@ def sde_euler_maruyama(
     drift = drift_func(0.0, y0, (v,))
     D = diffusion_func(y0, v, params)
     S = jnp.linalg.cholesky(D + eps * jnp.eye(D.shape[0]))
-    return y0 + drift * dt + S @ xi * jnp.sqrt(dt)
+    noise = S @ xi
+    return y0 + drift * dt + noise * jnp.sqrt(dt)
 
 
 def sde_implicit_euler(

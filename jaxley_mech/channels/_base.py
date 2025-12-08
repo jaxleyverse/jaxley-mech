@@ -256,8 +256,7 @@ class StatesChannel(Channel, SolverExtension):
             alpha, beta = gate_rates[g_idx]
             yi = jnp.maximum(y[i], 0.0)
             rate = factor * (alpha if direction == "alpha" else beta) * yi
-            amp = jnp.sqrt(rate / jnp.maximum(N, 1e-12))
-
+            amp = jnp.sqrt(jnp.maximum(rate / N, 1e-12))
             nu = jnp.zeros_like(y).at[j].add(1.0).at[i].add(-1.0)
             dy_noise = dy_noise + amp * xi_k * nu
 
