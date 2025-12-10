@@ -7,3 +7,4 @@ notebooks/_test*
 
 .DS_Store
 .pytest_cache
+*copy*
