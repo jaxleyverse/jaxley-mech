@@ -39,6 +39,7 @@ class StatesChannel(Channel, SolverExtension):
     ):
         """
         Args:
+            name: Channel name used to prefix generated state keys.
             gate_specs: list of (gate_name, power, gate_fn) where gate_fn returns (alpha, beta).
 
                 Each gate g has:
@@ -53,6 +54,16 @@ class StatesChannel(Channel, SolverExtension):
 
             shield_mask: optional {0,1} mask to drop edge noise sources (stochastic shielding).
                 Used in the edge-based noise decomposition (Pu & Thomas, Eqs. (3.4)–(3.6)).
+
+            solver: Solver to use for ``update_states`` (``sde``, ``sde_edges``,
+                ``sde_implicit``, ``explicit``, etc.).
+            rtol: Relative tolerance passed to implicit and Newton-based solvers.
+            atol: Absolute tolerance passed to implicit and Newton-based solvers.
+            max_steps: Maximum Newton iterations for implicit solvers.
+            noise_seed_param: Parameter name holding the RNG seed for sampling ``xi``.
+            xi_param: Parameter name for optional precomputed noise array.
+            state_key_fn: Optional function ``(combo, idx) -> str`` to override
+                the default state naming convention.
 
         This constructor:
           • builds the Markov state space (combinations of open subunits),
@@ -158,11 +169,27 @@ class StatesChannel(Channel, SolverExtension):
 
     # --- Helpers -----------------------------------------------------
     def _gate_rates(self, v: float) -> List[Tuple[float, float]]:
-        # Returns [(α_g(V), β_g(V))] for each gate, the HH subunit rates used in A(V) and D(V,y).
+        """Evaluate HH subunit rates for each gate at membrane voltage ``v``.
+
+        Args:
+            v: Membrane voltage in the same units expected by the gate functions.
+
+        Returns:
+            A list of ``(alpha, beta)`` pairs ordered to match ``gate_specs``.
+        """
         return [gate_fn(v) for _, _, gate_fn in self.gate_specs]
 
     def _default_state_key(self, combo: Tuple[int, ...]) -> str:
-        """Human-friendly labels for common HH topologies."""
+        """Build a human-readable label for a given Markov configuration.
+
+        Args:
+            combo: Tuple containing the number of open subunits for each gate.
+
+        Returns:
+            String key that names the state using HH-style conventions
+            (e.g., ``C3``/``O``/``I`` for Na or ``Ck``/``O`` for K), or a
+            generic ``s{idx}`` label if no pattern fits.
+        """
         if len(combo) == 1:
             k = combo[0]
             power = self._powers[0]
@@ -191,12 +218,31 @@ class StatesChannel(Channel, SolverExtension):
         return f"{self._name}_s{idx}"
 
     def project_simplex(self, y: jnp.ndarray) -> jnp.ndarray:
+        """Project raw state fractions to the probability simplex.
+
+        Clips negative entries to zero and renormalizes so columns sum to one,
+        guarding against division by zero when the input sums to ~0.
+
+        Args:
+            y: Array of state fractions shaped ``(n_states, ...)``.
+
+        Returns:
+            Array with non-negative entries that sum to one along axis 0.
+        """
         y = jnp.clip(y, 0.0)
         return y / jnp.maximum(y.sum(axis=0, keepdims=True), 1e-12)
 
     @staticmethod
     def channels_from_density(density_per_um2: float, area_um2: float) -> float:
-        """Helper to turn a channel density (channels/um^2) and area (um^2) into an absolute count."""
+        """Convert a surface density into an absolute channel count.
+
+        Args:
+            density_per_um2: Channel density in channels/μm².
+            area_um2: Membrane area in μm².
+
+        Returns:
+            Absolute number of channels for the given area.
+        """
         return density_per_um2 * area_um2
 
     def sample_xi(
@@ -205,7 +251,18 @@ class StatesChannel(Channel, SolverExtension):
         params: Dict[str, jnp.ndarray],
         size: Optional[int] = None,
     ):
-        """Sample xi using noise_seed + noise_ptr or optional precomputed xi sequence."""
+        """Draw or retrieve Gaussian noise for the stochastic solvers.
+
+        Args:
+            states: Current channel states (used for the noise pointer).
+            params: Channel parameters containing either a seed (for on-the-fly
+                sampling) or a precomputed ``xi`` array.
+            size: Optional override for the leading dimension of ``xi``; defaults
+                to ``len(state_keys)``.
+
+        Returns:
+            Array shaped ``(size, batch?)`` containing standard normal samples.
+        """
         xi_size = len(self.state_keys) if size is None else size
         ptr = jnp.asarray(states[self.noise_ptr_key])
         xi_key = self.xi_param
@@ -235,6 +292,14 @@ class StatesChannel(Channel, SolverExtension):
         return xi
 
     def open_probability(self, states: Dict[str, jnp.ndarray]) -> jnp.ndarray:
+        """Return the fraction of channels in the fully open configuration.
+
+        Args:
+            states: Mapping from state keys to fractions.
+
+        Returns:
+            Fraction corresponding to the all-open Markov state.
+        """
         return states[self.state_keys[self.open_state_idx]]
 
     def steady_state_distribution(self, v: float) -> jnp.ndarray:
@@ -246,6 +311,12 @@ class StatesChannel(Channel, SolverExtension):
         probabilities p_g(V) = α_g / (α_g + β_g).  For example, for K (n^4):
             E[fraction open K] = n^4
             Var[fraction open K] = n^4 (1 - n^4) / N_K.
+
+        Args:
+            v: Membrane voltage where the steady state is evaluated.
+
+        Returns:
+            Probability vector over Markov states summing to one.
         """
         gate_ps = []
         for (_, power, _), (alpha, beta) in zip(self.gate_specs, self._gate_rates(v)):
@@ -273,6 +344,14 @@ class StatesChannel(Channel, SolverExtension):
 
         where ν_r = e_j - e_i is the stoichiometric vector, and k_r(V) is an
         α or β rate times a combinatorial factor.
+
+        Args:
+            t: Time (unused, but kept for solver interface compatibility).
+            y: Current state fractions.
+            args: Tuple whose first element is the membrane voltage.
+
+        Returns:
+            Deterministic increment ``dy/dt`` with the same shape as ``y``.
         """
         v = args[0]
         gate_rates = self._gate_rates(v)
@@ -299,6 +378,14 @@ class StatesChannel(Channel, SolverExtension):
 
         This D(y,V) is the diffusion matrix whose square root S(y,V) appears in
         Goldwyn Eq. (6),(7): dy = A(V) y dt + S(V,y) dW(t), with S S^T = D.
+
+        Args:
+            y: Current state fractions.
+            v: Membrane voltage for evaluating α/β rates.
+            params: Channel parameters containing the channel count ``N``.
+
+        Returns:
+            Symmetric diffusion matrix shaped ``(n_states, n_states)``.
         """
         gate_rates = self._gate_rates(v)
         D = jnp.zeros((len(self.state_keys), len(self.state_keys)), dtype=y.dtype)
@@ -323,6 +410,15 @@ class StatesChannel(Channel, SolverExtension):
         """Compute Σ_k s_k(x) * xi_k with one noise source per directed edge.
 
         This is the S * xi term in Pu & Thomas eqs. (3.4)–(3.6).
+
+        Args:
+            y: Current state fractions.
+            v: Membrane voltage for evaluating α/β rates.
+            params: Channel parameters containing the channel count ``N``.
+            xi: Noise array with one entry per directed transition.
+
+        Returns:
+            Stochastic increment matching the shape of ``y``.
         """
         gate_rates = self._gate_rates(v)
         N = params[self.count_param]
@@ -350,6 +446,23 @@ class StatesChannel(Channel, SolverExtension):
         params: Dict[str, jnp.ndarray],
         xi: Optional[jnp.ndarray] = None,
     ):
+        """Advance channel fractions by one time step with chosen solver.
+
+        Dispatches to deterministic or stochastic solvers depending on
+        ``solver_name``; optionally consumes externally provided noise. Updates
+        the internal noise pointer regardless of solver.
+
+        Args:
+            states: Mapping of state keys to current fractions.
+            dt: Time step used by the solver.
+            v: Membrane voltage during the step.
+            params: Channel parameters (rates, counts, seeds, optional ``xi``).
+            xi: Optional precomputed noise array; when omitted, samples via
+                ``sample_xi`` using ``noise_seed_param`` and the noise pointer.
+
+        Returns:
+            New state mapping containing updated fractions and noise pointer.
+        """
         y0 = jnp.stack([states[k] for k in self.state_keys])
         y_in = y0
 
@@ -391,6 +504,17 @@ class StatesChannel(Channel, SolverExtension):
         params: Dict[str, jnp.ndarray],
         delta_t: float,
     ):
+        """Initialize channel fractions to the voltage-dependent steady state.
+
+        Args:
+            states: Unused; included for API compatibility.
+            v: Membrane voltage at which to compute the steady-state occupancy.
+            params: Channel parameters; used for API compatibility.
+            delta_t: Time step (unused).
+
+        Returns:
+            State mapping with steady-state fractions and a reset noise pointer.
+        """
         dist = self.steady_state_distribution(v)
         out = {k: val for k, val in zip(self.state_keys, dist)}
         out[self.noise_ptr_key] = 0

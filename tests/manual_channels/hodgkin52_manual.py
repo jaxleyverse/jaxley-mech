@@ -2,9 +2,8 @@ from typing import Dict, Optional
 
 import jax
 import jax.numpy as jnp
-from jaxley.solver_gate import save_exp, solve_gate_exponential
 
-from jaxley_mech.channels.hodgkin52 import Na, K
+from jaxley_mech.channels.hodgkin52 import K, Na
 from jaxley_mech.solvers import SolverExtension
 
 
@@ -365,8 +364,6 @@ class Na8StatesManual(Na, SolverExtension):
         }
 
 
-
-
 class K5StatesManual(K, SolverExtension):
     """Potassium channel in the formulation of Markov model with 5 states"""
 
@@ -606,5 +603,3 @@ class K5StatesManual(K, SolverExtension):
             f"{prefix}_O": O,
             f"{prefix}_noise_ptr": 0,
         }
-
-
