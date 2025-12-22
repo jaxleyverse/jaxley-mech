@@ -407,4 +407,6 @@ class FeedbackRibbon(Synapse, SolverExtension):
         self.synapse_states[f"{self.prefix}_NHE_active"] = 0.0
         self.synapse_states[f"{self.prefix}_Panx1_active"] = 0.0
         self.synapse_states[f"{self.prefix}_GABA_active"] = 0.0
-        self.synapse_states[f"{self.prefix}_pH_Base_active"] = 1.0 if pHBase_active else 0.0
+        self.synapse_states[f"{self.prefix}_pH_Base_active"] = (
+            1.0 if pHBase_active else 0.0
+        )

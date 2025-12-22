@@ -5,13 +5,9 @@ from typing import Optional
 
 from jax import Array
 from jax.typing import ArrayLike
-
 from jaxley.channels import Channel
-from jaxley.solver_gate import (
-    save_exp,
-    solve_gate_exponential,
-    exponential_euler,
-)
+from jaxley.solver_gate import (exponential_euler, save_exp,
+                                solve_gate_exponential)
 
 # This is an implementation of Pospischil channels:
 # Leak, Na, K, Km, CaT, CaL
@@ -319,8 +315,8 @@ class CaL(Channel):
         """Update state."""
         prefix = self._name
         q, r = states[f"{prefix}_q"], states[f"{prefix}_r"]
-        new_q = solve_gate_exponential(q, delta_t, *self.q_gate(v))
-        new_r = solve_gate_exponential(r, delta_t, *self.r_gate(v))
+        new_q = solve_gate_exponential(q, delta_t, *self.q_gate(voltage))
+        new_r = solve_gate_exponential(r, delta_t, *self.r_gate(voltage))
         return {f"{prefix}_q": new_q, f"{prefix}_r": new_r}
 
     def compute_current(
