@@ -2,14 +2,11 @@ from typing import Dict, Optional, Union
 
 import jax.debug
 import jax.numpy as jnp
+from jax import Array
 from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import (
-    exponential_euler,
-    save_exp,
-    solve_gate_exponential,
-    solve_inf_gate_exponential,
-)
+from jaxley.solver_gate import (exponential_euler, save_exp,
+                                solve_gate_exponential)
 
 META = {
     "cell_type": "horizontal cell",
@@ -35,20 +32,34 @@ class Leak(Channel):
         self.META = META
 
     def update_states(
-        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """No state to update."""
         return {}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Given channel states and voltage, return the current through the channel."""
         prefix = self._name
         gLeak = params[f"{prefix}_gLeak"]  # S/cm^2
-        return gLeak * (v - params[f"{prefix}_eLeak"])  # S/cm^2 * mV = mA/cm^2
+        return gLeak * (voltage - params[f"{prefix}_eLeak"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         return {}
 
@@ -71,34 +82,44 @@ class Na(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
-        dt: float,
-        v: float,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Return the updated states."""
         prefix = self._name
-        dt /= 1000
+        delta_t /= 1000
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        new_m = solve_gate_exponential(m, dt, *Na.m_gate(v))
-        new_h = solve_gate_exponential(h, dt, *Na.h_gate(v))
+        new_m = solve_gate_exponential(m, delta_t, *Na.m_gate(voltage))
+        new_h = solve_gate_exponential(h, delta_t, *Na.h_gate(voltage))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Given channel states and voltage, return the current through the channel."""
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         gNa = params[f"{prefix}_gNa"] * (m**3) * h  # S/cm^2
 
-        return gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
+        return gNa * (voltage - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(v)
-        alpha_h, beta_h = self.h_gate(v)
+        alpha_m, beta_m = self.m_gate(voltage)
+        alpha_h, beta_h = self.h_gate(voltage)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
@@ -138,31 +159,45 @@ class Kdr(Channel):
         self.META.update({"ion": "K"})
 
     def update_states(
-        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update state of gating variables."""
         prefix = self._name
-        dt /= 1000
+        delta_t /= 1000
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        m_new = solve_gate_exponential(m, dt, *self.m_gate(v))
-        h_new = solve_gate_exponential(h, dt, *self.h_gate(v))
+        m_new = solve_gate_exponential(m, delta_t, *self.m_gate(voltage))
+        h_new = solve_gate_exponential(h, delta_t, *self.h_gate(voltage))
         return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Compute the current through the channel."""
         prefix = self._name
         m = states[f"{prefix}_m"]
         h = states[f"{prefix}_h"]
         k_cond = params[f"{prefix}_gKdr"] * m**4 * h  # S/cm^2
-        return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
+        return k_cond * (voltage - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(v)
-        alpha_h, beta_h = self.h_gate(v)
+        alpha_m, beta_m = self.m_gate(voltage)
+        alpha_h, beta_h = self.h_gate(voltage)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
@@ -203,31 +238,45 @@ class Kto(Channel):
         self.META.update({"ion": "K"})
 
     def update_states(
-        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update state of gating variables."""
         prefix = self._name
-        dt /= 1000
+        delta_t /= 1000
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
-        m_new = solve_gate_exponential(m, dt, *self.m_gate(v))
-        h_new = solve_gate_exponential(h, dt, *self.h_gate(v))
+        m_new = solve_gate_exponential(m, delta_t, *self.m_gate(voltage))
+        h_new = solve_gate_exponential(h, delta_t, *self.h_gate(voltage))
         return {f"{prefix}_m": m_new, f"{prefix}_h": h_new}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Compute the current through the channel."""
         prefix = self._name
         m = states[f"{prefix}_m"]
         h = states[f"{prefix}_h"]
         k_cond = params[f"{prefix}_gKto"] * m**3 * h  # S/cm^2
-        return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
+        return k_cond * (voltage - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        alpha_m, beta_m = self.m_gate(v)
-        alpha_h, beta_h = self.h_gate(v)
+        alpha_m, beta_m = self.m_gate(voltage)
+        alpha_h, beta_h = self.h_gate(voltage)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
             f"{prefix}_h": alpha_h / (alpha_h + beta_h),
@@ -267,30 +316,42 @@ class Kar(Channel):
         self.META.update({"ion": "K"})
 
     def update_states(
-        self, states: Dict[str, jnp.ndarray], dt, v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update state of gating variables."""
         prefix = self._name
-        dt /= 1000
-        m_new = self.m_gate(v)
+        delta_t /= 1000
+        m_new = self.m_gate(voltage)
         return {f"{prefix}_m": m_new}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Compute the current through the channel."""
         prefix = self._name
         m = states[f"{prefix}_m"]
         k_cond = params[f"{prefix}_gKar"] * m**5  # S/cm^2
-        return k_cond * (v - params["eK"])  # S/cm^2 * mV = mA/cm^2
+        return k_cond * (voltage - params["eK"])  # S/cm^2 * mV = mA/cm^2
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-        m = self.m_gate(v)
-        return {
-            f"{prefix}_m": m,
-        }
+        m = self.m_gate(voltage)
+        return {f"{prefix}_m": m}
 
     @staticmethod
     def m_gate(v):
@@ -319,33 +380,42 @@ class Ca(Channel):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
-        dt: float,
-        v: float,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Update state of gating variables."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        dt /= 1000  # convert to seconds
-        m_new = solve_gate_exponential(m, dt, *self.m_gate(v))
+        delta_t /= 1000  # convert to seconds
+        m_new = solve_gate_exponential(m, delta_t, *self.m_gate(voltage))
         return {f"{prefix}_m": m_new}
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Compute the current through the channel."""
         prefix = self._name
         m = states[f"{prefix}_m"]
         ca_cond = params[f"{prefix}_gCa"] * m**4  # S/cm^2
-        current = ca_cond * (v - params["eCa"])  # S/cm^2 * mV = mA/cm^2
+        current = ca_cond * (voltage - params["eCa"])  # S/cm^2 * mV = mA/cm^2
         return current
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state such at fixed point of gate dynamics."""
         prefix = self._name
-
-        alpha_m, beta_m = self.m_gate(v)
+        alpha_m, beta_m = self.m_gate(voltage)
         return {
             f"{prefix}_m": alpha_m / (alpha_m + beta_m),
         }
