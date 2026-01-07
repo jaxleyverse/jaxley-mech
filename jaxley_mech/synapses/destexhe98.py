@@ -41,6 +41,8 @@ class AMPA(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
     def update_states(
@@ -187,6 +189,8 @@ class GABAa(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
     def update_states(
@@ -325,6 +329,8 @@ class GABAb(Synapse):
             f"{name}_lastrelease": -1000,  # Time since last release (ms)
             f"{name}_timecount": -1,
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
     def update_states(
@@ -457,6 +463,8 @@ class NMDA(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
     def update_states(
