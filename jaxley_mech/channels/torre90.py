@@ -1,8 +1,8 @@
 from typing import Dict, Optional
 
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
+from jax import Array
 from jax.lax import select
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
@@ -122,10 +122,10 @@ class Phototransduction(Channel, SolverExtension):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
-        dt,
-        v,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
         **kwargs,
     ):
         """Update state of phototransduction variables."""
@@ -185,21 +185,31 @@ class Phototransduction(Channel, SolverExtension):
         }
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Compute the current through the phototransduction channel."""
         prefix = self._name
         cGMP = states[f"{prefix}_cGMP"]
         J_max, K = params[f"{prefix}_J_max"], params[f"{prefix}_K"]
         J = J_max * cGMP**3 / (cGMP**3 + K**3)  # eq(12)
-        current = -J * (1.0 - jnp.exp(v - 8.5) / 17.0)  # from Kamiyama et al. (2009)
+        current = -J * (1.0 - jnp.exp(voltage - 8.5) / 17.0)  # Kamiyama et al. (2009)
 
         current *= 1e-9
         area = 2 * jnp.pi * params["length"] * params["radius"] * 1e-8  # um^2 to cm^2
         current_density = current / area  # mA/cm^2
         return current_density
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         return {

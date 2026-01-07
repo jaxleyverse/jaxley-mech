@@ -4,6 +4,7 @@ import jax.debug
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
+from jax import Array
 from jax.lax import select
 from jaxley.channels import Channel
 
@@ -47,7 +48,7 @@ class Phototransduction(Channel, SolverExtension):
             f"{prefix}_K_GC": 0.5,  # μM, Ca2+ GC affinity
             f"{prefix}_m": 4.0,  # unitless, Ca2+ GC cooperativity
             f"{prefix}_I_dark": 20**3 * 0.01,  # pA, Dark current
-            f"{prefix}_alpha": 1.0, # opsin expression factor used outside mech
+            f"{prefix}_alpha": 1.0,  # opsin expression factor used outside mech
         }
         self.channel_states = {
             f"{prefix}_R": 0.0,
@@ -77,10 +78,10 @@ class Phototransduction(Channel, SolverExtension):
 
     def update_states(
         self,
-        states: Dict[str, jnp.ndarray],
-        dt,
-        v,
-        params: Dict[str, jnp.ndarray],
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
         **kwargs,
     ):
         """Update state of phototransduction variables."""
@@ -114,20 +115,7 @@ class Phototransduction(Channel, SolverExtension):
             states[f"{prefix}_I"],
         )
         y0 = jnp.array([R, P, G, C])
-        args_tuple = (
-            gamma,
-            sigma,
-            phi,
-            eta,
-            beta,
-            k,
-            n,
-            C_dark,
-            I_dark,
-            S,
-            Stim,
-            I
-        )
+        args_tuple = (gamma, sigma, phi, eta, beta, k, n, C_dark, I_dark, S, Stim, I)
 
         y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
         # Unpack the new states
@@ -149,19 +137,29 @@ class Phototransduction(Channel, SolverExtension):
         }
 
     def compute_current(
-        self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
     ):
         """Compute the current through the phototransduction channel."""
         prefix = self._name
         I = -1 * states[f"{prefix}_I"]  # pA
-        I *= 1e-9 # mA
+        I *= 1e-9  # mA
 
         area = 2 * jnp.pi * params["length"] * params["radius"] * 1e-8  # um^2 to cm^2
         current_density = I / area
 
         return current_density
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(
+        self,
+        states: dict[str, Array],
+        params: dict[str, Array],
+        voltage: Array,
+        delta_t: float,
+    ):
         """Initialize the state at fixed point of gate dynamics."""
         prefix = self._name
         eta, phi, G_dark, C_dark, k, n = (

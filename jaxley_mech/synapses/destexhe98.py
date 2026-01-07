@@ -1,5 +1,7 @@
 from typing import Dict, Optional
 
+from jax import Array
+
 import jax.numpy as jnp
 from jax.lax import select
 from jaxley.solver_gate import save_exp
@@ -39,26 +41,39 @@ class AMPA(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Return updated synapse state."""
         # Decrement timecount by delta_t, initialize if first run
         name = self.name
-        timecount = u[f"{name}_timecount"]
+        timecount = synapse_states[f"{name}_timecount"]
         new_timecount = select(
             timecount == -1,
-            params[f"{name}_Cdur"],
+            synapse_params[f"{name}_Cdur"],
             timecount - delta_t,
         )
 
         # Determine whether a new release event should start
-        new_release_condition = (pre_voltage > params[f"{name}_vt_pre"]) & (
-            new_timecount <= -params[f"{name}_deadtime"]
+        new_release_condition = (pre_voltage > synapse_params[f"{name}_vt_pre"]) & (
+            new_timecount <= -synapse_params[f"{name}_deadtime"]
         )
-        Cmax = params[f"{name}_Cmax"]
-        Cdur = params[f"{name}_Cdur"]
-        C = u[f"{name}_C"]
+        Cmax = synapse_params[f"{name}_Cmax"]
+        Cdur = synapse_params[f"{name}_Cdur"]
+        C = synapse_states[f"{name}_C"]
         new_C = select(
             new_release_condition,
             Cmax,
@@ -68,20 +83,20 @@ class AMPA(Synapse):
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.zeros_like(u[f"{name}_lastrelease"]),
-            u[f"{name}_lastrelease"] + delta_t,
+            jnp.zeros_like(synapse_states[f"{name}_lastrelease"]),
+            synapse_states[f"{name}_lastrelease"] + delta_t,
         )
 
         # Compute Rinf and Rtau for static parameters
-        alpha = params[f"{name}_alpha"]
-        beta = params[f"{name}_beta"]
+        alpha = synapse_params[f"{name}_alpha"]
+        beta = synapse_params[f"{name}_beta"]
         R_inf = Cmax * alpha / (Cmax * alpha + beta)
         R_tau = 1 / (alpha * Cmax + beta)
 
         # Determine new_R0: should update when new release starts
-        R0 = u[f"{name}_R0"]
-        R1 = u[f"{name}_R1"]
-        R = u[f"{name}_R"]
+        R0 = synapse_states[f"{name}_R0"]
+        R1 = synapse_states[f"{name}_R1"]
+        R = synapse_states[f"{name}_R"]
         new_R0 = select(
             new_release_condition, R, R0
         )  # Corrected to use previous R0 if no new release
@@ -110,7 +125,18 @@ class AMPA(Synapse):
             f"{name}_R1": new_R1,
         }
 
-    def init_state(self, v, params):
+    def init_state(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Initialize the state."""
         name = self.name
         return {
@@ -121,13 +147,24 @@ class AMPA(Synapse):
             f"{name}_lastrelease": -1000,
         }
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
+    def compute_current(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Compute and return synaptic current."""
         name = self.name
         g_syn = (
-            params[f"{name}_gAMPA"] * u[f"{name}_R"]
+            synapse_params[f"{name}_gAMPA"] * synapse_states[f"{name}_R"]
         )  # multiply with 1000 to convert Siemens to milli Siemens.
-        return g_syn * (post_voltage - params[f"{name}_eAMPA"])
+        return g_syn * (post_voltage - synapse_params[f"{name}_eAMPA"])
 
 
 class GABAa(Synapse):
@@ -152,26 +189,39 @@ class GABAa(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Return updated synapse state."""
         # Decrement timecount by delta_t, initialize if first run
         name = self._name
-        timecount = u[f"{name}_timecount"]
+        timecount = synapse_states[f"{name}_timecount"]
         new_timecount = select(
             timecount == -1,
-            params[f"{name}_Cdur"],
+            synapse_params[f"{name}_Cdur"],
             timecount - delta_t,
         )
 
         # Determine whether a new release event should start
-        new_release_condition = (pre_voltage > params[f"{name}_vt_pre"]) & (
-            new_timecount <= -params[f"{name}_deadtime"]
+        new_release_condition = (pre_voltage > synapse_params[f"{name}_vt_pre"]) & (
+            new_timecount <= -synapse_params[f"{name}_deadtime"]
         )
-        Cmax = params[f"{name}_Cmax"]
-        Cdur = params[f"{name}_Cdur"]
-        C = u[f"{name}_C"]
+        Cmax = synapse_params[f"{name}_Cmax"]
+        Cdur = synapse_params[f"{name}_Cdur"]
+        C = synapse_states[f"{name}_C"]
         new_C = select(
             new_release_condition,
             Cmax,
@@ -181,20 +231,20 @@ class GABAa(Synapse):
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.zeros_like(u[f"{name}_lastrelease"]),
-            u[f"{name}_lastrelease"] + delta_t,
+            jnp.zeros_like(synapse_states[f"{name}_lastrelease"]),
+            synapse_states[f"{name}_lastrelease"] + delta_t,
         )
 
         # Compute Rinf and Rtau for static parameters
-        alpha = params[f"{name}_alpha"]
-        beta = params[f"{name}_beta"]
+        alpha = synapse_params[f"{name}_alpha"]
+        beta = synapse_params[f"{name}_beta"]
         R_inf = Cmax * alpha / (Cmax * alpha + beta)
         R_tau = 1 / (alpha * Cmax + beta)
 
         # Determine new_R0: should update when new release starts
-        R0 = u[f"{name}_R0"]
-        R1 = u[f"{name}_R1"]
-        R = u[f"{name}_R"]
+        R0 = synapse_states[f"{name}_R0"]
+        R1 = synapse_states[f"{name}_R1"]
+        R = synapse_states[f"{name}_R"]
         new_R0 = select(
             new_release_condition, R, R0
         )  # Corrected to use previous R if no new release
@@ -234,13 +284,24 @@ class GABAa(Synapse):
             f"{name}_lastrelease": -1000,
         }
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
+    def compute_current(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Compute and return synaptic current."""
         name = self._name
         g_syn = (
-            params[f"{name}_gGABAa"] * u[f"{name}_R"]
+            synapse_params[f"{name}_gGABAa"] * synapse_states[f"{name}_R"]
         )  # multiply with 1000 to convert Siemens to milli Siemens.
-        return g_syn * (post_voltage - params[f"{name}_eGABAa"])
+        return g_syn * (post_voltage - synapse_params[f"{name}_eGABAa"])
 
 
 class GABAb(Synapse):
@@ -268,26 +329,39 @@ class GABAb(Synapse):
             f"{name}_lastrelease": -1000,  # Time since last release (ms)
             f"{name}_timecount": -1,
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Return updated synapse state."""
         # Decrement timecount by delta_t, initialize if first run
         name = self._name
-        timecount = u[f"{name}_timecount"]
+        timecount = synapse_states[f"{name}_timecount"]
         new_timecount = select(
             timecount == -1,
-            params[f"{name}_Cdur"],
+            synapse_params[f"{name}_Cdur"],
             timecount - delta_t,
         )
 
         # Determine whether a new release event should start
-        new_release_condition = (pre_voltage > params[f"{name}_vt_pre"]) & (
-            new_timecount <= -params[f"{name}_deadtime"]
+        new_release_condition = (pre_voltage > synapse_params[f"{name}_vt_pre"]) & (
+            new_timecount <= -synapse_params[f"{name}_deadtime"]
         )
-        Cmax = params[f"{name}_Cmax"]
-        Cdur = params[f"{name}_Cdur"]
-        C = u[f"{name}_C"]
+        Cmax = synapse_params[f"{name}_Cmax"]
+        Cdur = synapse_params[f"{name}_Cdur"]
+        C = synapse_states[f"{name}_C"]
         new_C = select(
             new_release_condition,
             Cmax,
@@ -297,17 +371,17 @@ class GABAb(Synapse):
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.zeros_like(u[f"{name}_lastrelease"]),
-            u[f"{name}_lastrelease"] + delta_t,
+            jnp.zeros_like(synapse_states[f"{name}_lastrelease"]),
+            synapse_states[f"{name}_lastrelease"] + delta_t,
         )
 
         # Update receptor (R) and G-protein (G) fractions
-        R = u[f"{name}_R"]
-        G = u[f"{name}_G"]
-        K1 = params[f"{name}_K1"]
-        K2 = params[f"{name}_K2"]
-        K3 = params[f"{name}_K3"]
-        K4 = params[f"{name}_K4"]
+        R = synapse_states[f"{name}_R"]
+        G = synapse_states[f"{name}_G"]
+        K1 = synapse_params[f"{name}_K1"]
+        K2 = synapse_params[f"{name}_K2"]
+        K3 = synapse_params[f"{name}_K3"]
+        K4 = synapse_params[f"{name}_K4"]
         new_R = R + delta_t * (K1 * C * (1 - R) - K2 * R)
         new_G = G + delta_t * (K3 * R - K4 * G)
 
@@ -323,7 +397,18 @@ class GABAb(Synapse):
             f"{name}_timecount": new_timecount,
         }
 
-    def init_state(self, v, params):
+    def init_state(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Initialize the state."""
         name = self._name
         return {
@@ -334,14 +419,25 @@ class GABAb(Synapse):
             f"{name}_timecount": -1,
         }
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
+    def compute_current(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Compute and return synaptic current."""
         name = self._name
-        KD = params[f"{name}_KD"]
-        n = params[f"{name}_n"]
-        Gn = u[f"{name}_G"] ** n
-        g_syn = params[f"{name}_gGABAb"] * Gn / (Gn + KD)  # Convert S to mS
-        return g_syn * (post_voltage - params[f"{name}_eGABAb"])
+        KD = synapse_params[f"{name}_KD"]
+        n = synapse_params[f"{name}_n"]
+        Gn = synapse_states[f"{name}_G"] ** n
+        g_syn = synapse_params[f"{name}_gGABAb"] * Gn / (Gn + KD)  # Convert S to mS
+        return g_syn * (post_voltage - synapse_params[f"{name}_eGABAb"])
 
 
 class NMDA(Synapse):
@@ -367,26 +463,39 @@ class NMDA(Synapse):
             f"{name}_R0": 0,  # R at start of release
             f"{name}_R1": 0,  # R at end of release
         }
+        self.node_params = {}
+        self.node_states = {}
         self.META = META
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Return updated synapse state."""
         # Decrement timecount by delta_t, initialize if first run
         name = self._name
-        timecount = u[f"{name}_timecount"]
+        timecount = synapse_states[f"{name}_timecount"]
         new_timecount = select(
             timecount == -1,
-            params[f"{name}_Cdur"],
+            synapse_params[f"{name}_Cdur"],
             timecount - delta_t,
         )
 
         # Determine whether a new release event should start
-        new_release_condition = (pre_voltage > params[f"{name}_vt_pre"]) & (
-            new_timecount <= -params[f"{name}_deadtime"]
+        new_release_condition = (pre_voltage > synapse_params[f"{name}_vt_pre"]) & (
+            new_timecount <= -synapse_params[f"{name}_deadtime"]
         )
-        Cmax = params[f"{name}_Cmax"]
-        Cdur = params[f"{name}_Cdur"]
-        C = u[f"{name}_C"]
+        Cmax = synapse_params[f"{name}_Cmax"]
+        Cdur = synapse_params[f"{name}_Cdur"]
+        C = synapse_states[f"{name}_C"]
         new_C = select(
             new_release_condition,
             Cmax,
@@ -396,16 +505,16 @@ class NMDA(Synapse):
         # Update lastrelease time: reset if new release starts, otherwise unchanged
         new_lastrelease = select(
             new_release_condition,
-            jnp.zeros_like(u[f"{name}_lastrelease"]),
-            u[f"{name}_lastrelease"] + delta_t,
+            jnp.zeros_like(synapse_states[f"{name}_lastrelease"]),
+            synapse_states[f"{name}_lastrelease"] + delta_t,
         )
 
         # Compute new_R0 and new_R1 based on the receptor dynamics
-        R0 = u[f"{name}_R0"]
-        R1 = u[f"{name}_R1"]
-        R = u[f"{name}_R"]
-        alpha = params[f"{name}_alpha"]
-        beta = params[f"{name}_beta"]
+        R0 = synapse_states[f"{name}_R0"]
+        R1 = synapse_states[f"{name}_R1"]
+        R = synapse_states[f"{name}_R"]
+        alpha = synapse_params[f"{name}_alpha"]
+        beta = synapse_params[f"{name}_beta"]
         Rinf = Cmax * alpha / (Cmax * alpha + beta)
         Rtau = 1 / (alpha * Cmax + beta)
         new_R0 = select(new_release_condition, R, R0)
@@ -432,7 +541,18 @@ class NMDA(Synapse):
             f"{name}_R1": new_R1,
         }
 
-    def init_state(self, v, params):
+    def init_state(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Initialize the state."""
         name = self._name
         return {
@@ -444,13 +564,24 @@ class NMDA(Synapse):
             f"{name}_timecount": -1,
         }
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
+    def compute_current(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Compute and return synaptic current."""
         name = self._name
-        R = u[f"{name}_R"]
-        B = self.mgblock(post_voltage, params[f"{name}_mg"])
-        g_syn = params[f"{name}_gNMDA"] * R * B
-        return g_syn * (post_voltage - params[f"{name}_eNMDA"])
+        R = synapse_states[f"{name}_R"]
+        B = self.mgblock(post_voltage, synapse_params[f"{name}_mg"])
+        g_syn = synapse_params[f"{name}_gNMDA"] * R * B
+        return g_syn * (post_voltage - synapse_params[f"{name}_eNMDA"])
 
     @staticmethod
     def mgblock(v, mg_concentration):

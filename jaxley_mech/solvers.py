@@ -134,7 +134,7 @@ def newton(
         return y - y_prev - dt * derivatives_func(None, y, *args)
 
     def body_fun(
-        carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool]
+        carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool],
     ) -> Tuple[jnp.ndarray, jnp.ndarray, int, bool]:
         y, y_prev, i, _ = carry
 
