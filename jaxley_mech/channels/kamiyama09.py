@@ -312,14 +312,14 @@ class Kv(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 5 * (100 - v) / (save_exp((100 - v) / 42) - 1)
         beta = 9 * save_exp(-(v - 20) / 40)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.15 * save_exp(-v / 22)
         beta = 0.4125 / (save_exp((10 - v) / 7) + 1)
         return alpha, beta
@@ -434,7 +434,7 @@ class Hyper(Channel, SolverExtension):
 
     @staticmethod
     def h_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 8 / (save_exp((v + 78) / 14) + 1)
         beta = 18 / (save_exp(-(v + 8) / 19) + 1)
         return alpha, beta
@@ -501,7 +501,7 @@ class Ca(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 3 * (80 - v) / (save_exp((80 - v) / 25.0) - 1)
         beta = 10 / (1 + save_exp((v + 38) / 7.0))
         return alpha, beta
@@ -509,7 +509,7 @@ class Ca(Channel):
     @staticmethod
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         h = save_exp((40 - v) / 18) / (1 + save_exp((40 - v) / 18))
         return h
 
@@ -584,7 +584,7 @@ class CaPump(Channel, SolverExtension):
             v,
         ) = args
 
-        v += 1e-6  # jitter to avoid division by zero
+        v = v + 1e-6  # jitter to avoid division by zero
         iEx = Jex * save_exp(-(v + 14) / 70) * (Cas - Cae) / (Cas - Cae + Kex)
         iEx2 = Jex2 * (Cas - Cae) / (Cas - Cae + Kex2)
 
@@ -783,7 +783,7 @@ class KCa(Channel):
 
     @staticmethod
     def m_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 15 * (80 - v) / (save_exp((80 - v) / 40) - 1)
         beta = 20 * save_exp(-v / 35)
         return alpha, beta
