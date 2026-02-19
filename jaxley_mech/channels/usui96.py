@@ -103,14 +103,14 @@ class Kv(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 400 / (save_exp(-(v - 15) / 36) + 1)
         beta = save_exp(-v / 13)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.0003 * save_exp(-v / 7)
         beta = 0.02 + 80 / (
             save_exp((v + 115) / 15) + 1
@@ -171,7 +171,7 @@ class KA(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         # alpha = 1_200 / (save_exp(-(v - 50) / 28) + 1)
         # beta = 6 * save_exp(-v / 10)
         alpha = 2_400 / (save_exp(-(v - 50) / 28) + 1)
@@ -180,7 +180,7 @@ class KA(Channel):
 
     @staticmethod
     def h_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.045 * save_exp(-v / 13)
         # beta = 75 / ((save_exp(-v + 50) / 15) + 1)
         beta = 75 / (save_exp(-(v + 30) / 15) + 1)
@@ -298,7 +298,7 @@ class Hyper(Channel, SolverExtension):
 
     @staticmethod
     def h_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 3 / (save_exp((v + 110) / 15) + 1)
         beta = 1.5 / (save_exp(-(v + 115) / 15) + 1)
         return alpha, beta
@@ -365,7 +365,7 @@ class Ca(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 12_000 * (120 - v) / (save_exp((120 - v) / 25) - 1)
         beta = 40_000 / (save_exp((v + 68) / 25) + 1)
         return alpha, beta
@@ -373,7 +373,7 @@ class Ca(Channel):
     @staticmethod
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         h = save_exp((50 - v) / 11) / (save_exp((50 - v) / 11) + 1)
         return h
 
@@ -634,7 +634,7 @@ class KCa(Channel):
 
     @staticmethod
     def m_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 100 * (230 - v) / (save_exp((230 - v) / 52) - 1)
         beta = 120 * save_exp(-v / 95)
         return alpha, beta

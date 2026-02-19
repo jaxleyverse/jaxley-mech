@@ -92,7 +92,7 @@ class Kx(Channel):
     @staticmethod
     def n_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 6.6e-4 * save_exp((v + 49.9) / 11.4)
         beta = 6.6e-4 * save_exp(-(v + 49.9) / 11.4)
         return alpha, beta
@@ -142,7 +142,7 @@ class Kv(Channel):
     @staticmethod
     def n_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.005 * (20 - v) / (save_exp((20 - v) / 22) - 1)
         beta = 0.0625 * save_exp(-v / 80)
         return alpha, beta
@@ -254,7 +254,7 @@ class Ca(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.1 * save_exp((v + 10) / 12.0)
         beta = 0.1 * save_exp(-(v + 10) / 12.0)
         return alpha, beta
@@ -262,7 +262,7 @@ class Ca(Channel):
     @staticmethod
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
-        v += 1e-6
+        v = v + 1e-6
         alpha = 5e-4 * save_exp(-(v - 11) / 18.0)
         beta = 0.01 * save_exp((v - 11) / 18.0)
         return alpha, beta

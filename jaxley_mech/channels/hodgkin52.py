@@ -102,14 +102,14 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.1 * (v + 40) / (1 - save_exp(-0.1 * (v + 40)))
         beta = 4 * save_exp(-(v + 65) / 18)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.07 * save_exp(-(v + 65) / 20)
         beta = 1 / (1 + save_exp(-0.1 * (v + 35)))
         return alpha, beta
@@ -159,7 +159,7 @@ class K(Channel):
 
     @staticmethod
     def n_gate(v):
-        v += 1e-6
+        v = v + 1e-6
         alpha = 0.01 * (v + 55) / (1 - save_exp(-(v + 55) / 10))
         beta = 0.125 * save_exp(-(v + 65) / 80)
         return alpha, beta
