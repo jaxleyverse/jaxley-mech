@@ -6,6 +6,7 @@ from jaxley.channels import Channel
 from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 from ..utils import efun
+from ._base import StatesChannel
 
 __all__ = ["Leak", "Na", "K", "KA", "Ca", "CaNernstReversal", "KCa"]
 

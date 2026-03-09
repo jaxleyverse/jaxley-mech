@@ -2,13 +2,10 @@ from typing import Any, Callable, Optional, Tuple
 
 import equinox as eqx
 import jax
-import jax.debug
 import jax.numpy as jnp
 import optimistix as optx
 from diffrax import ImplicitEuler, ODETerm, diffeqsolve
-from jax import lax
 from jax.scipy.linalg import solve
-from jaxley.solver_gate import save_exp
 
 
 ### Solver extensions
@@ -26,7 +23,7 @@ class SolverExtension:
 
         if solver is None:
             raise ValueError(
-                "Solver must be specified (`newton`, `explicit`, `rk45` and `diffrax_implicit`)."
+                "Solver must be specified (`newton`, `explicit`, `rk45`, `sde`, `sde_edges`, `sde_implicit`, and `diffrax_implicit`)."
             )
         elif solver == "diffrax_implicit":
             self.term = ODETerm(self.derivatives)
@@ -54,6 +51,9 @@ class SolverExtension:
             "rk45": rk45,
             "explicit": explicit_euler,
             "diffrax_implicit": self._diffrax_implicit_wrapper,
+            "sde": self._sde_wrapper,
+            "sde_edges": self._sde_edges_wrapper,
+            "sde_implicit": self._sde_implicit_wrapper,
         }
         if solver not in solvers:
             raise ValueError(
@@ -67,6 +67,31 @@ class SolverExtension:
             dt,
             derivatives_func,
             args,
+            rtol=self.solver_args["rtol"],
+            atol=self.solver_args["atol"],
+            max_steps=self.solver_args["max_steps"],
+        )
+
+    def _sde_wrapper(self, y0, dt, derivatives_func, args):
+        diffusion_func, v, params, xi = args
+        return sde_euler_maruyama(
+            y0, dt, derivatives_func, diffusion_func, (v, params, xi)
+        )
+
+    def _sde_edges_wrapper(self, y0, dt, derivatives_func, args):
+        edge_noise_func, v, params, xi = args
+        return sde_euler_maruyama_edges(
+            y0, dt, derivatives_func, edge_noise_func, (v, params, xi)
+        )
+
+    def _sde_implicit_wrapper(self, y0, dt, derivatives_func, args):
+        diffusion_func, v, params, xi = args
+        return sde_implicit_euler(
+            y0,
+            dt,
+            derivatives_func,
+            diffusion_func,
+            (v, params, xi),
             rtol=self.solver_args["rtol"],
             atol=self.solver_args["atol"],
             max_steps=self.solver_args["max_steps"],
@@ -134,7 +159,7 @@ def newton(
         return y - y_prev - dt * derivatives_func(None, y, *args)
 
     def body_fun(
-        carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool]
+        carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool],
     ) -> Tuple[jnp.ndarray, jnp.ndarray, int, bool]:
         y, y_prev, i, _ = carry
 
@@ -249,3 +274,79 @@ def diffrax_implicit(
         term, solver, args=args, t0=0.0, t1=dt, dt0=dt, y0=y0, max_steps=max_steps
     )
     return jnp.squeeze(y_new.ys, axis=0)
+
+
+def sde_euler_maruyama(
+    y0: jnp.ndarray,
+    dt: float,
+    drift_func: Callable[..., jnp.ndarray],
+    diffusion_func: Callable[..., jnp.ndarray],
+    args: Tuple,
+    eps: float = 1e-12,
+) -> jnp.ndarray:
+    """
+    Euler-Maruyama step for SDEs: y_{k+1} = y_k + f(y_k) dt + S(y_k) xi sqrt(dt)
+
+    Parameters:
+    - y0 (jnp.ndarray): Current state vector.
+    - dt (float): Time step size.
+    - drift_func (Callable): Function returning the drift (deterministic derivatives).
+    - diffusion_func (Callable): Function returning the diffusion matrix.
+    - args (Tuple): Expected (v, params, xi) where xi ~ N(0, I) with shape (n_states,).
+    - eps (float): Small diagonal jitter for Cholesky stability.
+
+    Returns:
+    - jnp.ndarray: Updated state vector after one Euler-Maruyama step.
+    """
+    v, params, xi = args
+    drift = drift_func(0.0, y0, (v,))
+    D = diffusion_func(y0, v, params)
+    S = jnp.linalg.cholesky(D + eps * jnp.eye(D.shape[0]))
+    noise = S @ xi
+    return y0 + drift * dt + noise * jnp.sqrt(dt)
+
+
+def sde_implicit_euler(
+    y0: jnp.ndarray,
+    dt: float,
+    drift_func: Callable[..., jnp.ndarray],
+    diffusion_func: Callable[..., jnp.ndarray],
+    args: Tuple,
+    rtol: float = 1e-8,
+    atol: float = 1e-8,
+    max_steps: int = 10,
+    eps: float = 1e-12,
+) -> jnp.ndarray:
+    """
+    Semi-implicit (backward) Euler-Maruyama step: implicit drift, explicit diffusion.
+
+    Solves y = y0 + dt * f(y) + S(y0) xi sqrt(dt) with Newton iterations.
+    """
+    v, params, xi = args
+    D = diffusion_func(y0, v, params)
+    S = jnp.linalg.cholesky(D + eps * jnp.eye(D.shape[0]))
+
+    noise = S @ xi * jnp.sqrt(dt)
+    dt_safe = jnp.maximum(dt, 1e-12)
+
+    def drift_with_noise(_, y, v_arg, noise_dt):
+        return drift_func(0.0, y, (v_arg,)) + noise_dt
+
+    return newton(
+        y0,
+        dt_safe,
+        drift_with_noise,
+        v,
+        noise / dt_safe,
+        rtol=rtol,
+        atol=atol,
+        max_steps=max_steps,
+    )
+
+
+def sde_euler_maruyama_edges(y0, dt, drift_func, edge_noise_func, args):
+    """Euler-Maruyama step with an edge-based rectangular noise matrix."""
+    v, params, xi = args
+    drift = drift_func(0.0, y0, (v,))
+    noise = edge_noise_func(y0, v, params, xi)
+    return y0 + drift * dt + noise * jnp.sqrt(dt)

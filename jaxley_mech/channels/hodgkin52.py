@@ -4,7 +4,7 @@ import jax.numpy as jnp
 from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
-from jaxley_mech.solvers import SolverExtension
+from jaxley_mech.channels._base import StatesChannel
 
 META = {
     "reference": "Hodgkin & Huxley (1952)",
@@ -26,7 +26,7 @@ class Leak(Channel):
             f"{prefix}_eLeak": -65.0,  # mV
         }
         self.channel_states = {}
-        self.current_name = f"i_Leak"
+        self.current_name = f"iLeak"
         self.META = META
 
     def update_states(
@@ -61,7 +61,7 @@ class Na(Channel):
             f"{prefix}_eNa": 55.0,  # mV
         }
         self.channel_states = {f"{prefix}_m": 0.2, f"{prefix}_h": 0.2}
-        self.current_name = f"i_Na"
+        self.current_name = "iNa"
         self.META = META
         self.META.update({"ion": "Na"})
 
@@ -127,7 +127,7 @@ class K(Channel):
             f"{prefix}_eK": -77.0,  # mV
         }
         self.channel_states = {f"{prefix}_n": 0.1}
-        self.current_name = f"i_K"
+        self.current_name = "iK"
         self.META = META
         self.META.update({"ion": "K"})
 
@@ -165,301 +165,90 @@ class K(Channel):
         return alpha, beta
 
 
-class Na8States(Na, SolverExtension):
-    """Sodium channel in the formulation of Markov model with 8 states"""
+class Na8States(StatesChannel, Na):
+    """Na channel with m^3 h gating as an auto-generated 8-state chain."""
 
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: Optional[str] = None,
+        solver: str = "sde_implicit",
         rtol: float = 1e-8,
         atol: float = 1e-8,
         max_steps: int = 10,
+        shield_mask: Optional[jnp.ndarray] = None,
     ):
-        self.current_is_in_mA_per_cm2 = True
-        super().__init__(name)
-        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
-        prefix = self._name
-        self.solver = solver
-        self.channel_params = {
-            f"{prefix}_gNa": 40e-3,  # S/cm^2
-            f"{prefix}_eNa": 55.0,  # mV
-        }
-        # Initialize all states
-        self.channel_states = {
-            f"{prefix}_C3": 1.0,
-            f"{prefix}_C2": 0.0,
-            f"{prefix}_C1": 0.0,
-            f"{prefix}_O": 0,
-            f"{prefix}_I3": 0.0,
-            f"{prefix}_I2": 0.0,
-            f"{prefix}_I1": 0.0,
-            f"{prefix}_I": 0,
-        }
-        self.current_name = f"i_Na"
-        self.META = {
-            "reference": "Armstrong, C. M. (1981).",
-            "doi": "https://doi.org/10.1152/physrev.1981.61.3.644",
-            "species": "squid",
-            "ion": "Na",
-        }
-
-    def derivatives(self, t, states, args):
-        """Calculate the derivatives for the Markov states."""
-        C3, C2, C1, O, I3, I2, I1, I = states
-        v = args[0]
-        alpha_m, beta_m = self.m_gate(v)
-        alpha_h, beta_h = self.h_gate(v)
-
-        # Transitions for activation pathway (C3 -> O)
-        C3_to_C2 = 3 * alpha_m * C3
-        C2_to_C1 = 2 * alpha_m * C2
-        C1_to_O = alpha_m * C1
-
-        O_to_C1 = 3 * beta_m * O
-        C1_to_C2 = 2 * beta_m * C1
-        C2_to_C3 = beta_m * C2
-
-        # Transitions for inactivation pathway (I3 -> I)
-        I3_to_I2 = 3 * alpha_m * I3
-        I2_to_I1 = 2 * alpha_m * I2
-        I1_to_I = alpha_m * I1
-
-        I_to_I1 = 3 * beta_m * I
-        I1_to_I2 = 2 * beta_m * I1
-        I2_to_I3 = beta_m * I2
-
-        # C to I and I to C transitions (C3, C2, C1, O <-> I3, I2, I1, I)
-        C3_to_I3 = beta_h * C3
-        C2_to_I2 = beta_h * C2
-        C1_to_I1 = beta_h * C1
-        O_to_I = beta_h * O
-
-        I3_to_C3 = alpha_h * I3
-        I2_to_C2 = alpha_h * I2
-        I1_to_C1 = alpha_h * I1
-        I_to_O = alpha_h * I
-
-        # Derivatives for each state
-        dC3_dt = C2_to_C3 - C3_to_C2 + I3_to_C3 - C3_to_I3
-        dC2_dt = C3_to_C2 - C2_to_C1 + C1_to_C2 - C2_to_C3 + I2_to_C2 - C2_to_I2
-        dC1_dt = C2_to_C1 - C1_to_O + O_to_C1 - C1_to_C2 + I1_to_C1 - C1_to_I1
-        dO_dt = C1_to_O - O_to_C1 + I_to_O - O_to_I
-
-        dI3_dt = I2_to_I3 - I3_to_I2 + C3_to_I3 - I3_to_C3
-        dI2_dt = I3_to_I2 - I2_to_I1 + I1_to_I2 - I2_to_I3 + C2_to_I2 - I2_to_C2
-        dI1_dt = I2_to_I1 - I1_to_I + I_to_I1 - I1_to_I2 + C1_to_I1 - I1_to_C1
-        dI_dt = I1_to_I - I_to_I1 + O_to_I - I_to_O
-
-        return jnp.array([dC3_dt, dC2_dt, dC1_dt, dO_dt, dI3_dt, dI2_dt, dI1_dt, dI_dt])
-
-    def update_states(
-        self,
-        states: Dict[str, jnp.ndarray],
-        dt: float,
-        v: float,
-        params: Dict[str, jnp.ndarray],
-    ):
-        """Update state."""
+        Na.__init__(self, name)
         prefix = self._name
 
-        # Retrieve states
-        C3 = states[f"{prefix}_C3"]
-        C2 = states[f"{prefix}_C2"]
-        C1 = states[f"{prefix}_C1"]
-        O = states[f"{prefix}_O"]
+        # Remove single-gate states; Markov states live on the simplex.
+        self.channel_states.pop(f"{prefix}_m", None)
+        self.channel_states.pop(f"{prefix}_h", None)
 
-        I3 = states[f"{prefix}_I3"]
-        I2 = states[f"{prefix}_I2"]
-        I1 = states[f"{prefix}_I1"]
-        I = states[f"{prefix}_I"]
+        # Channel-count and noise seed defaults.
+        self.channel_params.setdefault(f"{prefix}_N_Na", 1e4)
+        self.channel_params.setdefault(f"{prefix}_noise_seed", 0)
 
-        y0 = jnp.array([C3, C2, C1, O, I3, I2, I1, I])
-
-        # Parameters for dynamics
-        args_tuple = (v,)
-
-        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
-
-        # Unpack new states
-        C3_new, C2_new, C1_new, O_new, I3_new, I2_new, I1_new, I_new = y_new
-
-        return {
-            f"{prefix}_C3": C3_new,
-            f"{prefix}_C2": C2_new,
-            f"{prefix}_C1": C1_new,
-            f"{prefix}_O": O_new,
-            f"{prefix}_I3": I3_new,
-            f"{prefix}_I2": I2_new,
-            f"{prefix}_I1": I1_new,
-            f"{prefix}_I": I_new,
-        }
+        StatesChannel.__init__(
+            self,
+            name=name,
+            gate_specs=[("m", 3, Na.m_gate), ("h", 1, Na.h_gate)],
+            count_param=f"{prefix}_N_Na",
+            solver=solver,
+            rtol=rtol,
+            atol=atol,
+            max_steps=max_steps,
+            noise_seed_param=f"{prefix}_noise_seed",
+            shield_mask=shield_mask,
+        )
 
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        """Return current."""
         prefix = self._name
-        O = states[f"{prefix}_O"]
-        gNa = params[f"{prefix}_gNa"] * O  # S/cm^2
-        return gNa * (v - params[f"{prefix}_eNa"])
-
-    def init_state(self, states, v, params, delta_t):
-        """Initialize the state to steady-state values."""
-        prefix = self._name
-        alpha_m, beta_m = self.m_gate(v)
-        alpha_h, beta_h = self.h_gate(v)
-
-        m_inf = alpha_m / (alpha_m + beta_m)
-        h_inf = alpha_h / (alpha_h + beta_h)
-
-        # Calculate steady-state probabilities
-        C3 = (1 - m_inf) ** 3 * h_inf
-        C2 = 3 * m_inf * (1 - m_inf) ** 2 * h_inf
-        C1 = 3 * m_inf**2 * (1 - m_inf) * h_inf
-        O = m_inf**3 * h_inf
-        I3 = (1 - m_inf) ** 3 * (1 - h_inf)
-        I2 = 3 * m_inf * (1 - m_inf) ** 2 * (1 - h_inf)
-        I1 = 3 * m_inf**2 * (1 - m_inf) * (1 - h_inf)
-        I = m_inf**3 * (1 - h_inf)
-
-        return {
-            f"{prefix}_C3": C3,
-            f"{prefix}_C2": C2,
-            f"{prefix}_C1": C1,
-            f"{prefix}_O": O,
-            f"{prefix}_I3": I3,
-            f"{prefix}_I2": I2,
-            f"{prefix}_I1": I1,
-            f"{prefix}_I": I,
-        }
+        p_open = self.open_probability(states)
+        gNa = params[f"{prefix}_gNa"] * p_open  # S/cm^2
+        return gNa * (v - params[f"{prefix}_eNa"])  # S/cm^2 * mV = mA/cm^2
 
 
-class K5States(K, SolverExtension):
-    """Potassium channel in the formulation of Markov model with 5 states"""
+class K5States(StatesChannel, K):
+    """K channel with n^4 gating as an auto-generated 5-state chain."""
 
     def __init__(
         self,
         name: Optional[str] = None,
-        solver: Optional[str] = None,
+        solver: str = "sde_implicit",
         rtol: float = 1e-8,
         atol: float = 1e-8,
         max_steps: int = 10,
+        shield_mask: Optional[jnp.ndarray] = None,
     ):
-        super().__init__(name)
-        SolverExtension.__init__(self, solver, rtol, atol, max_steps)
-        prefix = self._name
-        self.solver = solver
-        self.channel_params = {
-            f"{prefix}_gK": 35e-3,  # S/cm^2
-            f"{prefix}_eK": -77.0,  # mV
-        }
-        self.channel_states = {
-            f"{prefix}_C4": 1.0,
-            f"{prefix}_C3": 0,
-            f"{prefix}_C2": 0,
-            f"{prefix}_C1": 0,
-            f"{prefix}_O": 0.0,
-        }
-        self.current_name = f"i_K"
-        self.META = {
-            "reference": "Armstrong, (1969)",
-            "doi": "https://doi.org/10.1085/jgp.54.5.553",
-            "species": "squid",
-            "ion": "K",
-        }
-
-    def derivatives(self, t, states, args):
-        """Calculate the derivatives for the Markov states."""
-        C4, C3, C2, C1, O = states
-        v = args[0]
-        alpha_n, beta_n = self.n_gate(
-            v
-        )  # Use voltage (t) to calculate alpha_n and beta_n
-
-        # Transitions for activation pathway
-        C4_to_C3 = 4 * alpha_n * C4
-        C3_to_C2 = 3 * alpha_n * C3
-        C2_to_C1 = 2 * alpha_n * C2
-        C1_to_O = alpha_n * C1
-
-        O_to_C1 = 4 * beta_n * O
-        C1_to_C2 = 3 * beta_n * C1
-        C2_to_C3 = 2 * beta_n * C2
-        C3_to_C4 = beta_n * C3
-
-        # Derivatives of each state
-        dC4_dt = C3_to_C4 - C4_to_C3
-        dC3_dt = C4_to_C3 - C3_to_C2 - C3_to_C4 + C2_to_C3
-        dC2_dt = C3_to_C2 - C2_to_C1 - C2_to_C3 + C1_to_C2
-        dC1_dt = C2_to_C1 - C1_to_O - C1_to_C2 + O_to_C1
-        dO_dt = C1_to_O - O_to_C1
-
-        return jnp.array([dC4_dt, dC3_dt, dC2_dt, dC1_dt, dO_dt])
-
-    def update_states(
-        self,
-        states: Dict[str, jnp.ndarray],
-        dt,
-        v,
-        params: Dict[str, jnp.ndarray],
-        **kwargs,
-    ):
-        """Update state using the specified solver."""
+        K.__init__(self, name)
         prefix = self._name
 
-        # Retrieve states
-        C4 = states[f"{prefix}_C4"]
-        C3 = states[f"{prefix}_C3"]
-        C2 = states[f"{prefix}_C2"]
-        C1 = states[f"{prefix}_C1"]
-        O = states[f"{prefix}_O"]
+        # Remove single-gate state; Markov states live on the simplex.
+        self.channel_states.pop(f"{prefix}_n", None)
 
-        y0 = jnp.array([C4, C3, C2, C1, O])
+        # Channel-count and noise seed defaults.
+        self.channel_params.setdefault(f"{prefix}_N_K", 1e4)
+        self.channel_params.setdefault(f"{prefix}_noise_seed", 0)
 
-        # Parameters for dynamics
-        args_tuple = (v,)
-
-        y_new = self.solver_func(y0, dt, self.derivatives, args_tuple)
-
-        # Unpack new states
-        C4_new, C3_new, C2_new, C1_new, O_new = y_new
-
-        return {
-            f"{prefix}_C4": C4_new,
-            f"{prefix}_C3": C3_new,
-            f"{prefix}_C2": C2_new,
-            f"{prefix}_C1": C1_new,
-            f"{prefix}_O": O_new,
-        }
+        StatesChannel.__init__(
+            self,
+            name=name,
+            gate_specs=[("n", 4, K.n_gate)],
+            count_param=f"{prefix}_N_K",
+            solver=solver,
+            rtol=rtol,
+            atol=atol,
+            max_steps=max_steps,
+            noise_seed_param=f"{prefix}_noise_seed",
+            shield_mask=shield_mask,
+        )
 
     def compute_current(
         self, states: Dict[str, jnp.ndarray], v, params: Dict[str, jnp.ndarray]
     ):
-        """Return current."""
         prefix = self._name
-        O = states[f"{prefix}_O"]
-        gK = params[f"{prefix}_gK"] * O  # S/cm^2
-        return gK * (v - params[f"{prefix}_eK"])
-
-    def init_state(self, states, v, params, delta_t):
-        """Initialize the state to steady-state values."""
-        prefix = self._name
-        alpha_n, beta_n = self.n_gate(v)
-
-        n_inf = alpha_n / (alpha_n + beta_n)
-
-        # Calculate steady-state probabilities
-        C4 = (1 - n_inf) ** 4
-        C3 = 4 * n_inf * (1 - n_inf) ** 3
-        C2 = 6 * n_inf**2 * (1 - n_inf) ** 2
-        C1 = 4 * n_inf**3 * (1 - n_inf)
-        O = n_inf**4
-
-        return {
-            f"{prefix}_C4": C4,
-            f"{prefix}_C3": C3,
-            f"{prefix}_C2": C2,
-            f"{prefix}_C1": C1,
-            f"{prefix}_O": O,
-        }
+        p_open = self.open_probability(states)
+        gK = params[f"{prefix}_gK"] * p_open  # S/cm^2
+        return gK * (v - params[f"{prefix}_eK"])  # S/cm^2 * mV = mA/cm^2
