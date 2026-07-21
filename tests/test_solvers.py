@@ -68,17 +68,11 @@ def test_diffrax_implicit():
 
     term = ODETerm(simple_derivatives)
     root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
-    diffrax_solver = ImplicitEuler(root_finder=root_finder)
+    diffrax_solver = ImplicitEuler(root_finder=root_finder, root_find_max_steps=300)
 
     # Use the implicit Euler method from diffrax
     y_new = diffrax_implicit(
-        y0,
-        dt,
-        simple_derivatives,
-        args,
-        term=term,
-        solver=diffrax_solver,
-        max_steps=300,
+        y0, dt, simple_derivatives, args, term=term, solver=diffrax_solver
     )
 
     assert jnp.allclose(
@@ -144,16 +138,10 @@ def test_diffrax_implicit_reverse_mode():
         args = ()
         term = ODETerm(simple_derivatives)
         root_finder = optx.Newton(rtol=1e-8, atol=1e-8)
-        diffrax_solver = ImplicitEuler(root_finder=root_finder)
+        diffrax_solver = ImplicitEuler(root_finder=root_finder, root_find_max_steps=300)
         return jnp.sum(
             diffrax_implicit(
-                y0,
-                dt,
-                simple_derivatives,
-                args,
-                term=term,
-                solver=diffrax_solver,
-                max_steps=300,
+                y0, dt, simple_derivatives, args, term=term, solver=diffrax_solver
             )
         )
 
