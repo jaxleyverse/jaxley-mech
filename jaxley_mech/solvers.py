@@ -5,7 +5,7 @@ import jax
 import jax.debug
 import jax.numpy as jnp
 import optimistix as optx
-from diffrax import ImplicitEuler, ODETerm
+import diffrax
 from jax import lax
 from jax.scipy.linalg import solve
 from jaxley.solver_gate import save_exp
@@ -29,9 +29,9 @@ class SolverExtension:
                 "Solver must be specified (`newton`, `explicit`, `rk45` and `diffrax_implicit`)."
             )
         elif solver == "diffrax_implicit":
-            self.term = ODETerm(self.derivatives)
+            self.term = diffrax.ODETerm(self.derivatives)
             root_finder = optx.Newton(rtol=rtol, atol=atol)
-            self.diffrax_solver = ImplicitEuler(
+            self.diffrax_solver = diffrax.ImplicitEuler(
                 root_finder=root_finder, root_find_max_steps=max_steps
             )
 
@@ -227,8 +227,8 @@ def diffrax_implicit(
     dt: float,
     derivatives_func: Callable[..., jnp.ndarray],
     args: Tuple,
-    term: ODETerm,
-    solver: ImplicitEuler,
+    term: diffrax.ODETerm,
+    solver: diffrax.ImplicitEuler,
 ) -> jnp.ndarray:
     """
     Implicit Euler method using diffrax's Newton root-finder for solving ODEs.
@@ -245,5 +245,6 @@ def diffrax_implicit(
     Returns:
     - jnp.ndarray: Updated state vector after one time step using the Implicit Euler method.
     """
-    y_new, _, _, _, _ = solver.step(term, 0.0, dt, y0, args, None, False)
+    y_new, _, _, _, result = solver.step(term, 0.0, dt, y0, args, None, False)
+    y_new = result.error_if(y_new, result != diffrax.RESULTS.successful)
     return y_new

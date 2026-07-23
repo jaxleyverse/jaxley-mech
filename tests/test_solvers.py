@@ -58,7 +58,7 @@ def test_diffrax_implicit():
     """Test the implicit Euler method from diffrax."""
 
     import optimistix as optx
-    from diffrax import ImplicitEuler, ODETerm, diffeqsolve
+    from diffrax import ImplicitEuler, ODETerm
 
     y0 = jnp.array([1.0])
     dt = 0.01
