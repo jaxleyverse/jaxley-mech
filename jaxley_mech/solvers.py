@@ -5,7 +5,7 @@ import jax
 import jax.debug
 import jax.numpy as jnp
 import optimistix as optx
-from diffrax import ImplicitEuler, ODETerm, diffeqsolve
+import diffrax
 from jax import lax
 from jax.scipy.linalg import solve
 from jaxley.solver_gate import save_exp
@@ -29,9 +29,11 @@ class SolverExtension:
                 "Solver must be specified (`newton`, `explicit`, `rk45` and `diffrax_implicit`)."
             )
         elif solver == "diffrax_implicit":
-            self.term = ODETerm(self.derivatives)
+            self.term = diffrax.ODETerm(self.derivatives)
             root_finder = optx.Newton(rtol=rtol, atol=atol)
-            self.diffrax_solver = ImplicitEuler(root_finder=root_finder)
+            self.diffrax_solver = diffrax.ImplicitEuler(
+                root_finder=root_finder, root_find_max_steps=max_steps
+            )
 
         self.solver_func = self._get_solver_func(solver)
 
@@ -80,7 +82,6 @@ class SolverExtension:
             args=args,
             term=self.term,
             solver=self.diffrax_solver,
-            max_steps=self.solver_args["max_steps"],
         )
 
 
@@ -134,7 +135,7 @@ def newton(
         return y - y_prev - dt * derivatives_func(None, y, *args)
 
     def body_fun(
-        carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool]
+        carry: Tuple[jnp.ndarray, jnp.ndarray, int, bool],
     ) -> Tuple[jnp.ndarray, jnp.ndarray, int, bool]:
         y, y_prev, i, _ = carry
 
@@ -226,9 +227,8 @@ def diffrax_implicit(
     dt: float,
     derivatives_func: Callable[..., jnp.ndarray],
     args: Tuple,
-    term: ODETerm,
-    solver: ImplicitEuler,
-    max_steps: int,
+    term: diffrax.ODETerm,
+    solver: diffrax.ImplicitEuler,
 ) -> jnp.ndarray:
     """
     Implicit Euler method using diffrax's Newton root-finder for solving ODEs.
@@ -239,13 +239,12 @@ def diffrax_implicit(
     - derivatives_func (Callable): Function that calculates derivatives of the system.
     - args (Tuple): Additional arguments for the derivatives function.
     - term (ODETerm): Pre-initialized ODETerm object.
-    - solver (ImplicitEuler): Pre-initialized ImplicitEuler solver.
-    - max_steps (int): Maximum number of steps.
+    - solver (ImplicitEuler): Pre-initialized ImplicitEuler solver, whose
+      `root_find_max_steps` bounds the Newton root-find iterations for this step.
 
     Returns:
     - jnp.ndarray: Updated state vector after one time step using the Implicit Euler method.
     """
-    y_new = diffeqsolve(
-        term, solver, args=args, t0=0.0, t1=dt, dt0=dt, y0=y0, max_steps=max_steps
-    )
-    return jnp.squeeze(y_new.ys, axis=0)
+    y_new, _, _, _, result = solver.step(term, 0.0, dt, y0, args, None, False)
+    y_new = result.error_if(y_new, result != diffrax.RESULTS.successful)
+    return y_new
