@@ -64,25 +64,27 @@ class SolverExtension:
         return solvers[solver]
 
     def _newton_wrapper(self, y0, dt, derivatives_func, args):
-        return newton(
-            y0,
+        solve_one = lambda y0_i, args_i: newton(
+            y0_i,
             dt,
             derivatives_func,
-            args,
+            args_i,
             rtol=self.solver_args["rtol"],
             atol=self.solver_args["atol"],
             max_steps=self.solver_args["max_steps"],
         )
+        return jax.vmap(solve_one, in_axes=(1, 0), out_axes=1)(y0, args)
 
     def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
-        return diffrax_implicit(
-            y0=y0,
+        solve_one = lambda y0_i, args_i: diffrax_implicit(
+            y0=y0_i,
             dt=dt,
             derivatives_func=derivatives_func,
-            args=args,
+            args=args_i,
             term=self.term,
             solver=self.diffrax_solver,
         )
+        return jax.vmap(solve_one, in_axes=(1, 0), out_axes=1)(y0, args)
 
 
 ### Solvers
