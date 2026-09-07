@@ -97,8 +97,8 @@ class NaTaT(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - save_exp(-(v + 38 + 1e-6) / 6))
-        beta = (0.124 * (-v - 38 + 1e-6)) / (1 - save_exp(-(-v - 38 + 1e-6) / 6))
+        alpha = 0.182 * efun(-(v + 38), 6.0)
+        beta = 0.124 * efun(v + 38, 6.0)
         m_inf = alpha / (alpha + beta)
         tau_m = 1 / (alpha + beta) / qt
         return m_inf, tau_m
@@ -107,8 +107,8 @@ class NaTaT(Channel):
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (-0.015 * (v + 66 + 1e-6)) / (1 - save_exp((v + 66 + 1e-6) / 6))
-        beta = (-0.015 * (-v - 66 + 1e-6)) / (1 - save_exp((-v - 66 + 1e-6) / 6))
+        alpha = 0.015 * efun(v + 66, 6.0)
+        beta = 0.015 * efun(-(v + 66), 6.0)
         h_inf = alpha / (alpha + beta)
         tau_h = 1 / (alpha + beta) / qt
         return h_inf, tau_h
@@ -179,8 +179,8 @@ class NaTs2T(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (0.182 * (v + 32 + 1e-6)) / (1 - save_exp(-(v + 32 + 1e-6) / 6))
-        beta = (0.124 * (-v - 32 + 1e-6)) / (1 - save_exp(-(-v - 32 + 1e-6) / 6))
+        alpha = 0.182 * efun(-(v + 32), 6.0)
+        beta = 0.124 * efun(v + 32, 6.0)
         m_inf = alpha / (alpha + beta)
         tau_m = 1 / (alpha + beta) / qt
         return m_inf, tau_m
@@ -189,8 +189,8 @@ class NaTs2T(Channel):
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)
-        alpha = (-0.015 * (v + 60 + 1e-6)) / (1 - save_exp((v + 60 + 1e-6) / 6))
-        beta = (-0.015 * (-v - 60 + 1e-6)) / (1 - save_exp((-v - 60 + 1e-6) / 6))
+        alpha = 0.015 * efun(v + 60, 6.0)
+        beta = 0.015 * efun(-(v + 60), 6.0)
         h_inf = alpha / (alpha + beta)
         tau_h = 1 / (alpha + beta) / qt
         return h_inf, tau_h
@@ -264,8 +264,8 @@ class NapEt2(Channel):
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
-        alpha = (0.182 * (v + 38 + 1e-6)) / (1 - save_exp(-(v + 38 + 1e-6) / 6))
-        beta = (0.124 * (-v - 38 + 1e-6)) / (1 - save_exp(-(-v - 38 + 1e-6) / 6))
+        alpha = 0.182 * efun(-(v + 38), 6.0)
+        beta = 0.124 * efun(v + 38, 6.0)
         tau_m = 6 / (alpha + beta) / qt
         m_inf = 1.0 / (1 + save_exp((v + 52.6) / -4.6))
         return m_inf, tau_m
@@ -274,10 +274,8 @@ class NapEt2(Channel):
     def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         qt = 2.3 ** ((34 - 21) / 10)  # Q10 temperature correction
-        alpha = (-2.88e-6 * (v + 17 + 1e-6)) / (1 - save_exp((v + 17 + 1e-6) / 4.63))
-        beta = (6.94e-6 * (v + 64.4 + 1e-6)) / (
-            1 - save_exp((-(v + 64.4) + 1e-6) / 2.63)
-        )
+        alpha = 2.88e-6 * efun(v + 17, 4.63)
+        beta = 6.94e-6 * efun(-(v + 64.4), 2.63)
         tau_h = 1 / (alpha + beta) / qt
         h_inf = 1.0 / (1 + save_exp((v + 48.8) / 10))
 
@@ -720,8 +718,8 @@ class CaHVA(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        alpha = (0.055 * (-27 - v + 1e-6)) / (save_exp((-27.0 - v + 1e-6) / 3.8) - 1.0)
-        beta = 0.94 * save_exp((-75.0 - v + 1e-6) / 17.0)
+        alpha = 0.055 * efun(-27.0 - v, 3.8)
+        beta = 0.94 * save_exp((-75.0 - v) / 17.0)
         return alpha, beta
 
     @staticmethod
@@ -969,12 +967,7 @@ class H(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        m_alpha = (
-            0.001
-            * 6.43
-            * (v + 154.9 + 1e-6)
-            / (save_exp((v + 154.9 + 1e-6) / 11.9) - 1)
-        )
+        m_alpha = 0.001 * 6.43 * efun(v + 154.9, 11.9)
         m_beta = 0.001 * 193 * save_exp(v / 33.1)
         m_inf = m_alpha / (m_alpha + m_beta)
         tau_m = 1 / (m_alpha + m_beta)
