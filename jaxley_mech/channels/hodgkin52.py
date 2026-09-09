@@ -5,12 +5,14 @@ from jaxley.channels import Channel
 from jaxley.solver_gate import save_exp, solve_gate_exponential
 
 from jaxley_mech.solvers import SolverExtension
+from ..utils import efun
 
 META = {
     "reference": "Hodgkin & Huxley (1952)",
     "doi": "https://doi.org/10.1113/jphysiol.1952.sp004764",
     "species": "squid",
-    "note": "Unlike the original paper, we adjusted the equations to the modern convention, that is, the resting potential is -65 mV, and signs are flipped.",
+    "note": "Unlike the original paper, we adjusted the equations to the modern convention, that is, the resting potential is -65 mV, and signs are flipped. \
+        Another note: gate singularities are avoided here by efun but not in the HH channels found in the jaxley library.",
 }
 
 
@@ -102,14 +104,12 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(v):
-        v = v + 1e-6
-        alpha = 0.1 * (v + 40) / (1 - save_exp(-0.1 * (v + 40)))
+        alpha = 0.1 * efun(-(v + 40), 10.0)
         beta = 4 * save_exp(-(v + 65) / 18)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v = v + 1e-6
         alpha = 0.07 * save_exp(-(v + 65) / 20)
         beta = 1 / (1 + save_exp(-0.1 * (v + 35)))
         return alpha, beta
@@ -159,8 +159,7 @@ class K(Channel):
 
     @staticmethod
     def n_gate(v):
-        v = v + 1e-6
-        alpha = 0.01 * (v + 55) / (1 - save_exp(-(v + 55) / 10))
+        alpha = 0.01 * efun(-(v + 55), 10.0)
         beta = 0.125 * save_exp(-(v + 65) / 80)
         return alpha, beta
 

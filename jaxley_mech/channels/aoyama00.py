@@ -11,6 +11,8 @@ from jaxley.solver_gate import (
     solve_inf_gate_exponential,
 )
 
+from ..utils import efun
+
 META = {
     "cell_type": "horizontal cell",
     "species": "rabbit",
@@ -106,14 +108,12 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(v):
-        v = v + 1e-6
-        alpha = 200 * (38 - v) / (save_exp((38 - v) / 25) - 1)
+        alpha = 200 * efun(38 - v, 25)
         beta = 2000 * save_exp(-(55 + v) / 18)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v = v + 1e-6
         alpha = 1000 * save_exp(-(v + 80.0) / 8.0)
         beta = 800 / (save_exp((80 - v) / 75) + 1)
         return alpha, beta
@@ -171,14 +171,12 @@ class Kdr(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v = v + 1e-6
-        alpha = 0.4 * (65 - v) / (save_exp((65 - v) / 50) - 1)
+        alpha = 0.4 * efun(65 - v, 50)
         beta = 4.8 * save_exp((45 - v) / 85)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v = v + 1e-6
         alpha = 1500 / (save_exp((v + 92) / 7) + 1)
         beta = 0.02 + 80 / (save_exp((v + 100) / 15) + 1)
         return alpha, beta
@@ -236,14 +234,12 @@ class Kto(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v = v + 1e-6
         alpha = 2400 / (1 + save_exp(-(v - 50) / 28))
         beta = 80 * save_exp(-v / 36)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v = v + 1e-6
         alpha = save_exp(-v / 60)
         beta = 20 / (save_exp(-(v + 40) / 5) + 1)
         return alpha, beta
@@ -295,7 +291,6 @@ class Kar(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
-        v = v + 1e-6
         m = 1 / (1 + save_exp((v + 60) / 12))
         return m
 
@@ -353,7 +348,6 @@ class Ca(Channel):
     @staticmethod
     def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
-        v = v + 1e-6
-        alpha = 240 * (68 - v) / (save_exp((68 - v) / 21) - 1)
+        alpha = 240 * efun(68 - v, 21)
         beta = 800 / (save_exp((55 + v) / 55) + 1)
         return alpha, beta
