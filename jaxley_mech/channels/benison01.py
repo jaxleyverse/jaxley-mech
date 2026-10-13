@@ -108,14 +108,12 @@ class Na(Channel):
 
     @staticmethod
     def m_gate(v):
-        v = v + 1e-6
-        alpha = 0.5 * (v + 29.0) / (1 - save_exp(-0.18 * (v + 29.0)))
+        alpha = 0.5 * efun(-(v + 29.0), 1 / 0.18)
         beta = 6.0 * save_exp(-(v + 45.0) / 15.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v = v + 1e-6
         alpha = 0.15 * save_exp(-(v + 47.0) / 20.0)
         beta = 2.8 / (1.0 + save_exp(-0.1 * (v + 20.0)))
         return alpha, beta
@@ -166,14 +164,12 @@ class Kdr(Channel):
 
     @staticmethod
     def m_gate(v):
-        v = v + 1e-6
-
         # original rate constants do not work
         # alpha = 0.0065 * (v + 30.0) / (1.0 - jnp.exp(-0.3 * v))
         # beta = 0.083 * jnp.exp(-(v + 15.0) / 15.0)
 
         # modified rate constant
-        alpha = 0.0065 * (v + 30.0) / (1.0 - jnp.exp(-(v + 30.0) / 10.0))
+        alpha = 0.0065 * efun(-(v + 30.0), 10.0)
         beta = 0.083 * jnp.exp(-(v + 15.0) / 15.0)
         return alpha, beta
 
@@ -229,14 +225,12 @@ class KA(Channel):
 
     @staticmethod
     def m_gate(v):
-        v = v + 1e-6
-        alpha = 0.02 * (v + 15) / (1 - save_exp(-0.12 * (v + 15)) + 1e-6)
+        alpha = 0.02 * efun(-(v + 15.0), 1 / 0.12)
         beta = 0.05 * save_exp(-(v + 1.0) / 30.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v = v + 1e-6
         h_inf = 1.0 / (1.0 + save_exp((v + 62.0) / 6.35))
         tau_h = jnp.array(25.0)  # ms, fixed time constant
         return h_inf, tau_h
@@ -292,8 +286,7 @@ class CaL(Channel):
 
     @staticmethod
     def m_gate(v):
-        v = v + 1e-6
-        alpha = 0.061 * (v - 3.0) / (1.0 - save_exp(-(v - 3.0) / 12.5))
+        alpha = 0.061 * efun(-(v - 3.0), 12.5)
         beta = 0.058 * save_exp(-(v - 10.0) / 15.0)
         return alpha, beta
 
@@ -348,14 +341,12 @@ class CaN(Channel):
 
     @staticmethod
     def m_gate(v):
-        v = v + 1e-6
-        alpha = 0.1 * (v - 20.0) / (1.0 - save_exp(-0.1 * (v - 20.0)))
+        alpha = 0.1 * efun(-(v - 20.0), 10.0)
         beta = 0.4 * save_exp(-(v + 25.0) / 18.0)
         return alpha, beta
 
     @staticmethod
     def h_gate(v):
-        v = v + 1e-6
         alpha = 0.01 * save_exp(-(v + 50.0) / 10.0)
         beta = 0.1 / (1.0 + save_exp(-(v + 17.0) / 17.0))
         return alpha, beta
