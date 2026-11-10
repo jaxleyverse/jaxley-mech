@@ -5,6 +5,7 @@ from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
 from jaxley_mech.solvers import SolverExtension
+from jax import Array
 
 META = {
     "reference": "Schroeder, et al. (2021)",
@@ -73,30 +74,41 @@ class RibbonSynapse(Synapse, SolverExtension):
 
         return jnp.array([dExo_dt, dRRP_dt, dIP_dt, dRP_dt])
 
-    def update_states(self, u, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Return updated synapse state using the chosen solver."""
         name = self._name
 
         # Parameters
         args_tuple = (
-            params[f"{name}_e_max"],
-            params[f"{name}_r_max"],
-            params[f"{name}_i_max"],
-            params[f"{name}_d_max"],
-            params[f"{name}_RRP_max"],
-            params[f"{name}_IP_max"],
-            params[f"{name}_RP_max"],
-            params[f"{name}_k"],
-            params[f"{name}_V_half"],
+            synapse_params[f"{name}_e_max"],
+            synapse_params[f"{name}_r_max"],
+            synapse_params[f"{name}_i_max"],
+            synapse_params[f"{name}_d_max"],
+            synapse_params[f"{name}_RRP_max"],
+            synapse_params[f"{name}_IP_max"],
+            synapse_params[f"{name}_RP_max"],
+            synapse_params[f"{name}_k"],
+            synapse_params[f"{name}_V_half"],
             pre_voltage,
         )
 
         # States
         exo, RRP, IP, RP = (
-            u[f"{name}_exo"],
-            u[f"{name}_RRP"],
-            u[f"{name}_IP"],
-            u[f"{name}_RP"],
+            synapse_states[f"{name}_exo"],
+            synapse_states[f"{name}_RRP"],
+            synapse_states[f"{name}_IP"],
+            synapse_states[f"{name}_RP"],
         )
         y0 = jnp.array([exo, RRP, IP, RP])
 
@@ -113,8 +125,19 @@ class RibbonSynapse(Synapse, SolverExtension):
             f"{name}_RP": new_RP,
         }
 
-    def compute_current(self, u, pre_voltage, post_voltage, params):
+    def compute_current(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Return updated current."""
         name = self.name
-        g_syn = params[f"{name}_gS"] * u[f"{name}_exo"]
-        return g_syn * (post_voltage - params[f"{name}_e_syn"])
+        g_syn = synapse_params[f"{name}_gS"] * synapse_states[f"{name}_exo"]
+        return g_syn * (post_voltage - synapse_params[f"{name}_e_syn"])

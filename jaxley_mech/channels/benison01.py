@@ -4,8 +4,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import (exponential_euler, save_exp,
-                                solve_gate_exponential)
+from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 from ..utils import efun
 
@@ -235,7 +234,7 @@ class KA(Channel):
         prefix = self._name
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         new_m = solve_gate_exponential(m, delta_t, *KA.m_gate(voltage))
-        new_h = exponential_euler(h, delta_t, *KA.h_gate(v))
+        new_h = exponential_euler(h, delta_t, *KA.h_gate(voltage))
         return {f"{prefix}_m": new_m, f"{prefix}_h": new_h}
 
     def compute_current(

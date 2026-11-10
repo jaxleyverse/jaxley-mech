@@ -130,7 +130,7 @@ class Phototransduction(Channel, SolverExtension):
     ):
         """Update state of phototransduction variables."""
         prefix = self._name
-        dt /= 1000  # Convert to seconds
+        dt = delta_t / 1000  # Convert to seconds
 
         # Retrieve states
         Rh = states[f"{prefix}_Rh"]
