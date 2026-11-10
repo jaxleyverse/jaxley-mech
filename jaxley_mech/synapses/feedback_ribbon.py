@@ -5,6 +5,7 @@ from jaxley.solver_gate import save_exp
 from jaxley.synapses.synapse import Synapse
 
 from jaxley_mech.solvers import SolverExtension
+from jax import Array
 
 
 class FeedbackRibbon(Synapse, SolverExtension):
@@ -94,81 +95,92 @@ class FeedbackRibbon(Synapse, SolverExtension):
             f"{self.prefix}_iGABA": 0.0,  # GABA induced postsynaptic current into HC
         }
 
-    def update_states(self, states, delta_t, pre_voltage, post_voltage, params):
+    def update_states(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
         """Return updated synapse state and current."""
 
-        Ca = states[f"{self.prefix}_Ca"]
-        pH = states[f"{self.prefix}_pH"]
-        Panx1_OpenProb = states[f"{self.prefix}_Panx1_OpenProb"]
-        GABA_OpenProb = states[f"{self.prefix}_GABA_OpenProb"]
-        VShiftEph = states[f"{self.prefix}_vShiftEph"]
+        Ca = synapse_states[f"{self.prefix}_Ca"]
+        pH = synapse_states[f"{self.prefix}_pH"]
+        Panx1_OpenProb = synapse_states[f"{self.prefix}_Panx1_OpenProb"]
+        GABA_OpenProb = synapse_states[f"{self.prefix}_GABA_OpenProb"]
+        VShiftEph = synapse_states[f"{self.prefix}_vShiftEph"]
 
         # update VShiftEph
         VShiftEph = (
-            (post_voltage - params[f"{self.prefix}_Ephaptic_Erev"])
-            * params[f"{self.prefix}_Ephaptic_C"]
-            * params[f"{self.prefix}_Ephaptic_active"]
-            * params[f"{self.prefix}_feedback"]
+            (post_voltage - synapse_params[f"{self.prefix}_Ephaptic_Erev"])
+            * synapse_params[f"{self.prefix}_Ephaptic_C"]
+            * synapse_params[f"{self.prefix}_Ephaptic_active"]
+            * synapse_params[f"{self.prefix}_feedback"]
         )
 
         # update Panx1 open probability
         Panx1_OpenProb = self.vHor_to_Panx1OpenProb(
-            Panx1_OpenProb, post_voltage, params, delta_t
+            Panx1_OpenProb, post_voltage, synapse_params, delta_t
         )
 
         # update GABA open probability
         GABA_OpenProb = self.vHor_to_GABAOpenProb(
-            GABA_OpenProb, post_voltage, params, delta_t
+            GABA_OpenProb, post_voltage, synapse_params, delta_t
         )
 
         # calculate pH
         pH = self.vHor_to_pH(
-            pH, post_voltage, Panx1_OpenProb, GABA_OpenProb, params, delta_t
+            pH, post_voltage, Panx1_OpenProb, GABA_OpenProb, synapse_params, delta_t
         )
 
         # calculate VShiftPH
         VShiftPH = (
-            params[f"{self.prefix}_VGCC_Shift"]
-            * (pH - params[f"{self.prefix}_pH_Base"])
-            * params[f"{self.prefix}_feedback"]
+            synapse_params[f"{self.prefix}_VGCC_Shift"]
+            * (pH - synapse_params[f"{self.prefix}_pH_Base"])
+            * synapse_params[f"{self.prefix}_feedback"]
         )
         IpeakShiftpH = 1 + (
-            params[f"{self.prefix}_VGCC_Gain"]
-            * (pH - params[f"{self.prefix}_pH_Base"])
-            * params[f"{self.prefix}_feedback"]
+            synapse_params[f"{self.prefix}_VGCC_Gain"]
+            * (pH - synapse_params[f"{self.prefix}_pH_Base"])
+            * synapse_params[f"{self.prefix}_feedback"]
         )
 
         # update vEff
         vEff = pre_voltage - VShiftEph - VShiftPH
 
         # Vcone to Ca2+ current (Grove, 2019)
-        iCa = self.vCone_to_iCa(vEff, IpeakShiftpH, params)
+        iCa = self.vCone_to_iCa(vEff, IpeakShiftpH, synapse_params)
 
-        Ca = self.iCa_to_ca(params, iCa, Ca, delta_t)
+        Ca = self.iCa_to_ca(synapse_params, iCa, Ca, delta_t)
 
         # glutamate release
         exo, rrp, ip, rp = (
-            states[f"{self.prefix}_exo"],
-            states[f"{self.prefix}_RRP"],
-            states[f"{self.prefix}_IP"],
-            states[f"{self.prefix}_RP"],
+            synapse_states[f"{self.prefix}_exo"],
+            synapse_states[f"{self.prefix}_RRP"],
+            synapse_states[f"{self.prefix}_IP"],
+            synapse_states[f"{self.prefix}_RP"],
         )
-        exo, rrp, ip, rp = self.ca_to_glu(params, Ca, exo, rrp, ip, rp, delta_t)
+        exo, rrp, ip, rp = self.ca_to_glu(synapse_params, Ca, exo, rrp, ip, rp, delta_t)
 
         # glutamate induced current (iGlu)
         iGlu = (
-            params[f"{self.prefix}_G_syn"]
-            * states[f"{self.prefix}_exo"]
-            * (post_voltage - params[f"{self.prefix}_Erev_syn"])
+            synapse_params[f"{self.prefix}_G_syn"]
+            * synapse_states[f"{self.prefix}_exo"]
+            * (post_voltage - synapse_params[f"{self.prefix}_Erev_syn"])
             * 1e3
         )  # mV * uS * 1e3 = nA * 1e3 = pA
         # GABA induced Cl- current (iGABA)  (nS * mV = pA)
         iGABA = (
-            params[f"{self.prefix}_feedback"]
-            * params[f"{self.prefix}_GABA_active"]
-            * params[f"{self.prefix}_GABA_C_I"]
-            * states[f"{self.prefix}_GABA_OpenProb"]
-            * (post_voltage - params[f"{self.prefix}_GABA_Erev_Cl"])
+            synapse_params[f"{self.prefix}_feedback"]
+            * synapse_params[f"{self.prefix}_GABA_active"]
+            * synapse_params[f"{self.prefix}_GABA_C_I"]
+            * synapse_states[f"{self.prefix}_GABA_OpenProb"]
+            * (post_voltage - synapse_params[f"{self.prefix}_GABA_Erev_Cl"])
         )
 
         return {
@@ -271,7 +283,7 @@ class FeedbackRibbon(Synapse, SolverExtension):
         )
 
         def derivative_pH(t, states, args):
-            pH = states
+            (pH,) = states
             (
                 target,
                 tau,
@@ -396,9 +408,20 @@ class FeedbackRibbon(Synapse, SolverExtension):
 
         return y_new
 
-    def compute_current(self, states, pre_voltage, post_voltage, params):
-        iGlu = states[f"{self.prefix}_iGlu"] * 1e-3  # pA -> nA
-        iGABA = states[f"{self.prefix}_iGABA"] * 1e-3  # pA -> nA
+    def compute_current(
+        self,
+        synapse_states: dict[str, Array],
+        synapse_params: dict[str, Array],
+        pre_voltage: Array,
+        post_voltage: Array,
+        pre_states: dict[str, Array],
+        post_states: dict[str, Array],
+        pre_params: dict[str, Array],
+        post_params: dict[str, Array],
+        delta_t: float,
+    ):
+        iGlu = synapse_states[f"{self.prefix}_iGlu"] * 1e-3  # pA -> nA
+        iGABA = synapse_states[f"{self.prefix}_iGABA"] * 1e-3  # pA -> nA
         return iGlu + iGABA
 
     def reset_all_feedbacks(self, pHBase_active=True):

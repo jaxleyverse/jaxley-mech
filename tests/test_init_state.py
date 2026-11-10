@@ -12,7 +12,7 @@ def test_init_state(channel_class):
 
     channel = channel_class()
     init_state = channel.init_state(
-        channel.channel_states, voltages, channel.channel_params, dt
+        channel.channel_states, channel.channel_params, voltages, dt
     )
 
     # Deal with adding potentially missing states (which have no init).
@@ -26,7 +26,7 @@ def test_init_state(channel_class):
     params["radius"] = 1.0
     params["length"] = 1.0
 
-    new_states = channel.update_states(updated_states, dt, voltages, params)
+    new_states = channel.update_states(updated_states, params, voltages, dt)
 
     # Channel states should not have changed.
     for key in init_state.keys():

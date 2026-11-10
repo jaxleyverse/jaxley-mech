@@ -29,7 +29,6 @@ class SolverExtension:
                 "Solver must be specified (`newton`, `explicit`, `rk45` and `diffrax_implicit`)."
             )
         elif solver == "diffrax_implicit":
-            self.term = diffrax.ODETerm(self.derivatives)
             root_finder = optx.Newton(rtol=rtol, atol=atol)
             self.diffrax_solver = diffrax.ImplicitEuler(
                 root_finder=root_finder, root_find_max_steps=max_steps
@@ -73,7 +72,9 @@ class SolverExtension:
             atol=self.solver_args["atol"],
             max_steps=self.solver_args["max_steps"],
         )
-        return jax.vmap(solve_one, in_axes=(1, 0), out_axes=1)(y0, args)
+        # Jaxley >= 1.0 calls mechanisms once per compartment (or synapse) via
+        # `vmap`, so `y0` holds the states of a single compartment.
+        return solve_one(y0, args)
 
     def _diffrax_implicit_wrapper(self, y0, dt, derivatives_func, args):
         solve_one = lambda y0_i, args_i: diffrax_implicit(
@@ -81,10 +82,12 @@ class SolverExtension:
             dt=dt,
             derivatives_func=derivatives_func,
             args=args_i,
-            term=self.term,
+            term=diffrax.ODETerm(derivatives_func),
             solver=self.diffrax_solver,
         )
-        return jax.vmap(solve_one, in_axes=(1, 0), out_axes=1)(y0, args)
+        # Jaxley >= 1.0 calls mechanisms once per compartment (or synapse) via
+        # `vmap`, so `y0` holds the states of a single compartment.
+        return solve_one(y0, args)
 
 
 ### Solvers
@@ -240,7 +243,7 @@ def diffrax_implicit(
     - dt (float): Time step size.
     - derivatives_func (Callable): Function that calculates derivatives of the system.
     - args (Tuple): Additional arguments for the derivatives function.
-    - term (ODETerm): Pre-initialized ODETerm object.
+    - term (ODETerm): ODETerm wrapping `derivatives_func`.
     - solver (ImplicitEuler): Pre-initialized ImplicitEuler solver, whose
       `root_find_max_steps` bounds the Newton root-find iterations for this step.
 

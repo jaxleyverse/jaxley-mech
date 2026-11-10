@@ -5,8 +5,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import (exponential_euler, save_exp,
-                                solve_gate_exponential)
+from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 from jaxley_mech.solvers import SolverExtension
 from ..utils import efun
@@ -145,7 +144,7 @@ class Phototransduction(Channel, SolverExtension):
     ):
         """Update state of phototransduction variables."""
         prefix = self._name
-        dt /= 1000  # Convert to seconds
+        dt = delta_t / 1000  # Convert to seconds
 
         # Retrieve states
         Rh = states[f"{prefix}_Rh"]
@@ -314,7 +313,7 @@ class Kv(Channel):
     ):
         """Update state of gating variables."""
         prefix = self._name
-        dt /= 1000
+        dt = delta_t / 1000
         m, h = states[f"{prefix}_m"], states[f"{prefix}_h"]
         m_new = solve_gate_exponential(m, dt, *self.m_gate(voltage))
         h_new = solve_gate_exponential(h, dt, *self.h_gate(voltage))
@@ -351,7 +350,7 @@ class Kv(Channel):
         }
 
     @staticmethod
-    def m_gate(voltage):
+    def m_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
         alpha = 5 * efun(100 - v, 42.0)
         beta = 9 * save_exp(-(v - 20) / 40)
@@ -433,7 +432,7 @@ class Hyper(Channel, SolverExtension):
     ):
         """Update the states using the specified solver."""
         prefix = self._name
-        dt /= 1000  # Convert dt to seconds
+        dt = delta_t / 1000  # Convert dt to seconds
 
         # Retrieve states
         C1 = states[f"{prefix}_C1"]
@@ -481,7 +480,7 @@ class Hyper(Channel, SolverExtension):
         beta = 18 / (save_exp(-(v + 8) / 19) + 1)
         return alpha, beta
 
-    def init_state(self, states, v, params, delta_t):
+    def init_state(self, states, params, voltage, delta_t):
         return self.channel_states
 
 
@@ -513,7 +512,7 @@ class Ca(Channel):
         """Update state of gating variables."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        dt /= 1000  # convert to seconds
+        dt = delta_t / 1000  # convert to seconds
         m_new = solve_gate_exponential(m, dt, *self.m_gate(voltage))
         h_new = self.h_gate(voltage)
         return {f"{prefix}_m": m_new, f"{prefix}_h": h_new, "eCa": states["eCa"]}
@@ -551,14 +550,14 @@ class Ca(Channel):
         }
 
     @staticmethod
-    def m_gate(voltage):
+    def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         alpha = 3 * efun(80 - v, 25.0)
         beta = 10 / (1 + save_exp((v + 38) / 7.0))
         return alpha, beta
 
     @staticmethod
-    def h_gate(voltage):
+    def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         h = save_exp((40 - v) / 18) / (1 + save_exp((40 - v) / 18))
         return h
@@ -675,7 +674,7 @@ class CaPump(Channel, SolverExtension):
     ):
         """Update the state of calcium pump variables."""
         prefix = self._name
-        dt /= 1000  # convert to seconds
+        dt = delta_t / 1000  # convert to seconds
 
         # States
         Cas = states[f"Cas"]
@@ -837,7 +836,7 @@ class KCa(Channel):
         """Update state of gating variables."""
         prefix = self._name
         m = states[f"{prefix}_m"]
-        dt /= 1000  # convert to seconds
+        dt = delta_t / 1000  # convert to seconds
         m_new = solve_gate_exponential(m, dt, *self.m_gate(voltage))
         n_new = self.n_gate(states["Cas"], params[f"{prefix}_Khalf"])
         return {f"{prefix}_m": m_new, f"{prefix}_n": n_new}

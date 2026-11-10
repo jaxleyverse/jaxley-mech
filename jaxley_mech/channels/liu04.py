@@ -4,8 +4,7 @@ import jax.numpy as jnp
 from jax import Array
 from jax.lax import select
 from jaxley.channels import Channel
-from jaxley.solver_gate import (exponential_euler, save_exp,
-                                solve_gate_exponential)
+from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 from ..utils import efun
 
@@ -122,7 +121,7 @@ class Kx(Channel):
         return {f"{prefix}_n": alpha / (alpha + beta)}
 
     @staticmethod
-    def n_gate(voltage):
+    def n_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
         alpha = 6.6e-4 * save_exp((v + 49.9) / 11.4)
         beta = 6.6e-4 * save_exp(-(v + 49.9) / 11.4)
@@ -185,7 +184,7 @@ class Kv(Channel):
         return {f"{prefix}_n": alpha / (alpha + beta)}
 
     @staticmethod
-    def n_gate(voltage):
+    def n_gate(v):
         """Voltage-dependent dynamics for the n gating variable."""
         alpha = 0.005 * efun(20 - v, 22.0)
         beta = 0.0625 * save_exp(-v / 80)
@@ -320,14 +319,14 @@ class Ca(Channel):
         }
 
     @staticmethod
-    def m_gate(voltage):
+    def m_gate(v):
         """Voltage-dependent dynamics for the m gating variable."""
         alpha = 0.1 * save_exp((v + 10) / 12.0)
         beta = 0.1 * save_exp(-(v + 10) / 12.0)
         return alpha, beta
 
     @staticmethod
-    def h_gate(voltage):
+    def h_gate(v):
         """Voltage-dependent dynamics for the h gating variable."""
         alpha = 5e-4 * save_exp(-(v - 11) / 18.0)
         beta = 0.01 * save_exp((v - 11) / 18.0)

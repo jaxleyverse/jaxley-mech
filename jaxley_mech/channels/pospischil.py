@@ -6,8 +6,7 @@ from typing import Optional
 from jax import Array
 from jax.typing import ArrayLike
 from jaxley.channels import Channel
-from jaxley.solver_gate import (exponential_euler, save_exp,
-                                solve_gate_exponential)
+from jaxley.solver_gate import exponential_euler, save_exp, solve_gate_exponential
 
 # This is an implementation of Pospischil channels:
 # Leak, Na, K, Km, CaT, CaL
